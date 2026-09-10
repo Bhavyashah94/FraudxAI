@@ -64,7 +64,7 @@ MCC_TAXONOMY: Dict[int, Dict[str, object]] = {
 
 
 def compute_reachable_radius_km(delta_t_sec: float, radius_metro_km: float = 35.0) -> float:
-    """Computes Hägerstrand space-time reachability envelope R_max(delta_t) on WGS-84 sphere.
+    """Computes maximum travel distance R_max(delta_t) based on elapsed time.
     
     Regimes:
     - 0 to 120s: Intra-facility / checkout dwell (50m bounds)
@@ -94,7 +94,7 @@ def compute_reachable_radius_km(delta_t_sec: float, radius_metro_km: float = 35.
 
 
 class WorldEnvironment:
-    """Simulates spatial distribution of merchants and physical gravity routing."""
+    """Simulates spatial distribution of merchants and distance-weighted merchant selection."""
 
     def __init__(
         self,
@@ -244,7 +244,7 @@ class WorldEnvironment:
         delta_t_sec: Optional[float] = None,
         last_merchant_id: Optional[str] = None,
     ) -> MerchantProfile:
-        """Selects merchant using spatial gravity model with kinematic reachability prism truncation."""
+        """Selects merchant using distance-weighted probabilities filtered by maximum travel radius."""
         n = len(self.merchants)
         eligible_mask = np.ones(n, dtype=bool)
 
@@ -282,7 +282,7 @@ class WorldEnvironment:
         d_lon = (sub_lons - agent_lon) * (111.139 * np.cos(mean_lat_rad))
         dist_km = np.sqrt(d_lat * d_lat + d_lon * d_lon)
 
-        # Kinematic Reachability Prism Filtering for Card-Present Transactions
+        # Maximum Travel Radius Filtering for Card-Present Transactions
         if channel_type.startswith("CP") and delta_t_sec is not None:
             r_max = compute_reachable_radius_km(delta_t_sec, radius_metro_km=self.radius_km)
             kinematic_mask = (dist_km <= r_max)
@@ -292,7 +292,7 @@ class WorldEnvironment:
                 sub_weights = sub_weights[kinematic_mask]
                 dist_km = dist_km[kinematic_mask]
             else:
-                # Spatial Starvation Resolution (Dwell / Co-Located Cluster Fallback)
+                # Fallback to same merchant or nearest eligible merchant if travel distance is exceeded
                 if last_merchant_id is not None:
                     for m in self.merchants:
                         if m.merchant_id == last_merchant_id and channel_type in m.supported_channels:

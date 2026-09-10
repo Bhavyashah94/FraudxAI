@@ -6,7 +6,7 @@
 [![Standard](https://img.shields.io/badge/rails-ISO%208583%20%7C%20RBI%20AFA%20%7C%20Visa%20VCR-orange.svg)]()
 [![Anti-Astronaut](https://img.shields.io/badge/grounding-Anti--Astronaut%20Certified-darkgreen.svg)](AGENTS.md)
 
-**FraudxAI** is an open-source, mathematically rigorous **Discrete-Event Multi-Agent Simulation (DES-MAS)** platform and **Causal Explainable AI (XAI)** evaluation benchmark for payment card fraud detection.
+**FraudxAI** is an open-source payment fraud simulation engine and machine learning evaluation benchmark calibrated to real-world payment rail plumbing and regulatory standards.
 
 Unlike synthetic data generators that rely on ungrounded statistical distributions or toy column schemas, FraudxAI synthesizes authentic **institutional banking feeds** calibrated to official payment network operating regulations (Visa Core Rules, Mastercard Rules), statutory central bank mandates (Reserve Bank of India Master Directions), and empirical cybercrime research.
 
@@ -28,17 +28,18 @@ Unlike synthetic data generators that rely on ungrounded statistical distributio
   * Indian card product taxonomy: Kisan Credit Card (KCC), PMJDY RuPay Debit, FD-Backed Entry Cards, Salaried Prime Rewards, and Super-Premium HNI cards.
 
 ### 2. Multi-Agent Closed-Loop Feedback
-* **Cardholder Agents**:
+* **Cardholder Profiles**:
   * Calibrated to the Federal Reserve Diary of Consumer Payment Choice (DCPC) and BLS surveys across 7 verified demographic cohorts.
-  * Continuous 24-hour circular circadian arrival intensity on $\mathbb{S}^1$ (von Mises mixture modeling lunch, dinner, and nocturnal sleep lull suppression).
+  * 24-hour periodic diurnal arrival schedules calibrated to Federal Reserve DCPC payment diaries (suppressing night transactions to < 4.5% and peaking during daytime retail hours).
   * Multi-modal discovery latency survival models: instant push notification (10–60s) vs. daily banking app checks (12–36h) vs. monthly billing statement reviews (30–45d).
   * Authentic hard negatives: legitimate home relocations and cross-border vacation travel that exhibit high spend/velocity anomalies but carry valid EMV chip cryptograms.
-* **Adaptive Fraudster Syndicates**:
+* **Adversarial Fraud Playbooks & Ring Infrastructure**:
   * Closed-loop adaptation to bank responses: bisection amount decay on `ISO 51` (Insufficient Funds), gateway hopping to lower-tier acquirers on `3DS Challenge`, velocity backoff on `ISO 59` (Suspected Fraud), and darknet warranty replacement on `ISO 05/14/54`.
   * Grounded attack playbooks: Micro-auth card testing probes (AVS `Z` ZIP bypass), Account Takeover (ATO) with 14-day silent dormancy baking, synthetic sleeper bust-outs with ACH float exploitation, Apple Pay "Yellow Path" token provisioning, distributed PAN Enumeration Attacks (PEA additive guessing), triangulation fraud, reverse-proxy vishing, and malicious Android APK SMS stealers.
 * **Bank Decision Engine**:
   * Multi-tier issuer authorization switch enforcing ISO 8583 response codes (`00` Approved, `05` Do Not Honor, `10` Partial Approval, `14` Invalid Card, `51` Insufficient Funds, `57` Transaction Not Permitted, `59` Suspected Fraud, `63` Security Violation, `65` Activity Limit Exceeded, `82` Invalid CVV).
   * Visa Account Attack Intelligence (VAAI) defense scoring against distributed card testing.
+  * Real-time pre-authorization ML risk scoring with EMV 3DS 2.x step-up challenges.
 
 ### 3. Four Partitioned Institutional Banking Feeds
 Real financial institutions do not maintain a single flat table with toy column names (`amount`, `is_fraud`). FraudxAI partitions synthetic outputs into the four distinct feeds that production data warehouses actually store:
@@ -50,17 +51,17 @@ Real financial institutions do not maintain a single flat table with toy column 
 | `clearing_settlement.csv` | Dual-Message Settlement | Financial presentment feed (`MTI 0200`) with 24–72h delay windows, actual captured amounts (AFD pump vs hold, dining tips), and interchange fees. |
 | `dispute_recovery.csv` | Scheme & Statutory Disputes | Chargeback logs with reason codes (Visa 10.4, RBI unauthorized debit), Visa CE 3.0 pre-dispute deflection, arbitration fees, RBI Customer Limited Liability Tiers (`RBI/2017-18/15`), and CFCFRMS 1930 golden hour cyber-liens. |
 
-### 4. Ground-Truth Causal Counterfactuals & Shapley XAI Benchmarking
-* **Pearl's Structural Counterfactual Twins**:
-  For every fraudulent transaction $\mathbf{x}_{\text{obs}}$, the engine computes the unperturbed counterfactual twin $\mathbf{x}_{\text{cf}}$ the cardholder would have produced in the absence of the adversary:
-  $$\mathbf{\phi}^*_{\text{input}} = \mathbf{x}_{\text{obs}} - \mathbf{x}_{\text{cf}}$$
-* **Exact Analytical Shapley Attribution**:
-  Provides closed-form game-theoretic Shapley attributions with zero residual efficiency error ($\sum_i \phi_i = f(\mathbf{x}) - \mathbb{E}[f]$), allowing post-hoc explainers (TreeSHAP, KernelSHAP) to be benchmarked against genuine ground truth.
-* **Quantitative XAI Evaluator (`GroundTruthXAIEvaluator`)**:
+### 4. Ground-Truth Feature Attributions & Baseline Reference Vectors
+* **Cardholder Baseline Difference Vectors**:
+  For every simulated fraudulent transaction, the engine computes the exact feature delta relative to the cardholder's uncompromised 30-day baseline profile:
+  $$\Delta \mathbf{x} = \mathbf{x}_{\text{fraud}} - \mathbf{x}_{\text{baseline}}$$
+* **Feature Risk Contribution Scoring**:
+  Computes deterministic feature contributions for the simulation's risk scoring function using the Owen multilinear formula in logit space and 128-point path integration (Integrated Gradients / Aumann-Shapley) in probability space, allowing post-hoc explainers (TreeSHAP, KernelSHAP) to be benchmarked against objective ground truth.
+* **Quantitative Evaluator (`GroundTruthXAIEvaluator`)**:
   Computes Precision@k, Recall@k, Kendall's $\tau_b$, Spearman's $\rho$, and Relative Attribution Error (RAE).
 
-### 5. Physical & Kinematic Invariants
-* **Space-Time Velocity Limits**: Great-circle Haversine metrics with antipodal numerical stability guarantee that card-present transactions never exceed physical transport velocities ($< 900\,\text{km/h}$).
+### 5. Physical Transit Invariants
+* **Physical Travel Velocity Limits**: Great-circle Haversine metrics guarantee that card-present transactions never exceed physical commercial transport velocities ($< 900\,\text{km/h}$).
 * **Temporal Monotonicity**: 64-bit microsecond priority queue with stable sequence tie-breaking guarantees strict global chronological order ($t_0 \le t_1 \le \dots \le t_N$).
 * **Online Streaming Ledger**: Strictly point-in-time state updates using Welford's algorithm for online mean and variance tracking, completely eliminating future lookahead bias.
 
@@ -79,22 +80,13 @@ Real financial institutions do not maintain a single flat table with toy column 
                      v                                                 v
     +--------------------------------+                +--------------------------------+
     |       Cardholder Profile       |                |     AdaptiveFraudsterAgent     |
-    |  - Fed DCPC Persona Clusters   |                |  - 10 Empirical Playbooks      |
-    |  - Circadian von Mises simplex |                |  - Bisection Decay on ISO 51   |
+    |  - Fed DCPC Persona Clusters   |                |  - 10 Grounded Playbooks       |
+    |  - 24-hour diurnal schedule    |                |  - Bisection Decay on ISO 51   |
     |  - Multi-modal discovery curve |                |  - Gateway Hop on 3DS (Tier C) |
-    |  - Sub-mach kinematic bounds   |                |  - Nocturnal window targeting  |
+    |  - 900 km/h transit limits     |                |  - Nocturnal window targeting  |
     +----------------+---------------+                +----------------+---------------+
                      |                                                 |
                      +------------------------+------------------------+
-                                              |
-                                              v
-                           +-------------------------------------+
-                           |      BankDecisionEngine (Switch)    |
-                           |  - ISO 8583 response codes          |
-                           |  - RBI AFA / OTP verification       |
-                           |  - INR 5k contactless ceiling       |
-                           |  - Visa VAAI anti-enumeration       |
-                           +------------------+------------------+
                                               |
                                               v
                            +-------------------------------------+
@@ -106,9 +98,20 @@ Real financial institutions do not maintain a single flat table with toy column 
                                               |
                                               v
                            +-------------------------------------+
-                           |    Structural Causal Engine (SCM)   |
-                           |  - Counterfactual twin generation   |
-                           |  - Exact analytical Shapley values  |
+                           |       Risk Attribution Engine       |
+                           |  - Real-time pre-auth scoring       |
+                           |  - Path-integrated feature risk     |
+                           |  - Cardholder baseline deltas       |
+                           +------------------+------------------+
+                                              |
+                                              v
+                           +-------------------------------------+
+                           |      BankDecisionEngine (Switch)    |
+                           |  - ISO 8583 response codes          |
+                           |  - Real-time ML risk thresholds     |
+                           |  - EMV 3DS 2.x step-up challenges   |
+                           |  - RBI AFA / OTP verification       |
+                           |  - Visa VAAI anti-enumeration       |
                            +------------------+------------------+
                                               |
                      +------------------------+------------------------+
@@ -269,14 +272,14 @@ FraudxAI enforces strict, deterministic verification across the entire stack:
 python -m pytest tests/ -v
 ```
 Certifies:
-* Analytical Shapley efficiency in probability and log-odds spaces.
-* Geodesic antipodal stability and sub-mach commercial velocity limits.
+* Feature risk attribution efficiency in probability and log-odds spaces.
+* Geodesic antipodal stability and 900 km/h commercial transit velocity limits.
 * Closed-loop multi-agent feedback (ISO 51 amount decay, 3DS gateway hopping, card freezes).
 * Strict global temporal monotonicity under concurrent microsecond arrivals.
 * Zero deterministic target label leakage in AVS and billing/shipping fields.
 * Dual-region institutional schema conformance (USD cents vs. INR paisa, ISO 8583 syntax, MTI 0200 clearing presentment, Visa CE 3.0 deflection, RBI limited liability tiers).
-* Non-Homogeneous Poisson Process (NHPP) circadian thinning (< 4.5% nocturnal trough, > 70% diurnal peak).
-* Semi-Markov shopping trip chaining and burstiness ($c_v > 1.40$).
+* Diurnal Poisson arrival thinning (< 4.5% nocturnal trough, > 70% diurnal peak).
+* Multi-stop shopping trip clustering with short inter-arrival delays ($c_v > 1.40$).
 * Calendar-anchored macroeconomic regimes (payday surges, holiday shopping blitzes).
 * Solvency accounting, pre-auth holds, and non-mutating decline invariants.
 * Shared syndicate topologies (botnet IP subnets and mule account rings).

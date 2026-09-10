@@ -136,7 +136,7 @@ def verify_transaction_invariants(
                 velocity_kph = dist_km / delta_hours
                 if velocity_kph > 900.0:
                     violations.append(
-                        f"SUPERSONIC_LEGITIMATE_VELOCITY: Card-Present transaction for card {tx.get('card_id')} "
+                        f"IMPOSSIBLE_TRAVEL_VELOCITY: Card-Present transaction for card {tx.get('card_id')} "
                         f"traveled {dist_km:.2f} km in {delta_t:.1f}s ({velocity_kph:.1f} km/h > 900 km/h) "
                         f"between two legitimate in-person transactions."
                     )

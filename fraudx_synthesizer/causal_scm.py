@@ -1,13 +1,13 @@
-"""Structural Causal Model (SCM) & Counterfactual Ground-Truth Attribution Engine.
+"""Feature Risk Attribution & Baseline Reference Engine.
 
-Implements Pearl's 3-Step Structural Counterfactual Framework (Abduction-Action-Prediction):
-1. Evaluates observed transaction x_obs under adversarial attack intervention do(V_K = v_K^atk).
-2. Abducts and constructs unperturbed counterfactual twin x_cf representing what would have
-   occurred in the identical state of the world had the adversary never intervened.
-3. Derives exact ground-truth causal attribution vectors:
-   - Input-space intervention delta: phi*_input = x_obs - x_cf
-   - Risk-space attribution: exact closed-form attribution with zero-residual efficiency.
-   - Active causal drivers: A* = {i | |x_obs,i - x_cf,i| > 0 and dF/dx_i != 0}.
+Provides:
+1. Parametric risk scoring combining linear feature shifts and multi-feature interaction synergies.
+2. Baseline feature delta calculation against the uncompromised cardholder's 30-day history:
+   delta_x = x_observed - x_baseline
+3. Feature risk attributions:
+   - Logit space: Owen multilinear attribution for linear + interaction terms.
+   - Probability space: 128-point numerical path integration (Aumann-Shapley / Integrated Gradients)
+     with normalized sum matching the total probability delta.
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ import numpy as np
 
 @dataclass
 class CausalGroundTruth:
-    """Rigorous ground-truth causal explanation for a simulated transaction."""
+    """Rigorous ground-truth risk attribution and contrastive explanation for a transaction."""
     is_fraud: int
     scenario_tag: str
     risk_score: float
@@ -33,8 +33,16 @@ class CausalGroundTruth:
     counterfactual_input_deltas: Dict[str, float] = field(default_factory=dict)
     dominant_causal_driver: str = "baseline"
     active_causal_parents: List[str] = field(default_factory=list)
+    counterfactual_mode: str = "CONTRASTIVE_PROFILE_FOIL"
     counterfactual_twin: Dict[str, Any] = field(default_factory=dict)
+    normative_baseline: Dict[str, Any] = field(default_factory=dict)
     explanation_narrative: str = ""
+
+    def __post_init__(self) -> None:
+        if not self.normative_baseline and self.counterfactual_twin:
+            self.normative_baseline = self.counterfactual_twin
+        elif not self.counterfactual_twin and self.normative_baseline:
+            self.counterfactual_twin = self.normative_baseline
 
 
 class StructuralCausalEngine:
@@ -160,7 +168,7 @@ class StructuralCausalEngine:
             "is_night_tx": is_night,
         }
 
-        # 1. Compute Exact Analytical Owen Multilinear Shapley in Logit Space
+        # 1. Compute Logit-Space Feature Attributions via Owen Multilinear Formula
         deltas: Dict[str, float] = {}
         for feat_name in self.structural_weights:
             x_val = feature_vector[feat_name]
@@ -195,7 +203,7 @@ class StructuralCausalEngine:
                 A_2[f3] += term
                 c3 += term
 
-        # Exact Owen multilinear Shapley values in logit space: phi_i^logit = A_{i,0} + 1/2 A_{i,1} + 1/3 A_{i,2}
+        # Feature attributions in logit space: phi_i^logit = A_{i,0} + 1/2 A_{i,1} + 1/3 A_{i,2}
         raw_phi_logit = {
             feat_name: A_0[feat_name] + 0.5 * A_1[feat_name] + (1.0 / 3.0) * A_2[feat_name]
             for feat_name in self.structural_weights
@@ -208,7 +216,7 @@ class StructuralCausalEngine:
         # Clean unrounded or minimally rounded logit attributions with exact mathematical efficiency: sum == total_logit_shift
         shapley_logit = {k: round(v, 6) for k, v in raw_phi_logit.items()}
 
-        # 2. Probability Space Attributions (Exact Aumann-Shapley Path Attribution via Quadrature)
+        # 2. Probability Space Attributions (Numerical Path Integration via 128-Point Quadrature)
         # Along straight-line path x(t) = x_0 + t * delta_x:
         # z(t) = base_logit + c1 * t + c2 * t^2 + c3 * t^3
         # phi_i^AS = A_{i,0} M0 + A_{i,1} M1 + A_{i,2} M2
@@ -221,7 +229,7 @@ class StructuralCausalEngine:
         M1 = float(np.sum(self._gl_wt * self._gl_t * sig_prime))
         M2 = float(np.sum(self._gl_wt * (self._gl_t ** 2) * sig_prime))
 
-        # Exact Aumann-Shapley attributions: mathematically sum_i phi_i^AS == delta_p
+        # Path-integrated attributions (normalized to ensure sum_i phi_i == delta_p)
         delta_p = risk_score - base_risk
         raw_psi = {
             feat_name: A_0[feat_name] * M0 + A_1[feat_name] * M1 + A_2[feat_name] * M2
@@ -236,34 +244,38 @@ class StructuralCausalEngine:
         else:
             shapley_prob = {feat_name: round(v, 6) for feat_name, v in raw_psi.items()}
 
-        # 3. Pearl Counterfactual Twin Construction
+        # 3. Grounded Normative Baseline & Contrastive Attribution Construction
         is_fraud = int(record.get("is_fraud", 0))
-        counterfactual_twin = dict(record)
+        normative_baseline = dict(record)
         cf_input_deltas: Dict[str, float] = {}
 
-        if is_fraud == 1:
-            # Reconstruct what the cardholder would have done in unperturbed state
-            cf_twin_amount = round(mean_30d, 2)
-            counterfactual_twin["amount"] = cf_twin_amount
-            counterfactual_twin["is_fraud"] = 0
-            counterfactual_twin["scenario_tag"] = "ORGANIC_NORMAL"
-            counterfactual_twin["haversine_velocity_kph"] = 0.0
-            counterfactual_twin["ip_distance_from_home_km"] = 5.0
-            counterfactual_twin["is_cross_border"] = False
-            counterfactual_twin["avs_match_code"] = "Y"
-            counterfactual_twin["billing_shipping_match"] = 1
-            counterfactual_twin["cvv_match_flag"] = 1
+        baseline_amount = round(mean_30d, 2)
+        normative_baseline["amount"] = baseline_amount
+        normative_baseline["is_fraud"] = 0
+        normative_baseline["scenario_tag"] = "ORGANIC_NORMAL"
+        normative_baseline["haversine_velocity_kph"] = 0.0
+        normative_baseline["ip_distance_from_home_km"] = 0.0
+        normative_baseline["is_cross_border"] = False
+        normative_baseline["avs_match_code"] = "Y"
+        normative_baseline["billing_shipping_match"] = 1
+        normative_baseline["cvv_match_flag"] = 1
 
-            cf_input_deltas["amount"] = round(amount - cf_twin_amount, 2)
-            cf_input_deltas["haversine_velocity_kph"] = round(velocity_kph, 2)
-            cf_input_deltas["ip_distance_from_home_km"] = round(ip_dist - 5.0, 2)
+        if is_fraud == 1:
+            counterfactual_mode = "ADVERSARIAL_INSERTION"
+            cf_input_deltas["amount"] = round(amount - baseline_amount, 2)
+            cf_input_deltas["haversine_velocity_kph"] = round(effective_velocity, 2)
+            cf_input_deltas["ip_distance_from_home_km"] = round(ip_dist - 0.0, 2)
             cf_input_deltas["billing_shipping_mismatch"] = float(bill_mismatch)
             cf_input_deltas["avs_mismatch_flag"] = float(avs_mismatch)
             cf_input_deltas["cvv_mismatch_flag"] = float(cvv_mismatch)
         else:
-            # Clean transaction: counterfactual twin is identical
-            for k in ["amount", "haversine_velocity_kph", "ip_distance_from_home_km"]:
-                cf_input_deltas[k] = 0.0
+            counterfactual_mode = "ORGANIC_BASELINE"
+            cf_input_deltas["amount"] = round(amount - baseline_amount, 2)
+            cf_input_deltas["haversine_velocity_kph"] = round(effective_velocity, 2)
+            cf_input_deltas["ip_distance_from_home_km"] = round(ip_dist - 0.0, 2)
+            cf_input_deltas["billing_shipping_mismatch"] = float(bill_mismatch)
+            cf_input_deltas["avs_mismatch_flag"] = float(avs_mismatch)
+            cf_input_deltas["cvv_mismatch_flag"] = float(cvv_mismatch)
 
         # 4. Active Causal Drivers
         active_parents: List[str] = []
@@ -298,7 +310,9 @@ class StructuralCausalEngine:
             counterfactual_input_deltas=cf_input_deltas,
             dominant_causal_driver=best_driver,
             active_causal_parents=active_parents,
-            counterfactual_twin=counterfactual_twin,
+            counterfactual_mode=counterfactual_mode,
+            counterfactual_twin=normative_baseline,
+            normative_baseline=normative_baseline,
             explanation_narrative=narrative,
         )
 

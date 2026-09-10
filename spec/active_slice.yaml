@@ -7,17 +7,17 @@ current_slice:
   status: "verified"  # [planning, in_progress, testing, verified]
   objective: >
     Ground the FraudxAI simulation engine in contemporary 2023-2025 central bank payment studies (Fed DCPC May 2024,
-    ECB 2023/2024, CFPB 2023), point-process literature (Multivariate Periodic Hawkes Processes), and forensic accounting:
-    1. Tier 1 (Micro-Scale): Lewis-Shedler Non-Homogeneous Poisson Process (NHPP) thinning using circular von Mises
-       mixtures on S^1, bringing legitimate night spend down from 20.75% to 3.06% (< 4.5% threshold) while daytime peak captures 70.72%.
-    2. Tier 2 (Meso-Scale): Semi-Markov shopping trip chaining (Hawkes self-excitation) clustering 1-3 stops 10-25 minutes
-       apart in local commercial hubs, elevating arrival burstiness to c_v = 1.47 (target > 1.40).
+    ECB 2023/2024, CFPB 2023) and empirical payment transaction dynamics:
+    1. Tier 1 (Diurnal Profile): Poisson arrival thinning using a 24-hour periodic von Mises distribution,
+       bringing legitimate night spend down from 20.75% to 3.06% (< 4.5% threshold) while daytime peak captures 70.72%.
+    2. Tier 2 (Shopping Trips): Multi-stop shopping trip clustering with short inter-arrival delays (10-25 minutes)
+       in local commercial hubs, elevating arrival burstiness to c_v = 1.47 (target > 1.40).
     3. Tier 3 (Macro-Scale): Calendar date-anchored macro-regimes (Payday 1.35x volume multipliers on 1st, 2nd, 15th, 16th;
        Black Friday / Cyber Week late November; authentic Diwali / Dhanteras gold splitting window).
     4. Tier 4 (Episodic Life-Stage): Persistent multi-day state machines (CardholderState.RELOCATING 72h window,
        CardholderState.INTL_TRAVEL 7-14d) replacing ad-hoc conditional dice rolls.
-    5. Pure Python Numerical Implementation: Bessel I_0(x) Taylor series convergence (< 1e-15) with zero external
-       C-dependencies, achieving 2,805 tx/s simulator throughput.
+    5. Pure-Python Numerical Implementation: Built-in modified Bessel function I_0(x) via series expansion without
+       external Scipy dependencies, achieving 2,805 tx/s simulator throughput.
 
 target_spec_files:
   - "spec/01_financial_instruments.yaml"

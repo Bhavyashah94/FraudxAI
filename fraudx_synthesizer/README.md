@@ -1,10 +1,10 @@
-# FraudX-Synthesizer: Multi-Agent Discrete-Event Payment Fraud & Causal XAI Benchmark
+# FraudX-Synthesizer: Discrete-Event Payment Fraud Simulation & Risk Attribution Benchmark
 
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.9%20%7C%203.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue.svg)]()
 [![Tests](https://img.shields.io/badge/tests-54%20passed-brightgreen.svg)]()
 
-**FraudX-Synthesizer** is a high-performance, closed-loop **Discrete-Event Multi-Agent Simulation (DES-MAS)** framework designed to simulate realistic payment transaction ecosystems and provide exact, objective **counterfactual ground truth** for evaluating Explainable AI (XAI) models.
+**FraudX-Synthesizer** is a high-performance, discrete-event payment simulation framework that generates realistic card transaction feeds, banking authorization protocol fields, and ground-truth feature risk attributions for evaluating machine learning models.
 
 ---
 
@@ -13,20 +13,20 @@
 1. **Strictly Monotonic Discrete-Event Queue (`heapq`)**:
    Operates on a 64-bit integer microsecond priority queue with stable sequence tie-breaking. Guarantees global temporal monotonicity ($t_0 \le t_1 \le \dots \le t_N$) and eliminates out-of-order time-travel artifacts.
 
-2. **Sub-Mach Kinematic Guardrails ($t_{\text{avail}}[i]$)**:
-   Enforces physical lock-ahead dwell and transit times per cardholder ($\Delta t \ge 120\,\text{s}$ on physical Card-Present swipes), mathematically guaranteeing that legitimate in-person transactions never exceed commercial travel velocity ($\le 900\,\text{km/h}$).
+2. **Physical Transit Velocity Limits ($t_{\text{avail}}[i]$)**:
+   Enforces physical lock-ahead dwell and transit times per cardholder ($\Delta t \ge 120\,\text{s}$ on physical Card-Present swipes), guaranteeing that legitimate in-person transactions never exceed commercial travel velocity ($\le 900\,\text{km/h}$).
 
-3. **Closed-Loop Multi-Agent Feedback**:
-   - **Cardholder Agents**: Model circadian rhythms (von Mises mixture), travel/vacation states, and multi-modal fraud discovery delays (SMS alert vs. mobile app check vs. billing statement).
-   - **Adaptive Fraudster Syndicates**: Execute 5 distinct attack playbooks (Card Testing Probes, Fullz CNP, Account Takeover with silent baking, Magstripe Fallback Swipes, and Bust-Outs). Fraudsters dynamically adapt to bank responses (amount decay on insufficient funds, gateway hopping on 3DS challenges, velocity backoff on declines).
-   - **Bank Decision Engine**: Multi-tier evaluation enforcing format checks, CVV verification, kinematic velocity guardrails, credit limits, and EMV 3DS 2.x risk challenges.
+3. **Closed-Loop Behavioral Feedback**:
+   - **Cardholder Profiles**: Model 24-hour diurnal schedules, multi-stop shopping trip clustering, travel/vacation states, and multi-modal fraud discovery latencies (SMS push vs. mobile app check vs. billing statement).
+   - **Adversarial Fraud Playbooks**: Implements 10 cybercrime playbooks (Card Testing Probes, Account Takeover with silent baking, Sleeper Bust-Outs, Apple Pay Yellow Path, etc.). Attackers adapt to bank response codes (bisection amount decay on ISO 51, gateway hopping on 3DS challenges).
+   - **Bank Decision Engine**: Multi-tier evaluation enforcing format checks, CVV verification, transit velocity limits, credit limits, and real-time ML risk scoring with EMV 3DS 2.x risk challenges.
 
 4. **Authentic Hard Negatives**:
-   Simulates legitimate high-spend and high-velocity outliers (e.g., cross-border vacation travel, emergency medical repairs) that exhibit anomalous statistical signatures but are validated by genuine EMV chip cryptograms.
+   Simulates legitimate high-spend and high-velocity outliers (e.g., cross-border vacation travel, emergency home repairs) that exhibit anomalous statistical signatures but are validated by genuine EMV chip cryptograms.
 
-5. **Pearl's Structural Counterfactual Causal XAI Ground Truth**:
-   Replaces heuristic approximations with **Structural Counterfactual Twins**. For every attack transaction $\mathbf{x}_{\text{obs}}$, the engine generates the unperturbed twin $\mathbf{x}_{\text{cf}}$ the cardholder would have produced in the absence of the attack:
-   $$\mathbf{\phi}^*_{\text{input}} = \mathbf{x}_{\text{obs}} - \mathbf{x}_{\text{cf}}$$
+5. **Ground-Truth Feature Risk Attributions & Baseline Deltas**:
+   For every simulated fraud transaction, the engine computes the exact difference relative to the cardholder's uncompromised 30-day baseline profile:
+   $$\Delta \mathbf{x} = \mathbf{x}_{\text{fraud}} - \mathbf{x}_{\text{baseline}}$$
    Provides a built-in benchmark evaluator (`GroundTruthXAIEvaluator`) computing:
    - **Support Recovery**: Precision@k, Recall@k, F1@k
    - **Ranking Fidelity**: Kendall's $\tau_b$ and Spearman's $\rho$

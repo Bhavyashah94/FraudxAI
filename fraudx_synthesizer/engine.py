@@ -2,7 +2,7 @@
 
 Orchestrates:
 1. 64-bit integer microsecond priority queue (heapq) guaranteeing strict global chronological monotonicity.
-2. Per-cardholder physical lock-ahead (card_avail_time_us) preventing supersonic travel overlaps.
+2. Per-cardholder physical lock-ahead (card_avail_time_us) enforcing realistic travel delays between physical transactions.
 3. Closed-loop multi-agent feedback between Cardholder, AdaptiveFraudster, and BankDecisionEngine.
 4. Institutional banking telemetry generation: ISO 8583 syntax, Gateway risk, Clearing & Settlement,
    Post-Authorization Dispute Lifecycles (Visa VCR, CE 3.0, RBI limited liability tiers, 1930 liens).
@@ -93,7 +93,7 @@ class DiscreteEventEngine:
         self.card_generation: Dict[str, int] = {c.card_id: 0 for c in self.cards}
 
     def _compute_circular_diurnal_distribution(self) -> np.ndarray:
-        """Computes continuous, 24-hour periodic diurnal arrival intensity on S^1."""
+        """Computes continuous 24-hour periodic diurnal arrival intensity."""
         hours = np.arange(24, dtype=np.float64)
         if hasattr(self, "specs") and self.specs.circadian:
             intensity = np.array([self.specs.circadian.evaluate_density(h, is_weekend=False) for h in hours])
@@ -442,7 +442,7 @@ class DiscreteEventEngine:
             if not is_fraud_evt and card_is_frozen:
                 continue
 
-            # Enforce lock-ahead for Card-Present transactions to prevent supersonic overlaps
+            # Enforce lock-ahead for Card-Present transactions to prevent impossible travel velocities
             if not is_fraud_evt and t_us < self.card_avail_time_us[card_id]:
                 rescheduled_t_us = self.card_avail_time_us[card_id] + int(self.rng.uniform(30.0, 180.0) * 1_000_000)
                 self._schedule_event(
@@ -459,6 +459,7 @@ class DiscreteEventEngine:
             otp_provided = True
             vaai_score = int(self.rng.integers(10, 45))
             override_avs = None
+            override_cvv = None
             asn_type = "residential"
 
             if is_fraud_evt:
@@ -482,6 +483,7 @@ class DiscreteEventEngine:
                 override_lat = attack_params.get("override_lat")
                 override_lon = attack_params.get("override_lon")
                 override_avs = attack_params.get("avs_code")
+                override_cvv = attack_params.get("cvv_match_flag")
                 asn_type = str(attack_params.get("asn_type", "residential"))
                 otp_provided = bool(attack_params.get("otp_submitted", False))
                 if "vaai_score" in attack_params:
@@ -661,6 +663,7 @@ class DiscreteEventEngine:
                 is_cross_border=is_cross_border,
                 ip_distance_km=ip_distance,
                 asn_type=asn_type,
+                override_cvv_match=override_cvv,
                 override_avs_code=override_avs,
                 override_client_ip=override_client_ip,
                 syndicate_id=syndicate_id,
@@ -670,6 +673,17 @@ class DiscreteEventEngine:
                 ip_subnet_prefix=ip_subnet_prefix,
                 device_fingerprint_id=device_fingerprint_id,
             )
+
+            # Real-Time Risk Scoring & Causal Evaluation (Pre-Authorization)
+            causal_gt = self.causal_engine.evaluate(record=record, scenario_tag=scenario_tag)
+            ml_risk_score = causal_gt.risk_score
+            record["risk_score"] = ml_risk_score
+            record["base_risk"] = causal_gt.base_risk
+            record["dominant_causal_driver"] = causal_gt.dominant_causal_driver
+            record["analytical_shapley_probability"] = causal_gt.analytical_shapley_probability
+            record["analytical_shapley_log_odds"] = causal_gt.analytical_shapley_log_odds
+            record["counterfactual_input_deltas"] = causal_gt.counterfactual_input_deltas
+            record["explanation_narrative"] = causal_gt.explanation_narrative
 
             # Bank Decision & Authorization Switch
             velocity_kph = float(record.get("haversine_velocity_kph", 0.0))
@@ -688,6 +702,7 @@ class DiscreteEventEngine:
                 is_cross_border=is_cross_border,
                 otp_provided=otp_provided,
                 vaai_score=vaai_score,
+                ml_risk_score=ml_risk_score,
             )
 
             # Generate Core ISO 8583 Protocol Fields
@@ -855,15 +870,6 @@ class DiscreteEventEngine:
                             card_id=card.card_id,
                         )
 
-            # Causal SCM & Counterfactual Ground Truth Evaluation
-            causal_gt = self.causal_engine.evaluate(record=record, scenario_tag=scenario_tag)
-            record["risk_score"] = causal_gt.risk_score
-            record["base_risk"] = causal_gt.base_risk
-            record["dominant_causal_driver"] = causal_gt.dominant_causal_driver
-            record["analytical_shapley_probability"] = causal_gt.analytical_shapley_probability
-            record["analytical_shapley_log_odds"] = causal_gt.analytical_shapley_log_odds
-            record["counterfactual_input_deltas"] = causal_gt.counterfactual_input_deltas
-            record["explanation_narrative"] = causal_gt.explanation_narrative
 
             # Update lock-ahead timestamp for cardholder (enforce 120s dwell on legitimate CP swipes)
             if channel.startswith("CP") and is_fraud == 0:

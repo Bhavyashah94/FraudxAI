@@ -220,7 +220,7 @@ consumer_clusters:
       tier_4_passive: 0.04
 
 circadian_diurnal_model:
-  mathematical_form: "von_Mises_mixture_on_S1"
+  mathematical_form: "periodic_24h_von_Mises_mixture"
   formula: "phi(t) = beta_0 + (24 - 24*beta_0) * sum(w_k * exp(kappa_k * cos(2*pi*(t - mu_k)/24)) / (24 * I_0(kappa_k)))"
   weekday_profile:
     nocturnal_floor_beta_0: 0.025

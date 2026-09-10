@@ -1,8 +1,8 @@
-"""Autonomous agent models for cardholders, merchants, adversarial fraudsters, and banks.
+"""Behavioral models for cardholders, merchants, adversarial fraudsters, and banks.
 
 Implements closed-loop behavioral dynamics:
 1. CardholderProfile: 11 Global (Visa/MC) and 5 Indian (RBI/RuPay) card products,
-   7 Fed DCPC cohorts, circadian NHPP arrivals, and authentic hard negatives.
+   7 Fed DCPC cohorts, diurnal Poisson arrivals, and authentic hard negatives.
 2. AdaptiveFraudsterAgent: 10 grounded cybercrime playbooks (Global & India),
    including distributed additive BIN attacks, triangulation fraud, and silent baking.
 3. BankDecisionEngine: Multi-tier authorization switch evaluating ISO 8583 syntax,
@@ -109,7 +109,7 @@ def sample_spliced_lognormal_gpd(
     u: float = 250.0,
     pi_u: float = 0.03,
 ) -> float:
-    """Samples ticket spend from C^1 smoothly spliced LogNormal-GPD composite distribution."""
+    """Samples ticket spend from a composite LogNormal distribution with Generalized Pareto (GPD) heavy tail."""
     z_u = (math.log(max(u, 1.0)) - mu) / max(sigma, 0.05)
     phi_z = (1.0 / math.sqrt(2.0 * math.pi)) * math.exp(-0.5 * z_u * z_u)
     f_ln_u = phi_z / (u * max(sigma, 0.05))
@@ -129,7 +129,7 @@ def sample_spliced_lognormal_gpd(
 
 @dataclass
 class CardholderProfile:
-    """Autonomous cardholder agent with BDI statechart, product limits, and regulatory controls.
+    """Cardholder behavioral profile with discrete state tracking, product limits, and regulatory controls.
     
     Fully grounded in canonical specifications (spec/01 - spec/05).
     """
@@ -213,11 +213,15 @@ class CardholderProfile:
     def get_theoretical_mean_spend(self) -> float:
         """Computes theoretical expected spend."""
         if not self.is_spliced_gpd:
-            return math.exp(self.spend_mean_log + 0.5 * (self.spend_sigma_log ** 2))
+            mean_val = math.exp(self.spend_mean_log + 0.5 * (self.spend_sigma_log ** 2))
         else:
             ln_mean = math.exp(self.spend_mean_log + 0.5 * (self.spend_sigma_log ** 2))
             gpd_mean = self.gpd_threshold_u + (self.gpd_beta / max(0.01, 1.0 - self.gpd_xi))
-            return (1.0 - self.gpd_tail_prob) * ln_mean + self.gpd_tail_prob * gpd_mean
+            mean_val = (1.0 - self.gpd_tail_prob) * ln_mean + self.gpd_tail_prob * gpd_mean
+
+        if self.currency == "INR" and self.spend_mean_log < 5.0:
+            mean_val *= 40.0
+        return mean_val
 
     def get_available_balance(self) -> float:
         """Computes real-time solvency balance based on instrument category."""
@@ -359,7 +363,7 @@ class CardholderProfile:
             return float(np.clip(val, 1.50, max_spend))
 
     def sample_preferred_mcc(self, rng: np.random.Generator) -> int:
-        """Samples preferred MCC from cohort-specific distribution simplex."""
+        """Samples preferred MCC from cohort-specific probability distribution."""
         if not self.dominant_mccs or rng.random() > 0.85:
             return int(rng.choice([5411, 5812, 5814, 5541, 5912, 5311, 5732, 5999]))
         return int(rng.choice(self.dominant_mccs))
@@ -714,7 +718,9 @@ class AdaptiveFraudsterAgent:
 
         # 8. India: Reverse-Proxy Vishing & Digital Arrest
         elif scenario_val == FraudScenario.IN_ADV_REVERSE_PROXY_VISHING.value:
-            amount = round(float(self.rng.uniform(50000.0, 350000.0)), 2)
+            avail = max(1500.0, card.get_available_balance())
+            probe_ratio = float(self.rng.choice([0.06, 0.15, 0.30, 0.65]))
+            amount = round(float(np.clip(probe_ratio * avail, 1500.0, 65000.0)), 2)
             target.current_probe_amount = amount
             target.target_mcc = 6051
             return {
@@ -726,11 +732,14 @@ class AdaptiveFraudsterAgent:
                 "is_cross_border": False,
                 "otp_submitted": True,
                 "asn_type": "residential",
+                "cvv_match_flag": 1,
             }
 
         # 9. India: Malicious APK SMS Stealer
         elif scenario_val == FraudScenario.IN_ADV_APK_SMS_STEALER.value:
-            amount = round(float(self.rng.uniform(25000.0, 150000.0)), 2)
+            avail = max(1200.0, card.get_available_balance())
+            probe_ratio = float(self.rng.choice([0.05, 0.12, 0.25, 0.50]))
+            amount = round(float(np.clip(probe_ratio * avail, 1000.0, 45000.0)), 2)
             target.current_probe_amount = amount
             target.target_mcc = 6513
             return {
@@ -742,11 +751,12 @@ class AdaptiveFraudsterAgent:
                 "is_cross_border": False,
                 "otp_submitted": True,
                 "asn_type": "mobile",
+                "cvv_match_flag": 1,
             }
 
         # 10. India: International Non-3DS Bypass
         elif scenario_val == FraudScenario.IN_ADV_INTL_NON_3DS_BYPASS.value:
-            amount_usd = round(float(self.rng.uniform(200.0, 1200.0)), 2)
+            amount_usd = round(float(self.rng.uniform(25.0, 350.0)), 2)
             amount_inr = round(amount_usd * 83.5, 2)
             target.current_probe_amount = amount_inr
             target.target_mcc = 5732
@@ -759,12 +769,14 @@ class AdaptiveFraudsterAgent:
                 "is_cross_border": True,
                 "eci": "07",
                 "asn_type": "datacenter",
+                "cvv_match_flag": 1,
             }
 
         # 11. India: Rent Portal Liquidation
         elif scenario_val == FraudScenario.IN_ADV_RENT_PORTAL_CASHOUT.value:
-            remaining = max(10000.0, card.credit_limit - card.current_balance)
-            amount = round(float(self.rng.uniform(0.70, 0.95) * remaining), 2)
+            remaining = max(2000.0, card.credit_limit - card.current_balance)
+            probe_ratio = float(self.rng.choice([0.15, 0.35, 0.65, 0.85]))
+            amount = round(float(np.clip(probe_ratio * remaining, 2000.0, 75000.0)), 2)
             target.current_probe_amount = amount
             target.target_mcc = 6513
             return {
@@ -776,6 +788,7 @@ class AdaptiveFraudsterAgent:
                 "is_cross_border": False,
                 "otp_submitted": True,
                 "asn_type": "residential",
+                "cvv_match_flag": 1,
             }
 
         # Fallback
@@ -962,13 +975,27 @@ class BankDecisionEngine:
 
         # 8. Machine Learning Risk Thresholds & 3DS Challenges
         if ml_risk_score >= self.tau_decline:
-            return ISO8583Response.SUSPECTED_FRAUD_59, None, 0.0
+            # High-risk hard stop: Issuer declines without challenge
+            return ISO8583Response.SUSPECTED_FRAUD_59, "N", 0.0
 
         if self.tau_challenge <= ml_risk_score < self.tau_decline:
+            # Medium-risk threshold: Triggers Strong Customer Authentication (SCA)
             if channel.startswith("CNP"):
-                return ISO8583Response.DO_NOT_HONOR_05, "C", 0.0
-            else:
+                if otp_provided:
+                    # Legitimate cardholder (or attacker with intercepted OTP) completes 3DS challenge
+                    return ISO8583Response.APPROVED_00, "C", amount
+                else:
+                    # Attacker unable to provide OTP: Challenge failed/abandoned
+                    return ISO8583Response.DO_NOT_HONOR_05, "C", 0.0
+            elif channel == "CP_POS_CONTACTLESS":
+                # Contactless threshold step-up to Chip & PIN
+                return ISO8583Response.DO_NOT_HONOR_05, "FORCE_CHIP_PIN", 0.0
+            elif channel == "CP_POS_MAGSTRIPE":
+                # Magstripe without EMV cryptogram cannot be authenticated
                 return ISO8583Response.DO_NOT_HONOR_05, "N", 0.0
+            else:
+                # EMV Contact Chip: Hardware cryptographic ARQC trusted
+                return ISO8583Response.APPROVED_00, "Y", amount
 
-        # Successful Approval
+        # Successful Frictionless Approval
         return ISO8583Response.APPROVED_00, "Y", amount
