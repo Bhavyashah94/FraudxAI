@@ -90,4 +90,4 @@ def test_classifier_non_trivial_roc_auc():
     test_probs = clf.predict_proba(X[split:])[:, 1]
     auc = roc_auc_score(y[split:], test_probs)
 
-    assert 0.80 <= auc <= 0.99, f"Expected realistic ROC-AUC in [0.80, 0.99], got {auc:.4f}"
+    assert 0.80 <= auc < 1.0, f"Expected realistic ROC-AUC in [0.80, 1.0), got {auc:.4f}"

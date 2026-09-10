@@ -648,6 +648,7 @@ class AdaptiveFraudsterAgent:
                 "channel_type": "CNP_WEB",
                 "is_fraud": 1,
                 "scenario_tag": FraudScenario.ADV_SLEEPER_BUST_OUT.value,
+                "ip_distance_km": float(self.rng.uniform(8.0, 48.0)),
                 "preferred_mcc": 5094,
                 "is_cross_border": False,
                 "asn_type": "residential",
@@ -663,6 +664,7 @@ class AdaptiveFraudsterAgent:
                 "channel_type": "CP_POS_CONTACTLESS",
                 "is_fraud": 1,
                 "scenario_tag": FraudScenario.ADV_APPLE_PAY_YELLOW_PATH.value,
+                "ip_distance_km": float(self.rng.uniform(6.0, 35.0)),
                 "preferred_mcc": 5732,
                 "is_cross_border": False,
                 "override_lat": card.home_lat + float(self.rng.uniform(-0.05, 0.05)),
@@ -680,6 +682,7 @@ class AdaptiveFraudsterAgent:
                 "channel_type": "CNP_WEB",
                 "is_fraud": 1,
                 "scenario_tag": FraudScenario.ADV_NOCTURNAL_BURST.value,
+                "ip_distance_km": float(self.rng.uniform(4500.0, 11500.0)),
                 "preferred_mcc": 5311,
                 "is_cross_border": True,
                 "asn_type": "datacenter",
@@ -695,6 +698,7 @@ class AdaptiveFraudsterAgent:
                 "channel_type": "CNP_WEB",
                 "is_fraud": 1,
                 "scenario_tag": FraudScenario.ADV_DISTRIBUTED_BIN_ENUMERATION.value,
+                "ip_distance_km": float(self.rng.uniform(180.0, 2800.0)),
                 "preferred_mcc": 8398,
                 "is_cross_border": False,
                 "asn_type": "residential",
@@ -711,6 +715,7 @@ class AdaptiveFraudsterAgent:
                 "channel_type": "CNP_WEB",
                 "is_fraud": 1,
                 "scenario_tag": FraudScenario.ADV_TRIANGULATION_FRAUD.value,
+                "ip_distance_km": float(self.rng.uniform(250.0, 3500.0)),
                 "preferred_mcc": 5732,
                 "is_cross_border": False,
                 "asn_type": "residential",
@@ -728,6 +733,7 @@ class AdaptiveFraudsterAgent:
                 "channel_type": "CNP_WEB",
                 "is_fraud": 1,
                 "scenario_tag": FraudScenario.IN_ADV_REVERSE_PROXY_VISHING.value,
+                "ip_distance_km": float(self.rng.uniform(120.0, 1850.0)),
                 "preferred_mcc": 6051,
                 "is_cross_border": False,
                 "otp_submitted": True,
@@ -747,6 +753,7 @@ class AdaptiveFraudsterAgent:
                 "channel_type": "CNP_MOBILE",
                 "is_fraud": 1,
                 "scenario_tag": FraudScenario.IN_ADV_APK_SMS_STEALER.value,
+                "ip_distance_km": float(self.rng.uniform(45.0, 950.0)),
                 "preferred_mcc": 6513,
                 "is_cross_border": False,
                 "otp_submitted": True,
@@ -765,6 +772,7 @@ class AdaptiveFraudsterAgent:
                 "channel_type": "CNP_WEB",
                 "is_fraud": 1,
                 "scenario_tag": FraudScenario.IN_ADV_INTL_NON_3DS_BYPASS.value,
+                "ip_distance_km": float(self.rng.uniform(5500.0, 12000.0)),
                 "preferred_mcc": 5732,
                 "is_cross_border": True,
                 "eci": "07",
@@ -784,6 +792,7 @@ class AdaptiveFraudsterAgent:
                 "channel_type": "CNP_WEB",
                 "is_fraud": 1,
                 "scenario_tag": FraudScenario.IN_ADV_RENT_PORTAL_CASHOUT.value,
+                "ip_distance_km": float(self.rng.uniform(25.0, 450.0)),
                 "preferred_mcc": 6513,
                 "is_cross_border": False,
                 "otp_submitted": True,
@@ -798,6 +807,7 @@ class AdaptiveFraudsterAgent:
             "channel_type": "CNP_WEB",
             "is_fraud": 1,
             "scenario_tag": scenario_val,
+            "ip_distance_km": float(self.rng.uniform(15.0, 85.0)),
         }
 
     def receive_feedback(
@@ -973,7 +983,13 @@ class BankDecisionEngine:
                 return ISO8583Response.PARTIAL_APPROVAL_10, "Y", available
             return ISO8583Response.INSUFFICIENT_FUNDS_51, None, 0.0
 
-        # 8. Machine Learning Risk Thresholds & 3DS Challenges
+        # 8. Cryptographic Mitigating Primacy (Visa Core Rules / Mastercard Chapter 17)
+        # Authentic EMV Contact Chip: Hardware cryptographic ARQC + PIN cannot be cloned or replayed.
+        # Carries a statutory counterfeit dispute bar. Issuers do not decline verified Chip+PIN with ISO 59.
+        if channel == "CP_POS_CHIP":
+            return ISO8583Response.APPROVED_00, "Y", amount
+
+        # 9. Machine Learning Risk Thresholds & 3DS Challenges (CNP, Contactless, Magstripe)
         if ml_risk_score >= self.tau_decline:
             # High-risk hard stop: Issuer declines without challenge
             return ISO8583Response.SUSPECTED_FRAUD_59, "N", 0.0
@@ -993,9 +1009,6 @@ class BankDecisionEngine:
             elif channel == "CP_POS_MAGSTRIPE":
                 # Magstripe without EMV cryptogram cannot be authenticated
                 return ISO8583Response.DO_NOT_HONOR_05, "N", 0.0
-            else:
-                # EMV Contact Chip: Hardware cryptographic ARQC trusted
-                return ISO8583Response.APPROVED_00, "Y", amount
 
         # Successful Frictionless Approval
         return ISO8583Response.APPROVED_00, "Y", amount

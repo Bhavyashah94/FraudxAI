@@ -216,9 +216,13 @@ class StructuralCausalEngine:
         is_carding = 1.0 if (channel.startswith("CNP") and amount <= 3.00 and count_1h >= 2 and three_ds_auth == 0.0) else 0.0
 
         # 1. Compute Logit-Space Feature Attributions via Owen Multilinear Formula
+        # Logarithmic saturation prevents massive high-ticket legitimate spikes (e.g. Dhanteras gold, weddings)
+        # from linearly blowing up log-odds beyond cryptographic mitigating evidence.
+        saturated_amount_ratio = math.log(1.0 + max(0.0, ratio_30d - 1.0))
+
         deltas: Dict[str, float] = {
             "haversine_velocity_kph": effective_velocity,
-            "amount_to_mean_ratio_30d": ratio_30d,
+            "amount_to_mean_ratio_30d": saturated_amount_ratio,
             "tx_count_1h": count_1h,
             "tx_count_24h": count_24h,
             "tx_amount_sum_24h_ratio": sum_ratio,
@@ -248,6 +252,10 @@ class StructuralCausalEngine:
         A_1 = {feat_name: 0.0 for feat_name in self.structural_weights}
         c2 = 0.0
         for f1, f2, weight in self.pairwise_synergies:
+            # When in-person EMV Chip cryptogram is physically authenticated, POS network velocity
+            # and IP distance synergy is physically suppressed (card is present at physical terminal).
+            if (f1, f2) == ("haversine_velocity_kph", "ip_distance_from_home_km") and arqc_verified == 1.0:
+                continue
             term = weight * deltas[f1] * deltas[f2]
             if abs(term) > 1e-12:
                 A_1[f1] += term

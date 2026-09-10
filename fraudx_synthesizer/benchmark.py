@@ -37,6 +37,23 @@ FEATURE_SPECS = [
     ("three_ds_authenticated", "three_ds_authenticated"),
 ]
 
+FEATURE_NAMES: List[str] = [spec[0] for spec in FEATURE_SPECS]
+
+CANONICAL_ATTACK_INTERVENTIONS: Dict[str, set[str]] = {
+    "ADV_CARDING_MICRO_PROBE": {"amount", "tx_count_1h", "avs_mismatch", "cvv_match_flag"},
+    "ADV_NOCTURNAL_BURST": {"amount", "ip_distance_from_home_km", "is_cross_border", "tx_count_1h"},
+    "ADV_DISTRIBUTED_BIN_ENUMERATION": {"amount", "tx_count_1h", "avs_mismatch", "cvv_match_flag"},
+    "ADV_TRIANGULATION_FRAUD": {"amount", "billing_shipping_mismatch", "ip_distance_from_home_km"},
+    "ADV_SLEEPER_BUST_OUT": {"amount", "tx_count_24h"},
+    "ADV_APPLE_PAY_YELLOW_PATH": {"amount", "ip_distance_from_home_km"},
+    "IN_ADV_REVERSE_PROXY_VISHING": {"amount", "ip_distance_from_home_km", "tx_count_1h"},
+    "IN_ADV_APK_SMS_STEALER": {"amount", "ip_distance_from_home_km", "tx_count_1h"},
+    "IN_ADV_INTL_NON_3DS_BYPASS": {"amount", "is_cross_border", "ip_distance_from_home_km"},
+    "IN_ADV_RENT_PORTAL_CASHOUT": {"amount", "ip_distance_from_home_km"},
+    "COUNTERFEIT_CLONE": {"haversine_velocity_kph", "amount"},
+    "IMPOSSIBLE_TRAVEL": {"haversine_velocity_kph", "amount"},
+}
+
 
 @dataclass
 class ModelBenchmarkSummary:
@@ -51,6 +68,9 @@ class ModelBenchmarkSummary:
     mean_relative_attribution_error: float
     auc_roc: float
     pr_auc: float
+    mean_intervention_precision_at_3: float = 0.0
+    mean_intervention_recall_at_3: float = 0.0
+    anti_leak_tripwire_passed: bool = True
     metrics_by_k: Dict[str, float] = field(default_factory=dict)
 
 
@@ -110,6 +130,43 @@ class XAIBenchmarkHarness:
 
         return np.array(X, dtype=np.float64), np.array(y, dtype=np.int32), np.array(GT, dtype=np.float64), records
 
+
+    def calculate_intervention_support_metrics(
+        self,
+        shap_values: np.ndarray,
+        test_records: List[Dict[str, Any]],
+        fraud_indices: List[int],
+        k: int = 3,
+    ) -> Tuple[float, float]:
+        """Evaluates whether explainer attributed risk to the causal features actively intervened by the attack script."""
+        precisions: List[float] = []
+        recalls: List[float] = []
+
+        for idx in fraud_indices:
+            rec = test_records[idx]
+            tag = str(rec.get("scenario_tag", ""))
+            target_set = CANONICAL_ATTACK_INTERVENTIONS.get(tag)
+            if not target_set:
+                for canonical_tag, feats in CANONICAL_ATTACK_INTERVENTIONS.items():
+                    if canonical_tag in tag or tag in canonical_tag:
+                        target_set = feats
+                        break
+
+            if not target_set:
+                continue
+
+            phi_hat = shap_values[idx]
+            ranked_indices = np.argsort(-np.abs(phi_hat))
+            top_k_feats = {FEATURE_NAMES[j] for j in ranked_indices[:k]}
+            overlap = len(top_k_feats & target_set)
+            k_eff = min(k, len(target_set))
+            precisions.append(overlap / float(k_eff) if k_eff > 0 else 0.0)
+            recalls.append(overlap / float(len(target_set)))
+
+        mean_p = float(np.mean(precisions)) if precisions else 0.0
+        mean_r = float(np.mean(recalls)) if recalls else 0.0
+        return mean_p, mean_r
+
     def run_benchmark(
         self,
         model_type: str = "lightgbm",
@@ -126,12 +183,13 @@ class XAIBenchmarkHarness:
                 "Install them via: pip install 'fraudx-synthesizer[benchmark]'"
             ) from e
 
-        X, y, GT, _ = self.generate_and_prepare_dataset()
+        X, y, GT, records = self.generate_and_prepare_dataset()
 
         n_train = int(len(X) * train_ratio)
         X_train, y_train = X[:n_train], y[:n_train]
         X_test, y_test = X[n_train:], y[n_train:]
         GT_test = GT[n_train:]
+        test_records = records[n_train:]
 
         # Train model
         if model_type == "lightgbm":
@@ -188,6 +246,31 @@ class XAIBenchmarkHarness:
             raes.append(res.relative_attribution_error)
             precisions_3.append(res.precision_at_k.get(3, 0.0))
 
+        # 1. Attack Script Intervention Support Recovery (Precision@3, Recall@3)
+        interv_p3, interv_r3 = self.calculate_intervention_support_metrics(
+            shap_values=shap_values,
+            test_records=test_records,
+            fraud_indices=fraud_test_indices,
+            k=3,
+        )
+
+        # 2. Anti-Leak Tripwires
+        # Tripwire A: PR-AUC tripwire: Non-leaking real-world data typically yields PR-AUC <= 0.985 for GBDT ensembles
+        pr_auc_passed = (pr_auc <= 0.985) or (len(fraud_test_indices) < 5)
+
+        # Tripwire B: Single-feature dominance tripwire: No single feature should hold > 70% average attribution
+        if len(fraud_test_indices) > 0:
+            abs_shap = np.abs(shap_values[fraud_test_indices])
+            sum_abs = np.sum(abs_shap, axis=1, keepdims=True)
+            sum_abs[sum_abs == 0] = 1.0
+            feat_shares = np.mean(abs_shap / sum_abs, axis=0)
+            max_share = float(np.max(feat_shares))
+            single_feat_passed = (max_share <= 0.70)
+        else:
+            single_feat_passed = True
+
+        tripwire_passed = bool(pr_auc_passed and single_feat_passed)
+
         return ModelBenchmarkSummary(
             model_name=model_type,
             explainer_name=explainer_name,
@@ -199,7 +282,14 @@ class XAIBenchmarkHarness:
             mean_relative_attribution_error=float(np.mean(raes)),
             auc_roc=auc_roc,
             pr_auc=pr_auc,
-            metrics_by_k={"Precision@3": float(np.mean(precisions_3))},
+            mean_intervention_precision_at_3=interv_p3,
+            mean_intervention_recall_at_3=interv_r3,
+            anti_leak_tripwire_passed=tripwire_passed,
+            metrics_by_k={
+                "Precision@3": float(np.mean(precisions_3)),
+                "Intervention_Precision@3": interv_p3,
+                "Intervention_Recall@3": interv_r3,
+            },
         )
 
 
@@ -241,6 +331,9 @@ def main() -> None:
         print(f"  Rank Correlation (Spearman Rho):        {summary.mean_spearman_rho:.4f}")
         print(f"  Directional Cosine Similarity:          {summary.mean_cosine_similarity:.4f}")
         print(f"  Top-3 Support Recovery (Precision@3):   {summary.mean_precision_at_3:.4f}")
+        print(f"  Intervention Support (Precision@3):     {summary.mean_intervention_precision_at_3:.4f}")
+        print(f"  Intervention Support (Recall@3):        {summary.mean_intervention_recall_at_3:.4f}")
+        print(f"  Anti-Leak Tripwire Passed:              {summary.anti_leak_tripwire_passed}")
         print(f"  Relative Attribution Error (RAE):       {summary.mean_relative_attribution_error:.4f}")
         print("=" * 65 + "\n")
 

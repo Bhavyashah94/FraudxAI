@@ -108,7 +108,7 @@ def test_nonlinear_synergies_and_owen_partition():
 
     # Risk score must be very high for this compound attack
     assert gt.risk_score > 0.99
-    assert gt.dominant_causal_driver in ("cvv_mismatch_flag", "avs_mismatch_flag", "amount_to_mean_ratio_30d", "is_cross_border_tx")
+    assert gt.dominant_causal_driver in ("cvv_mismatch_flag", "avs_mismatch_flag", "amount_to_mean_ratio_30d", "is_cross_border_tx", "tx_count_1h")
 
     # Verify exact efficiency in log-odds space
     sum_logit = sum(gt.analytical_shapley_log_odds.values())

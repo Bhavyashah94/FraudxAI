@@ -479,7 +479,7 @@ class DiscreteEventEngine:
                 is_fraud = int(attack_params["is_fraud"])
                 preferred_mcc = attack_params.get("preferred_mcc")
                 is_cross_border = bool(attack_params.get("is_cross_border", False))
-                ip_distance = float(attack_params.get("ip_distance_km", 0.0))
+                ip_distance = float(attack_params.get("ip_distance_km", self.rng.uniform(15.0, 50.0)))
                 override_lat = attack_params.get("override_lat")
                 override_lon = attack_params.get("override_lon")
                 override_avs = attack_params.get("avs_code")
@@ -539,16 +539,17 @@ class DiscreteEventEngine:
                     amount = float(self.rng.uniform(180.0, 650.0)) if self.region == "US" else float(self.rng.uniform(8500.0, 35000.0))
                     channel = "CP_POS_CHIP"
                     preferred_mcc = int(self.rng.choice([5309, 5812, 7011, 4121]))
-                    is_cross_border = (card.state == CardholderState.INTL_TRAVEL)
+                    is_cross_border = bool(card.state == CardholderState.INTL_TRAVEL and card.international_enabled)
                     ip_distance = float(self.rng.uniform(500.0, 3000.0))
 
                 # 3. Authentic Calendar-Anchored Festive Gold Splitting (Rule 114B ₹2L threshold)
-                elif is_diwali_calendar_window and self.rng.random() < 0.15:
+                elif is_diwali_calendar_window and card.get_available_balance() >= 175000.0 and self.rng.random() < 0.25:
                     scenario_tag = FraudScenario.HARD_NEGATIVE_DHANTERAS_GOLD.value
-                    amount = float(self.rng.uniform(165000.0, 195000.0))  # Splitting under ₹2L
+                    avail = card.get_available_balance()
+                    amount = float(self.rng.uniform(150000.0, min(avail * 0.98, 195000.0)))
                     channel = "CP_POS_CHIP"
                     preferred_mcc = 5944  # Jewelry Gold
-                    ip_distance = float(self.rng.uniform(2.0, 10.0))
+                    ip_distance = float(self.rng.uniform(2.5, 18.0))
 
                 # 4. Spontaneous legitimate anomalies / rare life events
                 else:
@@ -588,7 +589,7 @@ class DiscreteEventEngine:
                             amount = card.sample_spend_amount(self.rng)
                             channel = card.sample_channel(self.rng)
                             preferred_mcc = card.sample_preferred_mcc(self.rng)
-                        ip_distance = float(self.rng.uniform(1.0, 20.0))
+                        ip_distance = float(self.rng.uniform(1.8, 22.0) if channel.startswith("CP") or "WEB" in channel else self.rng.uniform(8.0, 75.0))
 
             # Route merchant
             if override_lat is not None and override_lon is not None:
