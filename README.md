@@ -129,7 +129,7 @@ Real financial institutions do not maintain a single flat table with toy column 
 ### Installation
 
 ```bash
-git clone https://github.com/bhavy/FraudxAI.git
+git clone https://github.com/Bhavyashah94/FraudxAI.git
 cd FraudxAI
 pip install -e .
 ```
@@ -236,6 +236,8 @@ FraudxAI/
 │   ├── evaluation.py               # GroundTruthXAIEvaluator (Precision@k, Kendall Tau, RAE)
 │   ├── invariants.py               # Antipodal Haversine kinematics & monetary conservation
 │   ├── ledger.py                   # StreamingLedger with point-in-time Welford tracking
+│   ├── spec_loader.py              # Spec loader parsing YAML configurations
+│   ├── syndicates.py               # Shared syndicate botnet & mule ring topologies
 │   └── world.py                    # Spatial merchant topologies & MCC taxonomies
 ├── spec/                           # Grounded Living Specifications (Single Source of Truth)
 │   ├── 01_financial_instruments.yaml # 11 Global + 5 Indian card product definitions
@@ -246,10 +248,13 @@ FraudxAI/
 │   └── research_notes/              # Subagent census dossiers citing official manuals
 ├── scripts/
 │   ├── verify_grounded_invariants.py # 37-Scenario Grounded Verification Engine
+│   ├── audit_fraud_realness.py       # Empirical calibration and forensic sanity audit
 │   └── inspect_generated_data.py    # Statistical inspection of synthesized batches
 ├── tests/                           # Deterministic Automated PyTest Suite
-│   └── test_synthesizer/            # 39 Unit tests certifying all engine invariants
+│   └── test_synthesizer/            # 54 Unit tests certifying all engine invariants
 ├── AGENTS.md                        # Anti-Astronaut Grounding Mandate
+├── CONTRIBUTING.md                  # Contribution Guidelines & Mandate
+├── LICENSE                          # Apache 2.0 License
 └── pyproject.toml
 ```
 
@@ -259,7 +264,7 @@ FraudxAI/
 
 FraudxAI enforces strict, deterministic verification across the entire stack:
 
-### 1. PyTest Unit & Integration Suite (39 / 39 Passed)
+### 1. PyTest Unit & Integration Suite (54 / 54 Passed)
 ```bash
 python -m pytest tests/ -v
 ```
@@ -270,6 +275,11 @@ Certifies:
 * Strict global temporal monotonicity under concurrent microsecond arrivals.
 * Zero deterministic target label leakage in AVS and billing/shipping fields.
 * Dual-region institutional schema conformance (USD cents vs. INR paisa, ISO 8583 syntax, MTI 0200 clearing presentment, Visa CE 3.0 deflection, RBI limited liability tiers).
+* Non-Homogeneous Poisson Process (NHPP) circadian thinning (< 4.5% nocturnal trough, > 70% diurnal peak).
+* Semi-Markov shopping trip chaining and burstiness ($c_v > 1.40$).
+* Calendar-anchored macroeconomic regimes (payday surges, holiday shopping blitzes).
+* Solvency accounting, pre-auth holds, and non-mutating decline invariants.
+* Shared syndicate topologies (botnet IP subnets and mule account rings).
 
 ### 2. Grounded 37-Scenario Invariant Verification (100% Passed)
 ```bash
