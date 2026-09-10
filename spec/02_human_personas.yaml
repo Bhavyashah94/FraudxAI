@@ -1,0 +1,281 @@
+# spec/02_human_personas.yaml
+# Canonical Specification for Human Consumer Personas & Spending Dynamics
+# Grounded in: Federal Reserve Diary of Consumer Payment Choice (DCPC 2020-2026),
+# BLS Consumer Expenditure Surveys, CFPB Consumer Credit Market Reports.
+
+schema_version: "1.0.0"
+unit_definitions:
+  currency: "USD_cents"
+  time: "seconds"
+  arrival_rate: "events_per_second"
+  velocity: "km_per_hour"
+  probability: "[0.0, 1.0]"
+
+consumer_clusters:
+  - id: "C1_HOURLY_GIG_WORKER"
+    name: "Hourly / Gig Economy Worker"
+    population_weight: 0.16
+    annual_income_usd: [18000, 35000]
+    monthly_card_tx_volume:
+      distribution: "NegativeBinomial"
+      params: { r: 8.4, p: 0.228 }
+      mean: 28.4
+      std: 9.8
+    spend_ticket_distribution:
+      model: "LogNormal"
+      params: { mu_log: 2.75, sigma_log: 0.55 }
+      mean_cents: 1820
+      percentiles_cents: { p25: 950, p50: 1565, p75: 2480, p95: 5200, p99: 9500 }
+    primary_channels:
+      cp_chip_ratio: 0.58
+      cp_nfc_ratio: 0.22
+      cnp_web_ratio: 0.12
+      cnp_app_ratio: 0.08
+    dominant_mccs: [5411, 5814, 5541, 5912, 7299]
+    default_assigned_products: ["PROD_SUBPRIME_SECURED", "PROD_CHECKING_DEBIT", "PROD_GPR_PREPAID"]
+    vigilance_tier_weights:
+      tier_1_sms_push: 0.35
+      tier_2_app_checker: 0.45
+      tier_3_statement: 0.12
+      tier_4_passive: 0.08
+
+  - id: "C2_FIXED_INCOME_SENIOR"
+    name: "Fixed-Income Senior / Retiree"
+    population_weight: 0.18
+    annual_income_usd: [22000, 48000]
+    monthly_card_tx_volume:
+      distribution: "NegativeBinomial"
+      params: { r: 18.3, p: 0.363 }
+      mean: 32.1
+      std: 7.5
+    spend_ticket_distribution:
+      model: "LogNormal"
+      params: { mu_log: 3.32, sigma_log: 0.62 }
+      mean_cents: 3350
+      percentiles_cents: { p25: 1420, p50: 2760, p75: 4830, p95: 11500, p99: 24500 }
+    primary_channels:
+      cp_chip_ratio: 0.64
+      cp_nfc_ratio: 0.18
+      cnp_web_ratio: 0.14
+      cnp_app_ratio: 0.04
+    dominant_mccs: [5411, 5912, 8011, 8062, 5311, 5812]
+    default_assigned_products: ["PROD_CLASSIC_REVOLVING", "PROD_CHECKING_DEBIT"]
+    vigilance_tier_weights:
+      tier_1_sms_push: 0.15
+      tier_2_app_checker: 0.25
+      tier_3_statement: 0.52
+      tier_4_passive: 0.08
+
+  - id: "C3_YOUNG_ADULT_STUDENT"
+    name: "Young Adult / College Student"
+    population_weight: 0.14
+    annual_income_usd: [12000, 32000]
+    monthly_card_tx_volume:
+      distribution: "NegativeBinomial"
+      params: { r: 11.7, p: 0.194 }
+      mean: 48.6
+      std: 14.2
+    spend_ticket_distribution:
+      model: "LogNormal"
+      params: { mu_log: 2.65, sigma_log: 0.58 }
+      mean_cents: 1670
+      percentiles_cents: { p25: 720, p50: 1410, p75: 2350, p95: 4800, p99: 11000 }
+    primary_channels:
+      cp_nfc_ratio: 0.42
+      cnp_app_ratio: 0.26
+      cp_chip_ratio: 0.18
+      cnp_web_ratio: 0.14
+    dominant_mccs: [5814, 5812, 5499, 4899, 5815, 7993, 5651]
+    default_assigned_products: ["PROD_CHECKING_DEBIT", "PROD_BNPL_SINGLE_USE_VIRTUAL", "PROD_TOKENIZED_DPAN"]
+    vigilance_tier_weights:
+      tier_1_sms_push: 0.62
+      tier_2_app_checker: 0.30
+      tier_3_statement: 0.05
+      tier_4_passive: 0.03
+
+  - id: "C4_SUBURBAN_FAMILY"
+    name: "Suburban Family Household"
+    population_weight: 0.28
+    annual_income_usd: [75000, 160000]
+    monthly_card_tx_volume:
+      distribution: "NegativeBinomial"
+      params: { r: 17.4, p: 0.185 }
+      mean: 76.4
+      std: 18.3
+    spend_ticket_distribution:
+      model: "Spliced_LogNormal_GPD"
+      params:
+        mu_log: 3.85
+        sigma_log: 0.72
+        threshold_u_cents: 25000  # $250.00 EVT splicing threshold
+        gpd_xi: 0.22
+        gpd_beta: 9500
+        tail_prob: 0.03
+      mean_cents: 6120
+      percentiles_cents: { p25: 2250, p50: 4700, p75: 8900, p95: 21500, p99: 48000 }
+    primary_channels:
+      cp_nfc_ratio: 0.38
+      cnp_web_ratio: 0.25
+      cp_chip_ratio: 0.24
+      cnp_app_ratio: 0.13
+    dominant_mccs: [5411, 5541, 5542, 5200, 8211, 8299, 5651, 4900, 5812]
+    default_assigned_products: ["PROD_REWARDS_SIGNATURE", "PROD_CLASSIC_REVOLVING", "PROD_TOKENIZED_DPAN"]
+    vigilance_tier_weights:
+      tier_1_sms_push: 0.55
+      tier_2_app_checker: 0.35
+      tier_3_statement: 0.08
+      tier_4_passive: 0.02
+
+  - id: "C5_URBAN_TECH_PROFESSIONAL"
+    name: "Urban Tech-Forward Professional"
+    population_weight: 0.12
+    annual_income_usd: [85000, 180000]
+    monthly_card_tx_volume:
+      distribution: "NegativeBinomial"
+      params: { r: 17.0, p: 0.214 }
+      mean: 62.3
+      std: 15.1
+    spend_ticket_distribution:
+      model: "LogNormal"
+      params: { mu_log: 3.65, sigma_log: 0.68 }
+      mean_cents: 5280
+      percentiles_cents: { p25: 1800, p50: 3850, p75: 7200, p95: 18500, p99: 42000 }
+    primary_channels:
+      cnp_app_ratio: 0.34
+      cp_nfc_ratio: 0.32
+      cnp_web_ratio: 0.28
+      cp_chip_ratio: 0.06
+    dominant_mccs: [5812, 5814, 4121, 5411, 4816, 5815, 7011, 3000]
+    default_assigned_products: ["PROD_REWARDS_SIGNATURE", "PROD_ULTRA_PREMIUM_INFINITE", "PROD_TOKENIZED_DPAN"]
+    vigilance_tier_weights:
+      tier_1_sms_push: 0.68
+      tier_2_app_checker: 0.26
+      tier_3_statement: 0.04
+      tier_4_passive: 0.02
+
+  - id: "C6_SMALL_BUSINESS_OWNER"
+    name: "Small Business Owner-Operator"
+    population_weight: 0.07
+    annual_income_usd: [60000, 250000]
+    monthly_card_tx_volume:
+      distribution: "NegativeBinomial"
+      params: { r: 12.0, p: 0.109 }
+      mean: 98.5
+      std: 28.4
+    spend_ticket_distribution:
+      model: "Spliced_LogNormal_GPD"
+      params:
+        mu_log: 4.10
+        sigma_log: 0.88
+        threshold_u_cents: 45000
+        gpd_xi: 0.28
+        gpd_beta: 18000
+        tail_prob: 0.05
+      mean_cents: 12850
+      percentiles_cents: { p25: 2800, p50: 6800, p75: 16500, p95: 52000, p99: 185000 }
+    primary_channels:
+      cnp_web_ratio: 0.44
+      cp_chip_ratio: 0.26
+      cp_nfc_ratio: 0.16
+      cnp_api_ratio: 0.14
+    dominant_mccs: [5085, 5099, 5200, 5943, 7311, 7372, 5541, 5542, 5812, 9311]
+    default_assigned_products: ["PROD_COMMERCIAL_FLEET", "PROD_REWARDS_SIGNATURE"]
+    vigilance_tier_weights:
+      tier_1_sms_push: 0.38
+      tier_2_app_checker: 0.42
+      tier_3_statement: 0.16
+      tier_4_passive: 0.04
+
+  - id: "C7_LUXURY_AFFLUENT"
+    name: "High-Net-Worth Luxury Spender"
+    population_weight: 0.05
+    annual_income_usd: [225000, 1500000]
+    monthly_card_tx_volume:
+      distribution: "NegativeBinomial"
+      params: { r: 14.6, p: 0.148 }
+      mean: 84.2
+      std: 22.0
+    spend_ticket_distribution:
+      model: "Spliced_LogNormal_GPD"
+      params:
+        mu_log: 4.45
+        sigma_log: 0.95
+        threshold_u_cents: 80000
+        gpd_xi: 0.35
+        gpd_beta: 32000
+        tail_prob: 0.06
+      mean_cents: 21800
+      percentiles_cents: { p25: 4500, p50: 11500, p75: 28000, p95: 95000, p99: 380000 }
+    primary_channels:
+      cp_nfc_ratio: 0.36
+      cnp_web_ratio: 0.32
+      cp_chip_ratio: 0.24
+      cnp_app_ratio: 0.08
+    dominant_mccs: [3000, 3500, 5812, 5311, 5651, 5944, 7997, 7011]
+    default_assigned_products: ["PROD_ULTRA_PREMIUM_INFINITE"]
+    vigilance_tier_weights:
+      tier_1_sms_push: 0.40
+      tier_2_app_checker: 0.32
+      tier_3_statement: 0.24
+      tier_4_passive: 0.04
+
+circadian_diurnal_model:
+  mathematical_form: "von_Mises_mixture_on_S1"
+  formula: "phi(t) = beta_0 + (24 - 24*beta_0) * sum(w_k * exp(kappa_k * cos(2*pi*(t - mu_k)/24)) / (24 * I_0(kappa_k)))"
+  weekday_profile:
+    nocturnal_floor_beta_0: 0.025
+    components:
+      - { name: "Morning Commute", mu_hour: 8.25, kappa: 4.2, weight: 0.22 }
+      - { name: "Lunch Rush", mu_hour: 12.60, kappa: 4.8, weight: 0.32 }
+      - { name: "Evening Errands", mu_hour: 18.50, kappa: 3.6, weight: 0.34 }
+      - { name: "Night Browsing", mu_hour: 21.25, kappa: 3.0, weight: 0.12 }
+  weekend_profile:
+    nocturnal_floor_beta_0: 0.040
+    components:
+      - { name: "Brunch & Retail", mu_hour: 11.50, kappa: 2.4, weight: 0.42 }
+      - { name: "Dinner Social", mu_hour: 18.75, kappa: 2.6, weight: 0.43 }
+      - { name: "Nightlife", mu_hour: 23.25, kappa: 3.5, weight: 0.15 }
+
+authentic_hard_negatives:
+  - id: "HN_HOME_RELOCATION"
+    name: "Home Relocation & Moving Surge"
+    episodic_window_seconds: 259200  # 72 hours
+    velocity_multiplier: 5.5
+    spend_percentile_target: "p99"
+    characteristic_mccs: [7513, 4225, 5200, 5712, 4900]
+    ground_truth_discriminators:
+      valid_emv_arqc_chip: true
+      kinematic_corridor_highway_speed_kmh: [65.0, 110.0]
+
+  - id: "HN_CROSS_BORDER_TRAVEL"
+    name: "International Vacation & Business Travel"
+    booking_trail_lookback_days: 21
+    transit_mccs: [5309, 5812, 4816, 4121]
+    destination_mccs: [7011, 5812, 5651]
+    foreign_currency_flag: true
+    ground_truth_discriminators:
+      flight_velocity_kmh: [750.0, 920.0]
+      prior_airline_auth_exists: true
+      contactless_token_present: true
+
+cardholder_discovery_survival_model:
+  tiers:
+    tier_1_push_sms:
+      model: "LogNormal"
+      params: { mu_log: 5.2, sigma_log: 0.85 }
+      median_seconds: 181  # ~3.0 minutes
+    tier_2_app_checker:
+      model: "Weibull"
+      params: { shape_k: 1.8, scale_hours: 36.0 }
+      median_seconds: 110880  # ~30.8 hours
+    tier_3_statement_cycle:
+      model: "Uniform"
+      params: { min_days: 3, max_days: 45, mean_days: 21.5 }
+    tier_4_passive:
+      discovery_seconds: "Infinity"
+  conditional_flagging_probability:
+    formula: "P(Flag | x, c) = 1 - exp(-(x / x_0)^alpha) * [1 - delta_0 * (1 - c)]"
+    params:
+      x_0_usd: 45.00
+      alpha: 1.35
+      delta_0: 0.40
