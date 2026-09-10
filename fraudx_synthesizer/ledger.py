@@ -313,13 +313,12 @@ class StreamingLedger:
         # 5. Mutate rolling telemetry state AFTER record generation (Point-in-time discipline)
         state.tx_history_1h.append((tx_time, amount))
         state.tx_history_24h.append((tx_time, amount, merchant_id))
-        if is_fraud == 0:
-            state.welford_30d.update(amount)
+        state.welford_30d.update(amount)
         state.last_tx_time = tx_time
         state.last_tx_lat = merchant_lat
         state.last_tx_lon = merchant_lon
 
-        # Physical location anchor protection
+        # Physical location anchor protection for cardholder
         if channel_type.startswith("CP") and is_fraud == 0:
             card.last_physical_lat = merchant_lat
             card.last_physical_lon = merchant_lon

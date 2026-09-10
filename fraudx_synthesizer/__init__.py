@@ -23,6 +23,10 @@ from .engine import (
     DiscreteEventEngine,
     SimulationEngine,
 )
+from .benchmark import (
+    ModelBenchmarkSummary,
+    XAIBenchmarkHarness,
+)
 from .evaluation import (
     GroundTruthXAIEvaluator,
     XAIBenchmarkResult,
@@ -49,7 +53,7 @@ from .world import (
     WorldEnvironment,
 )
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 __all__ = [
     "DiscreteEventEngine",
@@ -70,6 +74,8 @@ __all__ = [
     "CausalGroundTruth",
     "GroundTruthXAIEvaluator",
     "XAIBenchmarkResult",
+    "XAIBenchmarkHarness",
+    "ModelBenchmarkSummary",
     "WelfordAccumulator",
     "CardholderLedgerState",
     "verify_transaction_invariants",

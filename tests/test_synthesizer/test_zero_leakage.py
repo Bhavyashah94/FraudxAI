@@ -39,3 +39,55 @@ def test_zero_deterministic_label_leakage():
     p_fraud_given_avs_n = sum(r["is_fraud"] for r in avs_n_records) / len(avs_n_records)
     assert p_fraud_given_avs_n < 1.0, f"avs_match_code == 'N' must not leak 100% fraud, got {p_fraud_given_avs_n}"
     assert p_fraud_given_avs_n > 0.0, "avs_match_code == 'N' must correlate with fraud risk"
+
+
+def test_authorization_feed_has_zero_target_labels():
+    """AUTH_STREAM_COLUMNS must strictly exclude is_fraud and scenario_tag."""
+    from fraudx_synthesizer.cli import AUTH_STREAM_COLUMNS, THREAT_INTEL_GRAPH_COLUMNS
+
+    assert "is_fraud" not in AUTH_STREAM_COLUMNS, "Authorization feed must NOT leak target label is_fraud"
+    assert "scenario_tag" not in AUTH_STREAM_COLUMNS, "Authorization feed must NOT leak scenario_tag"
+    assert "syndicate_id" not in AUTH_STREAM_COLUMNS, "Authorization feed must NOT leak syndicate_id"
+
+    # Threat intel graph columns must contain syndicate graph entities
+    assert "syndicate_id" in THREAT_INTEL_GRAPH_COLUMNS
+    assert "botnet_cluster_id" in THREAT_INTEL_GRAPH_COLUMNS
+
+
+def test_classifier_non_trivial_roc_auc():
+    """Linear classifier trained on point-in-time features must achieve realistic separability (0.80 - 0.99) without 1.0 leakage."""
+    import numpy as np
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.metrics import roc_auc_score
+
+    engine = SimulationEngine(n_cards=200, n_merchants=50, seed=42)
+    records = engine.generate_batch(n_transactions=1500, fraud_prevalence=0.06)
+
+    X = []
+    y = []
+    for r in records:
+        X.append([
+            float(r["amount"]),
+            float(r.get("tx_count_1h", 0)),
+            float(r.get("tx_count_24h", 0)),
+            float(r.get("haversine_velocity_kph", 0)),
+            float(r.get("ip_distance_from_home_km", 0)),
+            1.0 if r.get("is_cross_border") else 0.0,
+            1.0 if str(r.get("avs_match_code", "Y")) in ("N", "U") else 0.0,
+            1.0 if int(r.get("billing_shipping_match", 1)) == 0 else 0.0,
+            float(r.get("cvv_match_flag", 1)),
+            float(r.get("emv_arqc_verified", 0)),
+            float(r.get("three_ds_authenticated", 0)),
+        ])
+        y.append(int(r["is_fraud"]))
+
+    X = np.array(X)
+    y = np.array(y)
+
+    split = 1000
+    clf = LogisticRegression(max_iter=1000)
+    clf.fit(X[:split], y[:split])
+    test_probs = clf.predict_proba(X[split:])[:, 1]
+    auc = roc_auc_score(y[split:], test_probs)
+
+    assert 0.80 <= auc <= 0.99, f"Expected realistic ROC-AUC in [0.80, 0.99], got {auc:.4f}"

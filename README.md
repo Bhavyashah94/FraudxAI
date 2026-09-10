@@ -1,7 +1,8 @@
 # FraudxAI: Grounded Multi-Agent Payment Fraud Simulation & Causal XAI Benchmark
 
-[![Python](https://img.shields.io/badge/python-3.9%20%7C%203.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue.svg)]()
-[![Tests](https://img.shields.io/badge/pytest-54%20passed-brightgreen.svg)]()
+[![CI](https://github.com/Bhavyashah94/FraudxAI/actions/workflows/ci.yml/badge.svg)](https://github.com/Bhavyashah94/FraudxAI/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue.svg)]()
+[![Tests](https://img.shields.io/badge/pytest-60%20passed-brightgreen.svg)]()
 [![Invariants](https://img.shields.io/badge/invariants-37%2F37%20verified-brightgreen.svg)]()
 [![Standard](https://img.shields.io/badge/rails-ISO%208583%20%7C%20RBI%20AFA%20%7C%20Visa%20VCR-orange.svg)]()
 [![Anti-Astronaut](https://img.shields.io/badge/grounding-Anti--Astronaut%20Certified-darkgreen.svg)](AGENTS.md)
@@ -198,31 +199,43 @@ print(f"Amount: {sample['amount']} {sample['currency']} (Minor Units: {sample['a
 print(f"Dominant Causal Driver: {sample['dominant_causal_driver']}")
 ```
 
-### Benchmarking an XAI Model Against Ground Truth
+### Benchmarking Post-Hoc Explainers (TreeSHAP) Against Causal Ground Truth
 
+FraudxAI includes an automated evaluation harness conforming to **Quantus (JMLR 2023)** and **OpenXAI (NeurIPS 2022)** standards:
+
+#### CLI Benchmark:
+```bash
+python -m fraudx_synthesizer.cli benchmark -n 2000 --model lightgbm
+```
+
+```
+=================================================================
+  FRAUDX-AI EMPIRICAL XAI BENCHMARK RESULTS
+=================================================================
+  Model Architecture:           LIGHTGBM
+  Explainer Method:             TreeSHAP (Interventional)
+  Evaluated Fraud Samples:      17
+  Classifier ROC-AUC:           0.9908
+  Classifier PR-AUC:            0.9209
+-----------------------------------------------------------------
+  Ranking Concordance (Kendall Tau):      0.4371
+  Rank Correlation (Spearman Rho):        0.1107
+  Directional Cosine Similarity:          0.5158
+  Top-3 Support Recovery (Precision@3):   0.5882
+  Relative Attribution Error (RAE):       19.25
+=================================================================
+```
+
+#### Python Programmatic API:
 ```python
-import numpy as np
-from fraudx_synthesizer import GroundTruthXAIEvaluator
+from fraudx_synthesizer import XAIBenchmarkHarness
 
-evaluator = GroundTruthXAIEvaluator()
+harness = XAIBenchmarkHarness(n_transactions=2000, fraud_prevalence=0.05, seed=42)
+summary = harness.run_benchmark(model_type="lightgbm")
 
-# Ground truth Shapley vector from StructuralCausalEngine
-phi_true = np.array([0.45, 0.30, 0.15, 0.05, 0.05])
-
-# Attribution vector predicted by a black-box explainer (e.g. KernelSHAP)
-phi_pred = np.array([0.40, 0.35, 0.10, 0.08, 0.07])
-
-# Evaluate fidelity metrics
-metrics = evaluator.evaluate_explanation(
-    phi_true=phi_true,
-    phi_pred=phi_pred,
-    feature_names=["velocity", "amount_ratio", "geo_risk", "hour", "mcc"],
-    top_k=3,
-)
-
-print(f"Top-3 Precision: {metrics['precision_at_k']:.3f}")
-print(f"Kendall Tau Rank Correlation: {metrics['kendall_tau']:.3f}")
-print(f"Relative Attribution Error (RAE): {metrics['relative_attribution_error']:.3f}")
+print(f"Kendall Tau Concordance: {summary.mean_kendall_tau:.4f}")
+print(f"Top-3 Precision:        {summary.mean_precision_at_3:.4f}")
+print(f"Cosine Similarity:      {summary.mean_cosine_similarity:.4f}")
 ```
 
 ---
@@ -231,9 +244,11 @@ print(f"Relative Attribution Error (RAE): {metrics['relative_attribution_error']
 
 ```
 FraudxAI/
+├── .github/workflows/ci.yml         # GitHub Actions multi-OS / multi-Python CI matrix
 ├── fraudx_synthesizer/              # Core Simulation & Causal Benchmark Engine
 │   ├── agents.py                   # Cardholders, Adaptive Fraudsters & Bank Decision Engine
-│   ├── causal_scm.py               # Structural Causal Model & Analytical Shapley Decomposition
+│   ├── benchmark.py                # Empirical TreeSHAP benchmark harness & Quantus metrics
+│   ├── causal_scm.py               # Structural Causal Model, EMV Mitigators & Shapley Quad
 │   ├── cli.py                      # Production CLI supporting dual regions & feed exports
 │   ├── engine.py                   # Monotonic Priority Queue Discrete-Event Engine
 │   ├── evaluation.py               # GroundTruthXAIEvaluator (Precision@k, Kendall Tau, RAE)
@@ -254,7 +269,7 @@ FraudxAI/
 │   ├── audit_fraud_realness.py       # Empirical calibration and forensic sanity audit
 │   └── inspect_generated_data.py    # Statistical inspection of synthesized batches
 ├── tests/                           # Deterministic Automated PyTest Suite
-│   └── test_synthesizer/            # 54 Unit tests certifying all engine invariants
+│   └── test_synthesizer/            # 60 Unit tests certifying all engine invariants
 ├── AGENTS.md                        # Anti-Astronaut Grounding Mandate
 ├── CONTRIBUTING.md                  # Contribution Guidelines & Mandate
 ├── LICENSE                          # Apache 2.0 License
@@ -267,7 +282,7 @@ FraudxAI/
 
 FraudxAI enforces strict, deterministic verification across the entire stack:
 
-### 1. PyTest Unit & Integration Suite (54 / 54 Passed)
+### 1. PyTest Unit & Integration Suite (60 / 60 Passed)
 ```bash
 python -m pytest tests/ -v
 ```

@@ -1,8 +1,9 @@
 # FraudX-Synthesizer: Discrete-Event Payment Fraud Simulation & Risk Attribution Benchmark
 
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-[![Python](https://img.shields.io/badge/python-3.9%20%7C%203.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue.svg)]()
-[![Tests](https://img.shields.io/badge/tests-54%20passed-brightgreen.svg)]()
+[![CI](https://github.com/Bhavyashah94/FraudxAI/actions/workflows/ci.yml/badge.svg)](https://github.com/Bhavyashah94/FraudxAI/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue.svg)]()
+[![Tests](https://img.shields.io/badge/tests-60%20passed-brightgreen.svg)]()
 
 **FraudX-Synthesizer** is a high-performance, discrete-event payment simulation framework that generates realistic card transaction feeds, banking authorization protocol fields, and ground-truth feature risk attributions for evaluating machine learning models.
 

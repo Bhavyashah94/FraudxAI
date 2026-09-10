@@ -37,8 +37,18 @@ AUTH_STREAM_COLUMNS = [
     "credit_limit",
     "mcc",
     "merchant_id",
-    "is_fraud",
-    "scenario_tag",
+]
+
+THREAT_INTEL_GRAPH_COLUMNS = [
+    "transaction_id",
+    "card_id",
+    "merchant_id",
+    "syndicate_id",
+    "botnet_cluster_id",
+    "mule_ring_id",
+    "beneficiary_account_id",
+    "ip_subnet_prefix",
+    "device_fingerprint_id",
 ]
 
 GATEWAY_TELEMETRY_COLUMNS = [
@@ -167,11 +177,47 @@ def cmd_generate(args: argparse.Namespace) -> None:
             (parent_dir / f"{stem}_gateway_telemetry.csv", GATEWAY_TELEMETRY_COLUMNS, "Gateway Risk Telemetry"),
             (parent_dir / f"{stem}_clearing_settlement.csv", CLEARING_SETTLEMENT_COLUMNS, "Clearing & Settlement Presentment"),
             (parent_dir / f"{stem}_dispute_recovery.csv", DISPUTE_RECOVERY_COLUMNS, "Dispute & Chargeback Recovery"),
+            (parent_dir / f"{stem}_threat_intel_graph.csv", THREAT_INTEL_GRAPH_COLUMNS, "Threat Intelligence Graph Enclave"),
         ]
 
         for path, cols, label in views:
             _export_csv_view(path, records, cols)
             print(f"Exported {label} -> {path}", file=sys.stderr)
+
+
+def cmd_benchmark(args: argparse.Namespace) -> None:
+    """Executes empirical XAI benchmark evaluation comparing TreeSHAP against causal ground truth."""
+    from .benchmark import XAIBenchmarkHarness
+    import json
+
+    harness = XAIBenchmarkHarness(
+        n_transactions=args.samples,
+        fraud_prevalence=args.fraud_rate,
+        region=args.region,
+        seed=args.seed,
+    )
+    print(f"Executing XAI Benchmark on {args.samples} transactions ({args.model})...", file=sys.stderr)
+    summary = harness.run_benchmark(model_type=args.model)
+
+    if args.json:
+        from dataclasses import asdict
+        print(json.dumps(asdict(summary), indent=2))
+    else:
+        print("\n" + "=" * 65)
+        print("  FRAUDX-AI EMPIRICAL XAI BENCHMARK RESULTS")
+        print("=" * 65)
+        print(f"  Model Architecture:           {summary.model_name.upper()}")
+        print(f"  Explainer Method:             {summary.explainer_name}")
+        print(f"  Evaluated Fraud Samples:      {summary.n_evaluated_samples}")
+        print(f"  Classifier ROC-AUC:           {summary.auc_roc:.4f}")
+        print(f"  Classifier PR-AUC:            {summary.pr_auc:.4f}")
+        print("-" * 65)
+        print(f"  Ranking Concordance (Kendall Tau):      {summary.mean_kendall_tau:.4f}")
+        print(f"  Rank Correlation (Spearman Rho):        {summary.mean_spearman_rho:.4f}")
+        print(f"  Directional Cosine Similarity:          {summary.mean_cosine_similarity:.4f}")
+        print(f"  Top-3 Support Recovery (Precision@3):   {summary.mean_precision_at_3:.4f}")
+        print(f"  Relative Attribution Error (RAE):       {summary.mean_relative_attribution_error:.4f}")
+        print("=" * 65 + "\n")
 
 
 def main() -> None:
@@ -189,8 +235,18 @@ def main() -> None:
     p_gen.add_argument("--seed", type=int, default=42, help="Deterministic random seed")
     p_gen.add_argument("-o", "--output", type=str, default="synthetic_transactions.csv", help="Output file (.csv, .json, .jsonl)")
     p_gen.add_argument("--include-disputes", action="store_true", default=False, help="Include post-authorization dispute and chargeback lifecycle columns in master output")
-    p_gen.add_argument("--export-institutional-views", action="store_true", default=False, help="Export 4 partitioned institutional banking warehouse feeds (auth, gateway, clearing, dispute)")
+    p_gen.add_argument("--export-institutional-views", action="store_true", default=False, help="Export partitioned institutional banking warehouse feeds")
     p_gen.set_defaults(func=cmd_generate)
+
+    # Benchmark subcommand
+    p_bench = subparsers.add_parser("benchmark", help="Run empirical XAI benchmark")
+    p_bench.add_argument("-n", "--samples", type=int, default=2000, help="Number of synthetic transactions")
+    p_bench.add_argument("--model", type=str, choices=["lightgbm", "rf"], default="lightgbm", help="ML model architecture")
+    p_bench.add_argument("--region", type=str, choices=["US", "IN"], default="US", help="Banking ecosystem region")
+    p_bench.add_argument("--fraud-rate", type=float, default=0.05, help="Fraud prevalence ratio")
+    p_bench.add_argument("--seed", type=int, default=42, help="Deterministic seed")
+    p_bench.add_argument("--json", action="store_true", help="Output benchmark metrics in JSON format")
+    p_bench.set_defaults(func=cmd_benchmark)
 
     args = parser.parse_args()
     args.func(args)

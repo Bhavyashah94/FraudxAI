@@ -89,3 +89,23 @@ def test_end_to_end_batch_with_counterfactuals():
         assert "dominant_causal_driver" in r
         assert "explanation_narrative" in r
         assert len(r["explanation_narrative"]) > 0
+
+
+def test_xai_benchmark_harness_execution():
+    """XAIBenchmarkHarness must execute end-to-end with TreeSHAP and compute concordance metrics."""
+    from fraudx_synthesizer import XAIBenchmarkHarness
+
+    harness = XAIBenchmarkHarness(
+        n_transactions=300,
+        fraud_prevalence=0.10,
+        seed=999,
+    )
+    summary = harness.run_benchmark(model_type="lightgbm")
+
+    assert summary.model_name == "lightgbm"
+    assert "TreeSHAP" in summary.explainer_name
+    assert summary.n_evaluated_samples > 0
+    assert -1.0 <= summary.mean_kendall_tau <= 1.0
+    assert -1.0 <= summary.mean_cosine_similarity <= 1.0
+    assert 0.0 <= summary.mean_precision_at_3 <= 1.0
+    assert 0.0 <= summary.auc_roc <= 1.0
