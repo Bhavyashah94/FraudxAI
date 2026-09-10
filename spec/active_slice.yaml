@@ -2,22 +2,16 @@
 # Read this file at the start of any new session or task to immediately anchor context.
 
 current_slice:
-  id: "slice-03-modern-empirical-temporal-architecture-and-event-dynamics"
-  title: "Modern 2024-2026 Empirical Temporal Architecture, Circadian NHPP Thinning, Shopping Trip Chaining & Calendar Macro-Regimes"
+  id: "slice-04-synthetic-leak-elimination-emv-primacy-and-intervention-support"
+  title: "Synthetic Leak Elimination, EMV Chip Cryptographic Primacy & Attack Script Intervention Support Benchmark"
   status: "verified"  # [planning, in_progress, testing, verified]
   objective: >
-    Ground the FraudxAI simulation engine in contemporary 2023-2025 central bank payment studies (Fed DCPC May 2024,
-    ECB 2023/2024, CFPB 2023) and empirical payment transaction dynamics:
-    1. Tier 1 (Diurnal Profile): Poisson arrival thinning using a 24-hour periodic von Mises distribution,
-       bringing legitimate night spend down from 20.75% to 3.06% (< 4.5% threshold) while daytime peak captures 70.72%.
-    2. Tier 2 (Shopping Trips): Multi-stop shopping trip clustering with short inter-arrival delays (10-25 minutes)
-       in local commercial hubs, elevating arrival burstiness to c_v = 1.47 (target > 1.40).
-    3. Tier 3 (Macro-Scale): Calendar date-anchored macro-regimes (Payday 1.35x volume multipliers on 1st, 2nd, 15th, 16th;
-       Black Friday / Cyber Week late November; authentic Diwali / Dhanteras gold splitting window).
-    4. Tier 4 (Episodic Life-Stage): Persistent multi-day state machines (CardholderState.RELOCATING 72h window,
-       CardholderState.INTL_TRAVEL 7-14d) replacing ad-hoc conditional dice rolls.
-    5. Pure-Python Numerical Implementation: Built-in modified Bessel function I_0(x) via series expansion without
-       external Scipy dependencies, achieving 2,805 tx/s simulator throughput.
+    Address the synthetic leak and hard negative criticisms from the Prism peer review:
+    1. Eliminate IP Distance Leak: Replace 0.000 km shortcut across all 11 attack playbooks with realistic non-zero network distances (min >= 1.5 km).
+    2. Enforce EMV Chip Cryptographic Primacy: Place authentic EMV Contact Chip verification before ML threshold declines, ensuring 0% ISO 59 false declines.
+    3. Causal SCM Logarithmic Saturation: Saturate amount ratios via ln(1 + max(0, ratio - 1)) and suppress velocity-distance synergy on verified chip presence.
+    4. Attack Script Intervention Support Benchmark: Evaluate TreeSHAP against the attack script's actively intervened features (Precision@K, Recall@K).
+    5. Anti-Leak Tripwires: Ensure PR-AUC <= 0.985 for GBDT ensembles and single-feature attribution share <= 70%.
 
 target_spec_files:
   - "spec/01_financial_instruments.yaml"
@@ -27,11 +21,9 @@ target_spec_files:
   - "spec/05_india_payment_rails.yaml"
 
 acceptance_criteria:
-  - circadian_nhpp_thinning_verified: true # Legit night spend: 3.06% (< 4.5%), day peak: 70.72%
-  - semi_markov_shopping_trips_burstiness_verified: true # Inter-arrival c_v: 1.47 (> 1.40)
-  - calendar_macro_regimes_date_anchored: true # Paydays 1/2/15/16 and Diwali festive windows
-  - episodic_life_stages_state_driven: true # Relocation 72h and Travel episodes
-  - bessel_i0_zero_dependency_series: true # Eliminates scipy requirement
-  - all_54_tests_passed: true # 100% test pass rate in pytest
-  - high_throughput_verified: true # 2,805 tx/s at 10,000 batch size
-
+  - zero_synthetic_ip_distance_leak: true # Min IP distance >= 1.5 km, 0 captured by <= 0.5 split
+  - emv_chip_primacy_enforced: true # 0% ISO 59 on authentic EMV contact chip, >= 85% approval
+  - causal_scm_log_saturation_active: true # ln(1 + ratio) prevents log-odds explosion
+  - attack_script_intervention_support_benchmark_added: true # Precision@3 >= 0.70, Recall@3 >= 0.65
+  - anti_leak_tripwires_verified: true # PR-AUC realistic, single feature <= 70% share
+  - all_63_tests_passed: true # 100% test pass rate in pytest (63/63)
