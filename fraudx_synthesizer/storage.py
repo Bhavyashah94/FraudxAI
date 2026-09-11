@@ -347,9 +347,9 @@ def _worker_simulation_task(
         chunk_size=chunk_size,
     )
 
-    # Scale population proportionally to worker target volume
-    n_cards = max(500, n_tx_target // 20)
-    n_merchants = max(50, n_tx_target // 200)
+    # Scale population proportionally with safe per-process memory caps
+    n_cards = min(5000, max(500, n_tx_target // 20))
+    n_merchants = min(500, max(50, n_tx_target // 200))
 
     engine = DiscreteEventEngine(
         n_cards=n_cards,
