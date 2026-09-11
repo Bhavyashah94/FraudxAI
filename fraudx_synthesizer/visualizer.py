@@ -575,17 +575,17 @@ def render_standalone_html(data_bundle: Dict[str, Any], title: str = "FraudxAI S
       <div class="metric-card">
         <div class="metric-title">Total Batch Volume</div>
         <div class="metric-val">{data_bundle['metadata']['total_transactions']:,}</div>
-        <div class="metric-sub">{data_bundle['metadata']['legitimate_count']:,} Legitimate, {data_bundle['metadata']['hard_negative_count']} Hard Negatives</div>
+        <div class="metric-sub">{data_bundle['metadata']['legitimate_count']:,} Organic, {data_bundle['metadata']['hard_negative_count']:,} Hard Negatives</div>
       </div>
       <div class="metric-card">
         <div class="metric-title">Adversarial Fraud Attack Rate</div>
         <div class="metric-val" style="color: var(--accent-red);">{data_bundle['metadata']['fraud_rate_pct']}%</div>
-        <div class="metric-sub">{data_bundle['metadata']['fraud_count']} Intent-Driven Attacks Synthesized</div>
+        <div class="metric-sub">{data_bundle['metadata']['fraud_count']:,} Fraud ({data_bundle['metadata']['total_transactions'] - data_bundle['metadata']['fraud_count']:,} Legit Cardholder)</div>
       </div>
       <div class="metric-card">
         <div class="metric-title">Core Banking Approvals</div>
         <div class="metric-val" style="color: var(--accent-green);">{data_bundle['switch_funnel']['approval_rate']}%</div>
-        <div class="metric-sub">{data_bundle['switch_funnel']['approved']:,} Approved (ISO 00 / 10)</div>
+        <div class="metric-sub">{data_bundle['switch_funnel']['approved']:,} Approved | {data_bundle['switch_funnel']['declined']:,} Declined ({round(data_bundle['switch_funnel']['declined'] / max(1, data_bundle['switch_funnel']['total_ingress']) * 100, 1)}%)</div>
       </div>
       <div class="metric-card">
         <div class="metric-title">Threat Graph Enclave</div>
@@ -965,13 +965,15 @@ def compile_bundle_from_metadata(
     gateway_drops = hop_drops.get("GATEWAY_FILTER", 0)
     vaai_drops = hop_drops.get("NETWORK_SWITCH_VAAI", 0)
     acs_drops = hop_drops.get("ACS_3DS", 0)
-    issuer_drops = hop_drops.get("ISSUER_HOST", 0)
+    # The transactions that drop at Hop 4 are the remaining declines that reached the issuer host
+    issuer_drops = max(0, declined_count - (gateway_drops + vaai_drops + acs_drops))
 
     funnel_data = {
         "total_ingress": total_tx,
         "approved": approved_count,
         "declined": declined_count,
         "approval_rate": round(approved_count / max(1, total_tx) * 100, 1),
+        "decline_rate": round(declined_count / max(1, total_tx) * 100, 1),
         "hops": [
             {
                 "id": "hop_1",
@@ -1063,6 +1065,10 @@ def compile_bundle_from_metadata(
         },
     }
 
+    # Compute hard negative count from macro options
+    hard_neg_count = sum(cnt for sc, cnt in meta.get("macro_options", {}).items() if "HARD_NEGATIVE" in sc)
+    organic_legit_count = max(0, legit_count - hard_neg_count)
+
     return {
         "metadata": {
             "region": region,
@@ -1070,8 +1076,8 @@ def compile_bundle_from_metadata(
             "total_transactions": total_tx,
             "fraud_count": fraud_count,
             "fraud_rate_pct": round(fraud_count / max(1, total_tx) * 100, 2),
-            "legitimate_count": legit_count,
-            "hard_negative_count": 0,
+            "legitimate_count": organic_legit_count,
+            "hard_negative_count": hard_neg_count,
             "total_volume_usd": total_vol,
             "fraud_volume_usd": fraud_vol,
         },
