@@ -2,50 +2,64 @@
 # Read this file at the start of any new session or task to immediately anchor context.
 
 current_slice:
-  id: "slice-10-tripartite-industrial-benchmark-suite"
-  title: "Phase 5: Tripartite Industrial Benchmark Suite & Automated Benchmark Leaderboard"
+  id: "slice-11-first-principles-adversarial-intent-mesh"
+  title: "First-Principles Computational Adversarial Threat Modeling & Intent Optimization Mesh"
   status: "verified"  # [planning, in_progress, testing, verified]
-  audited_by: "Subagent V5: Benchmark Quality & XAI Metric Auditor"
-  verdict: "PASS (CERTIFIED, Tripartite Benchmark & Falsification Suite 100% Green)"
   objective: >
-    Implement Phase 5 of the Physics-Informed Hybrid Generative Architecture:
-    1. Dimension 1: Statistical Fidelity Suite:
-       - Wasserstein-1 distance on log-scaled amounts (W_1 <= 0.050) and inter-arrival times.
-       - Laplace-smoothed symmetric Jensen-Shannon divergence (D_JS <= 0.070) over MCCs, channels, and ISO codes.
-       - Relative Frobenius norm error on Spearman rank correlation matrix (E_C <= 0.160).
-    2. Dimension 2: Machine Learning Utility (TSTR Protocol):
-       - Train LightGBM on synthetic feed, evaluate on held-out reference splits.
-       - Assert relative PR-AUC retention Delta_PR-AUC >= 0.85 and ROC-AUC retention.
-    3. Dimension 3: Adversarial Privacy & Non-Memorization:
-       - Min-Max normalized Distance to Closest Record 5th percentile (DCR_0.05 > 0.00010).
-       - Nearest Neighbor Distance Ratio (NNDR in [0.50, 0.98]).
-       - Membership Inference Attack classifier resistance (ROC-AUC <= 0.580).
-    4. Dimension 4: Causal XAI Concordance:
-       - Feature ranking concordance (Kendall's tau, Spearman's rho), Directional Cosine,
-         intervention support recovery, and anti-leak tripwires.
-    5. Negative Controls & Falsification Suite:
-       - Prove benchmark correctly fails Random Noise, Verbatim Cloner, and Label Leaker.
-    6. Subagent Verification Protocol: Launch Subagent V5 (Benchmark Quality & XAI Metric Auditor)
-       to independently audit, benchmark, and certify Phase 5.
+    Replace hardcoded adversarial attack playbooks with First-Principles Computational
+    Adversarial Threat Modeling & Intent Optimization:
+    1. Information Supply Chain: Incomplete, noisy, decaying credentials (Track 2, Fullz,
+       Session Cookies, Device Tokens, VCNs) governed by discrete survival hazard rates.
+    2. Physical & Economic Constraint Mesh: Proxy costs, JA3/JA4 TLS signature consistency,
+       Canvas repeatability, mule haircuts (15-35%), and kinematic velocity bounds (<=900 km/h).
+    3. Multi-Hop Banking Switch & 14-Code ISO 8583 Palette: Gateway -> Network In-Flight ML (VAAI) ->
+       3DS ACS -> Issuer Host, including ISO 10 Partial Approval (exact balance discovery oracle).
+    4. Hierarchical Semi-Markov Options Lattice & Information-Directed Sampling (IDS):
+       Macro-options (Probe, Incubate, Bisect Drain, Harvest, Purge) with low-level parameter
+       selection in vectorized NumPy (<100us/tx), driving spontaneous probing via closed-form
+       mutual information without magic reward bonuses.
+    5. Anti-Rollback Engineering Invariants: Strict decoupling of feedback from action selection;
+       zero hardcoded next-action mutators; 5 automated falsification tests (Emergence, Invariants,
+       Purge, Honeypot Inversion, and Darknet Price Elasticity).
 
 target_spec_files:
-  - "spec/03_payment_rail_gaps.yaml"
   - "spec/04_adversarial_playbooks.yaml"
+  - "spec/06_adversarial_intent_mesh.yaml"
 
 acceptance_criteria:
-  - dimension_1_statistical_fidelity_verified: true
-  - dimension_2_tstr_utility_retention_verified: true
-  - dimension_3_adversarial_privacy_and_non_memorization_verified: true
-  - negative_control_falsification_tests_passed: true
+  - canonical_specification_06_authored_and_grounded: true
+  - analytical_belief_state_and_ids_optimizer_implemented: true
+  - four_hop_switch_and_14_iso_codes_implemented: true
+  - five_falsification_tests_passed: true
   - all_unit_and_regression_tests_passed: true
-  - subagent_v5_certification_passed: true
+  - independent_subagent_audits_passed: true
 
 previous_slices:
+  - id: "slice-10-tripartite-industrial-benchmark-suite"
+    title: "Phase 5: Tripartite Industrial Benchmark Suite & Automated Benchmark Leaderboard"
+    status: "verified"
+    audited_by: "Subagent V5: Benchmark Quality & XAI Metric Auditor"
+    verdict: "PASS (CERTIFIED, Tripartite Benchmark & Falsification Suite 100% Green)"
   - id: "slice-09-adaptive-adversary-policy-and-threat-graphs"
     title: "Phase 4: Closed-Loop Adaptive Adversary Policy & Threat Graph Telemetry"
     status: "verified"
     audited_by: "Subagent V4: Red Team Cybercrime & Zero-Leakage Auditor"
     verdict: "PASS (CERTIFIED, Closed-Loop adaptation & 3-way zero-leakage verified)"
+  - id: "slice-08-decoupled-rail-verifier-ledger"
+    title: "Phase 3: Decoupled Rail Verifier Switch & Multi-Party Double-Entry World Ledger"
+    status: "verified"
+    audited_by: "Subagent V3: Payment Scheme & Double-Entry Accounting Auditor"
+    verdict: "PASS (CERTIFIED, Bitwise Conservation discrepancy < 1e-5)"
+  - id: "slice-06-recursive-circadian-hawkes-mtpp"
+    title: "Phase 1: Generative Arrival Pacing via Recursive Circadian Hawkes MTPP Engine"
+    status: "verified"
+    audited_by: "Subagent V1: MTPP Kinematics & Pacing Auditor"
+    verdict: "PASS (CERTIFIED, 64,850 events/sec)"
+  - id: "slice-07-invertible-dscm-normalizing-flows"
+    title: "Phase 2: Invertible Deep Structural Causal Model (DSCM) & Pearlian Counterfactual Engine"
+    status: "verified"
+    audited_by: "Subagent V2: Causal Invertibility Auditor"
+    verdict: "PASS (CERTIFIED, Theorem 1 exact error < 1e-14)"
   - id: "slice-08-decoupled-rail-verifier-ledger"
     title: "Phase 3: Decoupled Rail Verifier Switch & Multi-Party Double-Entry World Ledger"
     status: "verified"

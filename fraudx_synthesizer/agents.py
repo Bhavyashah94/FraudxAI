@@ -18,11 +18,21 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
+from .intent import (
+    AnalyticalBeliefState,
+    CandidateAction,
+    CredentialDossier,
+    CredentialTier,
+    InformationDirectedOptimizer,
+    MacroOptionType,
+)
+
 
 class ISO8583Response(str, enum.Enum):
     APPROVED_00 = "00"
     DO_NOT_HONOR_05 = "05"
     PARTIAL_APPROVAL_10 = "10"
+    INVALID_TRANSACTION_12 = "12"
     INVALID_CARD_14 = "14"
     INSUFFICIENT_FUNDS_51 = "51"
     EXPIRED_CARD_54 = "54"
@@ -30,7 +40,9 @@ class ISO8583Response(str, enum.Enum):
     SUSPECTED_FRAUD_59 = "59"
     SECURITY_VIOLATION_63 = "63"
     ACTIVITY_COUNT_EXCEEDED_65 = "65"
+    PIN_TRIES_EXCEEDED_75 = "75"
     INVALID_CVV_82 = "82"
+    ISSUER_TIMEOUT_STIP_91 = "91"
 
 
 class FraudScenario(str, enum.Enum):
@@ -518,6 +530,10 @@ class AdaptiveFraudsterAgent:
         self.rng = rng
         self.adversary_mimicry = adversary_mimicry
         self.target_states: Dict[str, TargetCardAdversaryState] = {}
+        # Slice 11: First-Principles Intent Optimization Engine
+        self.intent_optimizer = InformationDirectedOptimizer(seed=42)
+        self.belief_states: Dict[str, AnalyticalBeliefState] = {}
+        self.dossiers: Dict[str, CredentialDossier] = {}
         # Global fallback trackers
         self.state = FraudsterState.DUMP_INGESTION
         self.current_amount = 450.0
@@ -538,6 +554,26 @@ class AdaptiveFraudsterAgent:
                 fsm_state=FraudsterState.DUMP_INGESTION,
                 current_probe_amount=initial_amt,
                 target_mcc=5732,
+            )
+        # Slice 11: Initialize Analytical Belief State and Dossier
+        if card.card_id not in self.belief_states:
+            avail = max(500.0, float(card.credit_limit - card.current_balance))
+            self.belief_states[card.card_id] = AnalyticalBeliefState(
+                card_id=card.card_id,
+                p_valid=0.50,
+                mu_balance=avail,
+                sigma_balance=max(100.0, float(card.credit_limit * 0.2)),
+                min_balance=0.0,
+                max_balance=float(card.credit_limit),
+                acquisition_cost_usd=15.0,
+            )
+            self.dossiers[card.card_id] = CredentialDossier(
+                tier=CredentialTier.TIER_CNP_FULLZ,
+                pan=card.card_id,
+                expiry_month=12,
+                expiry_year=2028,
+                cvv2="123",
+                billing_zip=getattr(card, "zip_code", "94105"),
             )
         return self.target_states[card.card_id]
 
@@ -882,6 +918,16 @@ class AdaptiveFraudsterAgent:
         """Adapts adversarial policy with per-target memory and stateful closed-loop updates."""
         target = self.target_states.get(card_id) if card_id else None
 
+        # Slice 11: Information-Directed Belief State Update
+        belief = self.belief_states.get(card_id) if card_id else None
+        if belief:
+            resp_str = response_code.value if hasattr(response_code, "value") else str(response_code)
+            self.intent_optimizer.observe_outcome(
+                belief=belief,
+                amount=target.current_probe_amount if target else 100.0,
+                response_code=resp_str,
+            )
+
         if response_code in (ISO8583Response.APPROVED_00, ISO8583Response.PARTIAL_APPROVAL_10):
             self.consecutive_declines = 0
             if target:
@@ -939,6 +985,38 @@ class AdaptiveFraudsterAgent:
             if target:
                 target.is_burned = True
                 target.fsm_state = FraudsterState.CARD_PURGE
+
+    def select_intent_action(
+        self,
+        card: CardholderProfile,
+        sim_time_seconds: float,
+        world_center_lat: float,
+        world_center_lon: float,
+    ) -> Dict[str, Any]:
+        """Emergent attack generation driven by first-principles intent and physical constraints (Slice 11)."""
+        target = self.get_or_create_target(card)
+        belief = self.belief_states[card.card_id]
+        dossier = self.dossiers[card.card_id]
+        current_hour = int((sim_time_seconds % 86400) // 3600)
+
+        action = self.intent_optimizer.select_optimal_action(
+            belief=belief,
+            dossier=dossier,
+            current_hour_local=current_hour,
+        )
+        target.current_probe_amount = action.amount
+        target.target_mcc = action.mcc
+
+        return {
+            "amount": action.amount,
+            "channel_type": action.channel,
+            "is_fraud": 1,
+            "scenario_tag": f"INTENT_{action.macro_option.value}",
+            "ip_distance_km": float(self.rng.uniform(15.0, 85.0)),
+            "preferred_mcc": action.mcc,
+            "macro_option": action.macro_option.value,
+            "incubation_seconds": action.incubation_seconds,
+        }
 
     def inject_attack(
         self,

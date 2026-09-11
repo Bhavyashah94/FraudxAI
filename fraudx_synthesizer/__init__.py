@@ -83,6 +83,18 @@ from .world import (
     MerchantProfile,
     WorldEnvironment,
 )
+from .intent import (
+    AnalyticalBeliefState,
+    CandidateAction,
+    ConstraintPruner,
+    CredentialDossier,
+    CredentialTier,
+    InformationDirectedOptimizer,
+    MacroOptionType,
+    MultiHopSwitchEngine,
+    SwitchHopResult,
+    TokenBindingResult,
+)
 
 __version__ = "0.3.0"
 
@@ -140,5 +152,15 @@ __all__ = [
     "RailVerifierSwitch",
     "ZeroLeakageDataPartitioner",
     "INFERENCE_ALLOWLIST",
+    "AnalyticalBeliefState",
+    "CandidateAction",
+    "ConstraintPruner",
+    "CredentialDossier",
+    "CredentialTier",
+    "InformationDirectedOptimizer",
+    "MacroOptionType",
+    "MultiHopSwitchEngine",
+    "SwitchHopResult",
+    "TokenBindingResult",
 ]
 
