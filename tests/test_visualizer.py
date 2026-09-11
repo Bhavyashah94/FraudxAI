@@ -59,7 +59,7 @@ def test_compile_simulation_data_bundle():
     assert "links" in tg
     assert len(tg["nodes"]) > 0
     node_types = {n["type"] for n in tg["nodes"]}
-    assert "card" in node_types
+    assert any(t in node_types for t in ("card", "breach_campaign", "bridge_card"))
     # Links must connect existing nodes
     node_ids = {n["id"] for n in tg["nodes"]}
     for l in tg["links"]:

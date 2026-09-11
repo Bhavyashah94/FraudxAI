@@ -166,10 +166,51 @@ adversarial_playbooks:
 underground_spoofing_infrastructure:
   residential_proxy_networks:
     grounding: "DOJ 911 S5 Indictment / IEEE S&P 2019 (Mi et al.)"
-    node_types: ["RESIDENTIAL_SOCKS5", "MOBILE_4G_5G_P2P"]
-    sticky_session_duration_seconds: [600, 1800] # 10 to 30 min checkout hold
+    node_types: ["RESIDENTIAL_SOCKS5", "MOBILE_4G_5G_P2P", "DATACENTER_BULK"]
+    us_residential_pools:
+      asns: ["AS7922", "AS7018", "AS20115", "AS21928", "AS22773"]
+      isps: ["Comcast", "AT&T", "Charter Spectrum", "T-Mobile USA", "Cox"]
+      subnet_cidr_cap_sessions: 2 # max 2 sessions per /24 prefix to avoid subnet blacklists
+      sticky_session_duration_seconds: [600, 1800] # 10 to 30 min checkout hold
+      bandwidth_cost_cents_per_gb: 800 # $8.00/GB ($0.08 - $0.25/checkout attempt)
+    india_mobile_pools:
+      asns: ["AS55836", "AS45609", "AS24560", "AS9829"]
+      isps: ["Reliance Jio", "Bharti Airtel", "Airtel Broadband", "BSNL"]
+      sticky_session_duration_seconds: [300, 900]
+      bandwidth_cost_cents_per_gb: 350
+    datacenter_checker_pools:
+      asns: ["AS16509", "AS15169", "AS8075", "AS14061"]
+      isps: ["AWS", "Google Cloud", "Microsoft Azure", "DigitalOcean"]
+      rotation_policy: "PER_REQUEST"
+      bandwidth_cost_cents_per_gb: 40
+      gateway_rejection_rate: 0.85 # High gate drop rate when unmasked
     asn_matching_criteria: "TARGET_VICTIM_CITY_RESIDENTIAL_ISP"
     max_geofence_distance_km: 25.0
+
+  network_fingerprinting_telemetry:
+    foxio_ja4_tls_suite:
+      format: "{ja4_a}_{ja4_b}_{ja4_c}"
+      bot_signatures:
+        python_requests: "t13d1516h2_8daaf6152771_e562703ab853"
+        go_http: "t12i1212h1_7caa04519921_b124802fc712"
+      clean_browser_signatures:
+        chrome_windows: "t13d1516h2_dfa4a7752771_c212703ab899"
+        safari_macos: "t13d1415h2_08a3f8541249_4387201bc910"
+    p0f_v3_tcp_stack_parameters:
+      windows_11_kernel:
+        initial_ttl: 128
+        tcp_window_size: 64240
+        wscale: 8
+        options: "MSS, NOP, WScale, NOP, NOP, SACK"
+      linux_kernel_container:
+        initial_ttl: 64
+        tcp_window_size: 29200
+        wscale: 7
+        options: "MSS, SACK, Timestamps, NOP, WScale"
+    cross_layer_discrepancy_tripwires:
+      user_agent_vs_tcp_os_mismatch: "RISK_SCORE_ADD_45"
+      user_agent_vs_ja4_client_mismatch: "GATEWAY_DROP_ISO_05"
+
   anti_detect_browser_mechanics:
     canvas_noise_injection:
       delta_rgb_variance: [-2, 2] # Deterministic pseudo-random seed
@@ -187,6 +228,7 @@ underground_spoofing_infrastructure:
       hardware_performance_discrepancy_threshold_ms: 45.0
 
 money_mule_laundering_pipeline:
+  grounding: "FinCEN Advisories FIN-2020-A003 / FIN-2021-A001 / FATF 2023 Money Mules"
   layer_1_ingress:
     channels: ["RENT_PORTAL", "INSTANT_P2P", "COLLUSIVE_POS"]
     dwell_time_seconds: [60, 180]
@@ -204,6 +246,77 @@ money_mule_laundering_pipeline:
     p2p_fiat_transfer_dwell_seconds: [180, 600]
     settlement_outcome: "PERMANENT_FIAT_TRAIL_SEVERED"
     final_destination: "UNHOSTED_NON_CUSTODIAL_WALLET_SE_ASIA_OR_DUBAI"
+  tier_1_smurfing_ingress:
+    account_type: "PERSONAL_CHECKING_OR_SAVINGS"
+    target_institutions: ["CHASE", "BOA", "WELLS_FARGO", "SBI", "HDFC"]
+    channels: ["INSTANT_P2P", "RENT_PORTAL", "COLLUSIVE_POS"]
+    fan_in_range: [3, 8] # 3 to 8 victim transfers
+    tranche_ceiling_usd_cents: 250000 # Under $2,500 AML reporting threshold
+    mule_retention_cut_ratio: 0.10 # 10% fee to Tier 1 mule
+    dwell_time_seconds_range: [300, 1800] # 5 to 30 minutes
+    mule_archetypes: ["UNWITTING_JOB_SCAM_VICTIM", "COMPLICIT_STUDENT_DROP"]
+  tier_2_aggregator_consolidation:
+    account_type: "COMMERCIAL_CORPORATE_SHELL_LLC"
+    consolidation_fan_in: [4, 10] # Pools 4-10 Tier 1 smurf flows
+    tranche_ceiling_usd_cents: 3500000 # $35,000 corporate tranches
+    aggregator_cut_ratio: 0.15 # 15% fee to Tier 2 aggregator
+    dwell_time_seconds_range: [1800, 7200] # 30 min to 2 hours
+    transfer_rails: ["FEDNOW", "RTP", "SAME_DAY_ACH", "IMPS", "RTGS"]
+  tier_3_crypto_severance_offramp:
+    exchange_venues: ["BINANCE_P2P", "BYBIT_P2P", "HUIONE_GUARANTEE"]
+    crypto_asset: "USDT_TRC20"
+    otc_merchant_spread_ratio: 0.05 # 5% spread haircut
+    dwell_time_seconds_range: [600, 1500] # 10 to 25 minutes
+    settlement_outcome: "PERMANENT_FIAT_TRAIL_SEVERED"
+    final_destination: "UNHOSTED_NON_CUSTODIAL_WALLET_SE_ASIA_OR_DUBAI"
+  cumulative_pipeline_friction_ratio: 0.30 # Total 30% lost across 3 hops
+  golden_window_fund_recovery_decay:
+    formula: "P(Recovery | t) = 0.82 * exp(-0.045 * t) for t <= 30m; 0.21 * exp(-0.015 * t) for 30 < t <= 120m; < 0.03 for t > 120m"
+    sub_30_minute_success_rate: 0.88 # 88% success if fiat severed within 30 min
+
+cybercrime_syndicate_taxonomy:
+  grounding: "CaaS (Cybercrime-as-a-Service) Specialization Architecture"
+  archetypes:
+    - id: "SYN_IAB_STEALER_BROKER"
+      name: "Initial Access Broker & Stealer Log Distributor"
+      ecosystem_role: "CREDENTIAL_HARVESTING_WHOLESALE"
+      botnet_type: "MALWARE_DROPPER_C2"
+      target_mccs: []
+      primary_liquidation: "CRYPTO_ESCROW_SALES"
+    - id: "SYN_CARD_CHECKER_BOTNET"
+      name: "Automated Micro-Auth Card Testing Botnet"
+      ecosystem_role: "RAPID_CARD_VALIDATION"
+      botnet_type: "DATACENTER_ROTATING_PROXY"
+      target_mccs: [8398, 4899, 5815]
+      ticket_range_cents: [50, 200]
+      primary_liquidation: "NONE_DISCOVERY_ONLY"
+    - id: "SYN_ATO_RETAIL_CREW"
+      name: "Account Takeover & Session Hijacking Syndicate"
+      ecosystem_role: "HIGH_TICKET_INVENTORY_DRAIN"
+      botnet_type: "RESIDENTIAL_STICKY_SOCKS5"
+      target_mccs: [5732, 5311, 5944]
+      ticket_range_cents: [150000, 450000]
+      primary_liquidation: "MULE_TIER_1_SMURF"
+    - id: "SYN_SYNTHETIC_BUSTOUT_RING"
+      name: "Synthetic Sleeper Bust-Out & ACH Float Syndicate"
+      ecosystem_role: "MAX_LIMIT_FLOAT_EXPLOITATION"
+      botnet_type: "RESIDENTIAL_STICKY_SOCKS5"
+      target_mccs: [6051, 5944, 5732]
+      ticket_range_cents: [1200000, 5000000]
+      primary_liquidation: "MULE_TIER_2_AGGREGATOR"
+    - id: "SYN_RESHIP_GIFT_DRAIN"
+      name: "CNP Reship Logistics & Gift Card Drain Ring"
+      ecosystem_role: "LIQUID_PHYSICAL_AND_DIGITAL_DRAIN"
+      botnet_type: "RESIDENTIAL_SOCKS5_MULTI_ASN"
+      target_mccs: [5947, 5732]
+      ticket_range_cents: [25000, 150000]
+      primary_liquidation: "SECONDARY_GIFT_CARD_P2P"
+    - id: "SYN_FINCEN_MULE_NETWORK"
+      name: "FinCEN/FATF 3-Tier Layering & Crypto Off-Ramp Network"
+      ecosystem_role: "FIAT_SEVERANCE_AND_LAUNDERING"
+      botnet_type: "RESIDENTIAL_STICKY_SOCKS5"
+      target_mccs: []
+      primary_liquidation: "BINANCE_BYBIT_P2P_USDT_TRC20"
 
 dynamic_adaptation_algorithms:
   balance_discovery_bisection_on_iso_51:

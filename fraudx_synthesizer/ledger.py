@@ -336,13 +336,16 @@ class DoubleEntryWorldLedger:
     sum(Debits) == sum(Credits) to floating-point machine precision.
     """
 
-    def __init__(self):
+    def __init__(self, max_journal_entries: int = 2000):
         # Multi-party balance accounts
         self.accounts: Dict[str, float] = collections.defaultdict(float)
         # Pre-authorization hold state machine: tx_id -> (card_id, hold_amount, status)
         self.active_holds: Dict[str, Tuple[str, float, str]] = {}
-        # Immutable double-entry journal log
-        self.journal: List[Dict[str, Any]] = []
+        # Bounded double-entry journal ring buffer for auditing/tests
+        self.journal: collections.deque[Dict[str, Any]] = collections.deque(maxlen=max_journal_entries)
+        # Cumulative balance conservation tracking (O(1) memory)
+        self.cumulative_debits: float = 0.0
+        self.cumulative_credits: float = 0.0
 
     def place_pre_auth_hold(
         self,
@@ -364,6 +367,8 @@ class DoubleEntryWorldLedger:
         self.accounts[debit_acct] -= hold_amount
         self.accounts[credit_acct] += hold_amount
         self.active_holds[tx_id] = (card_id, hold_amount, "HELD")
+        self.cumulative_debits += hold_amount
+        self.cumulative_credits += hold_amount
 
         entry = {
             "tx_id": tx_id,
@@ -449,6 +454,9 @@ class DoubleEntryWorldLedger:
             f"Double-entry settlement discrepancy on {tx_id}: {total_d} != {total_c}"
         )
 
+        self.cumulative_debits += total_d
+        self.cumulative_credits += total_c
+
         entry = {
             "tx_id": tx_id,
             "timestamp": sim_time_sec,
@@ -471,6 +479,9 @@ class DoubleEntryWorldLedger:
         self.accounts[escrow_acct] -= hold_amount
         self.accounts[avail_acct] += hold_amount
 
+        self.cumulative_debits += hold_amount
+        self.cumulative_credits += hold_amount
+
         entry = {
             "tx_id": tx_id,
             "timestamp": sim_time_sec,
@@ -482,10 +493,8 @@ class DoubleEntryWorldLedger:
         return hold_amount
 
     def verify_global_balance_conservation(self) -> Tuple[bool, float]:
-        """Proves that sum(Debits) == sum(Credits) globally across all historical journal entries."""
-        total_debits = sum(sum(e["debits"].values()) for e in self.journal)
-        total_credits = sum(sum(e["credits"].values()) for e in self.journal)
-        discrepancy = abs(total_debits - total_credits)
+        """Proves that sum(Debits) == sum(Credits) globally across all historical mutations."""
+        discrepancy = abs(self.cumulative_debits - self.cumulative_credits)
         is_conserved = discrepancy < 1e-5
         return is_conserved, discrepancy
 

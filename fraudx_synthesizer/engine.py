@@ -341,6 +341,9 @@ class DiscreteEventEngine:
         day_seconds = 86400.0
         start_time_us = int(start_time_seconds * 1_000_000)
 
+        # Clear leftover priority queue events to eliminate memory bloat across batches
+        self.event_queue.clear()
+
         # Reset states
         for c in self.cards:
             self.card_avail_time_us[c.card_id] = start_time_us
@@ -651,7 +654,22 @@ class DiscreteEventEngine:
                         world_center_lon=self.world.center_lon,
                     )
                 playbook_name = str(attack_params.get("playbook_name", attack_params.get("scenario_tag", "")))
-                syn = self.syndicate_registry.get_syndicate_for_playbook(playbook_name)
+                macro_opt = str(attack_params.get("macro_option", ""))
+                cand_amount = float(attack_params.get("amount", 0.0))
+                cand_mcc = int(attack_params.get("preferred_mcc", 0) or 0)
+                card_dossier = self.fraudster.dossiers.get(card.card_id) if hasattr(self.fraudster, "dossiers") else None
+                cand_tier = card_dossier.tier.value if (card_dossier and hasattr(card_dossier, "tier")) else ""
+                
+                if hasattr(self.syndicate_registry, "get_syndicate_for_intent"):
+                    syn = self.syndicate_registry.get_syndicate_for_intent(
+                        macro_option=macro_opt,
+                        mcc=cand_mcc,
+                        amount=cand_amount,
+                        credential_tier=cand_tier,
+                        playbook_name=playbook_name,
+                    )
+                else:
+                    syn = self.syndicate_registry.get_syndicate_for_playbook(playbook_name)
                 syn_telemetry = syn.sample_telemetry(self.rng) if syn else {}
 
                 amount = float(attack_params["amount"])
@@ -855,6 +873,13 @@ class DiscreteEventEngine:
                 ip_subnet_prefix=ip_subnet_prefix,
                 device_fingerprint_id=device_fingerprint_id,
             )
+
+            if is_fraud:
+                record["asn"] = syn_telemetry.get("asn", "")
+                record["isp"] = syn_telemetry.get("isp", "")
+                record["ja4_signature"] = syn_telemetry.get("ja4_signature", "")
+                record["mule_tier"] = syn_telemetry.get("mule_tier", "")
+                record["liquidation_channel"] = syn_telemetry.get("liquidation_channel", "")
 
             # Real-Time Risk Scoring & Causal Evaluation (Pre-Authorization)
             causal_gt = self.causal_engine.evaluate(

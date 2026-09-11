@@ -18,6 +18,7 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 
 from .engine import SimulationEngine
+from .graph_transformer import ForensicGraphTransformer
 from .syndicates import SyndicateRegistry
 
 
@@ -133,107 +134,9 @@ def compile_simulation_data_bundle(
         for h in range(24)
     ]
 
-    # 4. Cybercrime Threat Graph Construction
-    nodes_map: Dict[str, Dict[str, Any]] = {}
-    links_list: List[Dict[str, Any]] = []
-    link_counts: Dict[str, int] = Counter()
-    link_amounts: Dict[str, float] = defaultdict(float)
-
-    def add_node(node_id: str, label: str, node_type: str, details: Dict[str, Any]) -> None:
-        if node_id not in nodes_map:
-            nodes_map[node_id] = {
-                "id": node_id,
-                "label": label,
-                "type": node_type,
-                "radius": 14 if node_type == "syndicate" else (11 if node_type in ("botnet", "mule") else 8),
-                "details": details,
-            }
-
-    for r in fraud_records:
-        syn_id = str(r.get("syndicate_id", ""))
-        bot_id = str(r.get("botnet_cluster_id", ""))
-        card_id = str(r.get("card_id", ""))
-        merch_id = str(r.get("merchant_id", ""))
-        mule_id = str(r.get("beneficiary_account_id", ""))
-        amt = float(r.get("amount", 0.0))
-        resp = str(r.get("response_code", "00"))
-
-        if syn_id:
-            add_node(syn_id, syn_id, "syndicate", {
-                "Syndicate ID": syn_id,
-                "Role": "Adversarial Threat Group",
-            })
-
-        if bot_id:
-            add_node(bot_id, bot_id, "botnet", {
-                "Botnet Cluster": bot_id,
-                "IP Subnet": r.get("ip_subnet_prefix", "N/A"),
-                "Device Fingerprint": r.get("device_fingerprint_id", "N/A"),
-            })
-            if syn_id:
-                pair_key = f"{syn_id}->{bot_id}:OPERATES"
-                link_counts[pair_key] += 1
-
-        if card_id:
-            add_node(card_id, card_id, "card", {
-                "Card ID": card_id,
-                "Currency": r.get("currency", "USD"),
-                "Scenario": r.get("scenario_tag", ""),
-                "Latest Response": f"ISO {resp}",
-                "VAAI Score": r.get("vaai_score", "N/A"),
-            })
-            source_id = bot_id if bot_id else syn_id
-            if source_id:
-                pair_key = f"{source_id}->{card_id}:ATTACKS"
-                link_counts[pair_key] += 1
-                link_amounts[pair_key] += amt
-
-        if merch_id:
-            add_node(merch_id, merch_id, "merchant", {
-                "Merchant ID": merch_id,
-                "MCC": r.get("mcc", "N/A"),
-                "Channel": r.get("channel_type", "N/A"),
-            })
-            if card_id:
-                pair_key = f"{card_id}->{merch_id}:TRANSACTS"
-                link_counts[pair_key] += 1
-                link_amounts[pair_key] += amt
-
-        if mule_id:
-            add_node(mule_id, mule_id, "mule", {
-                "Beneficiary Mule": mule_id,
-                "Lien Status": r.get("cfcfrms_1930_lien_status", "NO_LIEN"),
-                "Liability Tier": r.get("rbi_liability_tier", "N/A"),
-            })
-            if card_id:
-                pair_key = f"{card_id}->{mule_id}:CASH_OUT"
-                link_counts[pair_key] += 1
-                link_amounts[pair_key] += amt
-
-    for key, cnt in link_counts.items():
-        src_dst, rel_type = key.split(":")
-        src, dst = src_dst.split("->")
-        if src in nodes_map and dst in nodes_map:
-            links_list.append({
-                "source": src,
-                "target": dst,
-                "type": rel_type,
-                "count": cnt,
-                "amount": round(link_amounts[key], 2),
-            })
-
-    threat_graph = {
-        "nodes": list(nodes_map.values()),
-        "links": links_list,
-        "summary": {
-            "syndicates_count": sum(1 for n in nodes_map.values() if n["type"] == "syndicate"),
-            "botnets_count": sum(1 for n in nodes_map.values() if n["type"] == "botnet"),
-            "cards_count": sum(1 for n in nodes_map.values() if n["type"] == "card"),
-            "merchants_count": sum(1 for n in nodes_map.values() if n["type"] == "merchant"),
-            "mules_count": sum(1 for n in nodes_map.values() if n["type"] == "mule"),
-            "total_links": len(links_list),
-        },
-    }
+    # 4. Cybercrime Threat Graph Construction (Hierarchical Forensic Rollup)
+    transformer = ForensicGraphTransformer(canvas_width=1400, canvas_height=900)
+    threat_graph = transformer.transform(fraud_records)
 
     sample_pool = fraud_records + hard_neg_records
     remaining_slots = max(10, max_table_records - len(sample_pool))
@@ -590,7 +493,7 @@ def render_standalone_html(data_bundle: Dict[str, Any], title: str = "FraudxAI S
       <div class="metric-card">
         <div class="metric-title">Threat Graph Enclave</div>
         <div class="metric-val" style="color: var(--accent-purple);">{data_bundle['threat_graph']['summary']['syndicates_count']} Syndicates</div>
-        <div class="metric-sub">{data_bundle['threat_graph']['summary']['botnets_count']} Botnets, {data_bundle['threat_graph']['summary']['cards_count']} Cards, {data_bundle['threat_graph']['summary']['mules_count']} Mules</div>
+        <div class="metric-sub">{data_bundle['threat_graph']['summary'].get('campaigns_count', 0)} Campaigns, {data_bundle['threat_graph']['summary'].get('bridge_cards_count', 0)} Pivot Cards ({data_bundle['threat_graph']['summary'].get('raw_cards_represented', 0):,} Cards Rollup), {data_bundle['threat_graph']['summary']['mules_count']} Mules</div>
       </div>
     </div>
 
@@ -599,10 +502,11 @@ def render_standalone_html(data_bundle: Dict[str, Any], title: str = "FraudxAI S
       <div class="graph-container">
         <div class="graph-legend">
           <div class="legend-item"><div class="legend-dot" style="background: #f43f5e;"></div> Syndicate Group</div>
-          <div class="legend-item"><div class="legend-dot" style="background: #fb923c;"></div> Botnet / Proxy Cluster</div>
-          <div class="legend-item"><div class="legend-dot" style="background: #a855f7;"></div> Compromised Card Target</div>
-          <div class="legend-item"><div class="legend-dot" style="background: #38bdf8;"></div> Merchant / MCC Terminal</div>
-          <div class="legend-item"><div class="legend-dot" style="background: #10b981;"></div> Cash-Out Mule Account</div>
+          <div class="legend-item"><div class="legend-dot" style="background: #fb923c;"></div> Botnet / Proxy Pool</div>
+          <div class="legend-item"><div class="legend-dot" style="background: #8b5cf6;"></div> Breach Campaign Batch (N Cards)</div>
+          <div class="legend-item"><div class="legend-dot" style="background: #f59e0b; transform: rotate(45deg); border-radius: 2px;"></div> Forensic Bridge Card (Pivot)</div>
+          <div class="legend-item"><div class="legend-dot" style="background: #38bdf8;"></div> Merchant Target</div>
+          <div class="legend-item"><div class="legend-dot" style="background: #10b981;"></div> Cash-Out Mule Ring</div>
         </div>
 
         <div id="inspector" class="inspector-panel">
@@ -678,25 +582,53 @@ def render_standalone_html(data_bundle: Dict[str, Any], title: str = "FraudxAI S
       if (tabId === 'tab-table') initTable();
     }}
 
-    // 1. Force-Directed Threat Graph
+    // 1. Multi-Focal Orbital Threat Graph Engine
     let graphInitialized = false;
     function initThreatGraph() {{
       if (graphInitialized) return;
       graphInitialized = true;
 
       const svg = d3.select("#threat-svg");
-      const width = document.querySelector(".graph-container").clientWidth;
-      const height = document.querySelector(".graph-container").clientHeight;
+      const container = document.querySelector(".graph-container");
+      const width = container.clientWidth || 1400;
+      const height = container.clientHeight || 900;
 
       const g = svg.append("g");
-      const zoom = d3.zoom().scaleExtent([0.1, 4]).on("zoom", (event) => {{
+      const zoom = d3.zoom().scaleExtent([0.15, 5]).on("zoom", (event) => {{
         g.attr("transform", event.transform);
       }});
       svg.call(zoom);
 
+      // SVG Arrowhead Marker Definitions
+      const defs = svg.append("defs");
+      const linkColors = {{
+        OPERATES: "#f43f5e",
+        CONTROLS: "#fb923c",
+        ATTACKS: "#f59e0b",
+        TRANSACTS: "#38bdf8",
+        CASH_OUT: "#10b981"
+      }};
+
+      Object.entries(linkColors).forEach(([type, color]) => {{
+        defs.append("marker")
+          .attr("id", `arrow-${{type}}`)
+          .attr("viewBox", "0 -5 10 10")
+          .attr("refX", 18)
+          .attr("refY", 0)
+          .attr("markerWidth", 6)
+          .attr("markerHeight", 6)
+          .attr("orient", "auto")
+          .append("path")
+          .attr("d", "M0,-4L8,0L0,4")
+          .attr("fill", color)
+          .attr("opacity", 0.6);
+      }});
+
       const colorMap = {{
         syndicate: "#f43f5e",
         botnet: "#fb923c",
+        breach_campaign: "#8b5cf6",
+        bridge_card: "#f59e0b",
         card: "#a855f7",
         merchant: "#38bdf8",
         mule: "#10b981"
@@ -706,47 +638,147 @@ def render_standalone_html(data_bundle: Dict[str, Any], title: str = "FraudxAI S
       const links = DATA.threat_graph.links.map(d => Object.create(d));
 
       const simulation = d3.forceSimulation(nodes)
-        .force("link", d3.forceLink(links).id(d => d.id).distance(60))
-        .force("charge", d3.forceManyBody().strength(-120))
-        .force("center", d3.forceCenter(width / 2, height / 2))
-        .force("collision", d3.forceCollide().radius(d => d.radius + 8));
+        .force("link", d3.forceLink(links).id(d => d.id).distance(d => {{
+          if (d.type === 'OPERATES') return 75;
+          if (d.type === 'CONTROLS') return 90;
+          if (d.type === 'ATTACKS') return 80;
+          if (d.type === 'TRANSACTS') return 125;
+          if (d.type === 'CASH_OUT') return 110;
+          return 85;
+        }}).strength(0.35))
+        .force("charge", d3.forceManyBody().strength(d => d.type === 'syndicate' ? -500 : -130))
+        .force("x", d3.forceX(d => d.target_x || width / 2).strength(0.16))
+        .force("y", d3.forceY(d => d.target_y || height / 2).strength(0.16))
+        .force("collision", d3.forceCollide().radius(d => (d.radius || 10) + 14));
+
+      // Quadratic Bézier Curved Links
+      function linkArc(d) {{
+        const dx = d.target.x - d.source.x;
+        const dy = d.target.y - d.source.y;
+        const dr = Math.sqrt(dx * dx + dy * dy);
+        if (dr === 0) return `M${{d.source.x}},${{d.source.y}} L${{d.target.x}},${{d.target.y}}`;
+        const curv = d.curvature || 0;
+        if (Math.abs(curv) < 1) {{
+          return `M${{d.source.x}},${{d.source.y}} L${{d.target.x}},${{d.target.y}}`;
+        }}
+        const mx = (d.source.x + d.target.x) / 2;
+        const my = (d.source.y + d.target.y) / 2;
+        const nx = -dy / dr;
+        const ny = dx / dr;
+        const cx = mx + nx * curv;
+        const cy = my + ny * curv;
+        return `M${{d.source.x}},${{d.source.y}} Q${{cx}},${{cy}} ${{d.target.x}},${{d.target.y}}`;
+      }}
 
       const link = g.append("g")
-        .selectAll("line")
+        .selectAll("path")
         .data(links)
-        .join("line")
-        .attr("stroke", "rgba(255,255,255,0.15)")
-        .attr("stroke-width", d => Math.min(4, Math.max(1, d.count)));
+        .join("path")
+        .attr("fill", "none")
+        .attr("stroke", d => linkColors[d.type] || "rgba(255,255,255,0.2)")
+        .attr("stroke-opacity", 0.45)
+        .attr("stroke-width", d => d.stroke_width || 1.5)
+        .attr("marker-end", d => `url(#arrow-${{d.type}})`);
 
-      const node = g.append("g")
-        .selectAll("circle")
+      // Node Glyphs Group
+      const nodeGroup = g.append("g")
+        .selectAll("g")
         .data(nodes)
-        .join("circle")
-        .attr("r", d => d.radius)
-        .attr("fill", d => colorMap[d.type] || "#ffffff")
-        .attr("stroke", "#0a0e17")
-        .attr("stroke-width", 2)
+        .join("g")
+        .attr("class", "threat-node")
+        .style("cursor", "pointer")
         .call(d3.drag()
           .on("start", dragstarted)
           .on("drag", dragged)
           .on("end", dragended));
 
-      node.on("click", (event, d) => {{
+      nodeGroup.each(function(d) {{
+        const el = d3.select(this);
+        const r = d.radius || 10;
+
+        if (d.type === 'bridge_card') {{
+          // Glowing Amber Diamond Glyph for Pivot Cards
+          el.append("rect")
+            .attr("width", r * 1.5)
+            .attr("height", r * 1.5)
+            .attr("x", -r * 0.75)
+            .attr("y", -r * 0.75)
+            .attr("transform", "rotate(45)")
+            .attr("fill", "#f59e0b")
+            .attr("stroke", "#fef08a")
+            .attr("stroke-width", 2)
+            .style("filter", "drop-shadow(0 0 6px rgba(245, 158, 11, 0.85))");
+        }} else if (d.type === 'breach_campaign') {{
+          // Concentric Purple Circle with Inner Card Count Badge
+          el.append("circle")
+            .attr("r", r)
+            .attr("fill", "#8b5cf6")
+            .attr("stroke", "#c4b5fd")
+            .attr("stroke-width", 2.5)
+            .style("filter", "drop-shadow(0 0 5px rgba(139, 92, 246, 0.5))");
+
+          const countLabel = d.card_count >= 1000 ? Math.round(d.card_count / 1000) + 'k' : d.card_count;
+          el.append("text")
+            .attr("text-anchor", "middle")
+            .attr("dy", "0.35em")
+            .attr("fill", "#ffffff")
+            .attr("font-size", r > 16 ? "10px" : "8.5px")
+            .attr("font-weight", "bold")
+            .text(countLabel);
+        }} else if (d.type === 'syndicate') {{
+          // Prominent Red Syndicate Headquarters Node
+          el.append("circle")
+            .attr("r", r)
+            .attr("fill", "#f43f5e")
+            .attr("stroke", "#fda4af")
+            .attr("stroke-width", 3)
+            .style("filter", "drop-shadow(0 0 10px rgba(244, 63, 94, 0.7))");
+
+          el.append("text")
+            .attr("text-anchor", "middle")
+            .attr("dy", "0.35em")
+            .attr("fill", "#ffffff")
+            .attr("font-size", "10px")
+            .attr("font-weight", "bold")
+            .text(d.id.substring(4, 7));
+        }} else if (d.type === 'mule') {{
+          // Emerald Green Mule Ring Node
+          el.append("circle")
+            .attr("r", r)
+            .attr("fill", "#10b981")
+            .attr("stroke", "#a7f3d0")
+            .attr("stroke-width", 2)
+            .style("filter", "drop-shadow(0 0 5px rgba(16, 185, 129, 0.5))");
+        }} else {{
+          // Standard Merchant / Botnet Circle
+          el.append("circle")
+            .attr("r", r)
+            .attr("fill", colorMap[d.type] || "#ffffff")
+            .attr("stroke", "#0a0e17")
+            .attr("stroke-width", 2);
+        }}
+
+        // Text Labels for Anchor Nodes
+        if (['syndicate', 'botnet', 'merchant'].includes(d.type)) {{
+          el.append("text")
+            .attr("text-anchor", "middle")
+            .attr("dy", r + 13)
+            .attr("fill", "#94a3b8")
+            .attr("font-size", "9.5px")
+            .attr("font-weight", "500")
+            .text(d.label.length > 22 ? d.label.substring(0, 20) + '...' : d.label);
+        }}
+      }});
+
+      nodeGroup.on("click", (event, d) => {{
         showInspector(d);
       }});
 
-      node.append("title").text(d => `${{d.type.toUpperCase()}}: ${{d.label}}`);
+      nodeGroup.append("title").text(d => `${{d.type.toUpperCase()}}: ${{d.label}}`);
 
       simulation.on("tick", () => {{
-        link
-          .attr("x1", d => d.source.x)
-          .attr("y1", d => d.source.y)
-          .attr("x2", d => d.target.x)
-          .attr("y2", d => d.target.y);
-
-        node
-          .attr("cx", d => d.x)
-          .attr("cy", d => d.y);
+        link.attr("d", linkArc);
+        nodeGroup.attr("transform", d => `translate(${{d.x}},${{d.y}})`);
       }});
 
       function dragstarted(event, d) {{
@@ -1021,49 +1053,52 @@ def compile_bundle_from_metadata(
     ]
 
     # Threat Graph Construction from Sample
-    raw_nodes = []
-    raw_links = []
-    if threat_graph_sample:
-        raw_nodes = threat_graph_sample.get("nodes", [])
-        raw_links = threat_graph_sample.get("links", [])
+    if threat_graph_sample and any(n.get("type") in ("breach_campaign", "bridge_card", "pivot_card") for n in threat_graph_sample.get("nodes", [])):
+        threat_graph = threat_graph_sample
+    else:
+        raw_nodes = []
+        raw_links = []
+        if threat_graph_sample:
+            raw_nodes = threat_graph_sample.get("nodes", [])
+            raw_links = threat_graph_sample.get("links", [])
 
-    # Filter to top max_nodes
-    if len(raw_nodes) > max_nodes:
-        raw_nodes = sorted(raw_nodes, key=lambda n: n.get("volume", 0), reverse=True)[:max_nodes]
-    retained_ids = {n["id"] for n in raw_nodes}
+        # Filter to top max_nodes
+        if len(raw_nodes) > max_nodes:
+            raw_nodes = sorted(raw_nodes, key=lambda n: n.get("volume", 0), reverse=True)[:max_nodes]
+        retained_ids = {n["id"] for n in raw_nodes}
 
-    filtered_links = []
-    for l in raw_links:
-        if l["source"] in retained_ids and l["target"] in retained_ids:
-            filtered_links.append(l)
+        filtered_links = []
+        for l in raw_links:
+            if l["source"] in retained_ids and l["target"] in retained_ids:
+                filtered_links.append(l)
 
-    formatted_nodes = []
-    for n in raw_nodes:
-        n_type = str(n.get("type", "card")).lower()
-        formatted_nodes.append({
-            "id": n["id"],
-            "label": n.get("label", n["id"]),
-            "type": n_type,
-            "radius": 14 if n_type == "syndicate" else (11 if n_type in ("botnet", "mule_ring", "mule") else 8),
-            "details": {
-                "Entity ID": n["id"],
-                "Entity Type": n_type.upper(),
-                "Associated Volume": n.get("volume", 1),
+        formatted_nodes = []
+        for n in raw_nodes:
+            n_type = str(n.get("type", "card")).lower()
+            formatted_nodes.append({
+                "id": n["id"],
+                "label": n.get("label", n["id"]),
+                "type": n_type,
+                "radius": 14 if n_type == "syndicate" else (11 if n_type in ("botnet", "mule_ring", "mule") else 8),
+                "details": {
+                    "Entity ID": n["id"],
+                    "Entity Type": n_type.upper(),
+                    "Associated Volume": n.get("volume", 1),
+                },
+            })
+
+        threat_graph = {
+            "nodes": formatted_nodes,
+            "links": filtered_links,
+            "summary": {
+                "syndicates_count": sum(1 for n in formatted_nodes if n["type"] == "syndicate"),
+                "botnets_count": sum(1 for n in formatted_nodes if n["type"] == "botnet"),
+                "cards_count": sum(1 for n in formatted_nodes if n["type"] == "card"),
+                "merchants_count": sum(1 for n in formatted_nodes if n["type"] == "merchant"),
+                "mules_count": sum(1 for n in formatted_nodes if "mule" in n["type"]),
+                "total_links": len(filtered_links),
             },
-        })
-
-    threat_graph = {
-        "nodes": formatted_nodes,
-        "links": filtered_links,
-        "summary": {
-            "syndicates_count": sum(1 for n in formatted_nodes if n["type"] == "syndicate"),
-            "botnets_count": sum(1 for n in formatted_nodes if n["type"] == "botnet"),
-            "cards_count": sum(1 for n in formatted_nodes if n["type"] == "card"),
-            "merchants_count": sum(1 for n in formatted_nodes if n["type"] == "merchant"),
-            "mules_count": sum(1 for n in formatted_nodes if "mule" in n["type"]),
-            "total_links": len(filtered_links),
-        },
-    }
+        }
 
     # Compute hard negative count from macro options
     hard_neg_count = sum(cnt for sc, cnt in meta.get("macro_options", {}).items() if "HARD_NEGATIVE" in sc)
@@ -1117,6 +1152,32 @@ def generate_visualization_from_dir(
             if w_graph.exists():
                 threat_sample = json.loads(w_graph.read_text(encoding="utf-8"))
                 break
+
+    # Ensure forensic threat graph is populated
+    is_forensic = (
+        threat_sample is not None
+        and any(n.get("type") in ("breach_campaign", "bridge_card") for n in threat_sample.get("nodes", []))
+    )
+    if not is_forensic:
+        try:
+            import polars as pl
+            from fraudx_synthesizer.graph_transformer import ForensicGraphTransformer
+            threat_pqs = sorted(list(in_path.glob("**/threat_intel_graph/*.parquet")))
+            if not threat_pqs:
+                threat_pqs = sorted(list(in_path.glob("**/auth_stream/*.parquet")))
+            records = []
+            if threat_pqs:
+                for pq in threat_pqs:
+                    df = pl.read_parquet(pq)
+                    if "is_fraud" in df.columns:
+                        df = df.filter(pl.col("is_fraud") == 1)
+                    records.extend(df.head(350).to_dicts())
+                    if len(records) >= 3500:
+                        break
+            if records:
+                threat_sample = ForensicGraphTransformer().transform(records)
+        except Exception:
+            pass
 
     # Sample a few records from parquet if available
     sample_records = []

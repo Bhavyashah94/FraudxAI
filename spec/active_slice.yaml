@@ -2,39 +2,43 @@
 # Read this file at the start of any new session or task to immediately anchor context.
 
 current_slice:
-  id: "slice-11-first-principles-adversarial-intent-mesh"
-  title: "First-Principles Computational Adversarial Threat Modeling & Intent Optimization Mesh"
+  id: "slice-12-adversarial-syndicate-ecology-and-forensic-graph"
+  title: "Adversarial Syndicate Ecology, Forensic Graph Rollup & Multi-Focal Orbital D3 Engine"
   status: "verified"  # [planning, in_progress, testing, verified]
   objective: >
-    Replace hardcoded adversarial attack playbooks with First-Principles Computational
-    Adversarial Threat Modeling & Intent Optimization:
-    1. Information Supply Chain: Incomplete, noisy, decaying credentials (Track 2, Fullz,
-       Session Cookies, Device Tokens, VCNs) governed by discrete survival hazard rates.
-    2. Physical & Economic Constraint Mesh: Proxy costs, JA3/JA4 TLS signature consistency,
-       Canvas repeatability, mule haircuts (15-35%), and kinematic velocity bounds (<=900 km/h).
-    3. Multi-Hop Banking Switch & 14-Code ISO 8583 Palette: Gateway -> Network In-Flight ML (VAAI) ->
-       3DS ACS -> Issuer Host, including ISO 10 Partial Approval (exact balance discovery oracle).
-    4. Hierarchical Semi-Markov Options Lattice & Information-Directed Sampling (IDS):
-       Macro-options (Probe, Incubate, Bisect Drain, Harvest, Purge) with low-level parameter
-       selection in vectorized NumPy (<100us/tx), driving spontaneous probing via closed-form
-       mutual information without magic reward bonuses.
-    5. Anti-Rollback Engineering Invariants: Strict decoupling of feedback from action selection;
-       zero hardcoded next-action mutators; 5 automated falsification tests (Emergence, Invariants,
-       Purge, Honeypot Inversion, and Darknet Price Elasticity).
+    Eliminate the 4 critical domain and topological unrealisms uncovered in the 1M-transaction Threat Graph:
+    1. Multi-Threat Syndicate Ecology: Replace monolithic 2-syndicate infrastructure with 6+ empirical
+       specialized threat groups (IAB/Stealer Brokers, Card Checking Botnets, ATO Retail Crews, Synthetic
+       Bust-Out Rings, CNP Reship & Gift Card Drain Rings, and FinCEN 3-Tier Layering Mule Networks).
+    2. Infrastructure & Telemetry Grounding: Authentic residential proxy pools (AS7922 Comcast, AS7018 AT&T,
+       AS55836 Jio, AS45609 Airtel), subnet CIDR fragmentation, and FoxIO JA4 TLS / p0f v3 TCP cross-layer telemetry.
+    3. Forensic Graph Rollup (Eliminating Star-Graph Dandelion Collapse): Hierarchical equivalence rollup
+       contracting degree-1 leaf cards into Breach Campaign Nodes (R proportional to log10 N_cards with inner count
+       badge and outer approval donut ring) while elevating cross-syndicate/cross-merchant pivot cards into glowing
+       amber diamond Bridge Nodes.
+    4. Edge Consolidation & Bézier Arcs (Eliminating Whiteout Spotlight): Consolidate parallel transaction lines
+       into weighted bidirectional links with logarithmic stroke width, inverse-density opacity, and quadratic Bézier arcs.
+    5. Multi-Focal Orbital Constellations: Multi-anchor radial D3 physics cleanly separating syndicates into distinct
+       island constellations across the canvas instead of force-collapsing into a single circular blob.
 
 target_spec_files:
   - "spec/04_adversarial_playbooks.yaml"
   - "spec/06_adversarial_intent_mesh.yaml"
 
 acceptance_criteria:
-  - canonical_specification_06_authored_and_grounded: true
-  - analytical_belief_state_and_ids_optimizer_implemented: true
-  - four_hop_switch_and_14_iso_codes_implemented: true
-  - five_falsification_tests_passed: true
-  - all_unit_and_regression_tests_passed: true
-  - independent_subagent_audits_passed: true
+  - canonical_specification_04_updated: true
+  - multi_syndicate_registry_and_mule_rings_implemented: true
+  - forensic_graph_transformer_with_breach_rollup_and_bridge_elevation_implemented: true
+  - edge_consolidation_and_multi_focal_d3_forces_implemented: true
+  - unit_tests_and_entropy_falsification_passed: true
+  - scale_simulation_1M_recompiled_and_verified: true
 
 previous_slices:
+  - id: "slice-11-first-principles-adversarial-intent-mesh"
+    title: "First-Principles Computational Adversarial Threat Modeling & Intent Optimization Mesh"
+    status: "verified"
+    audited_by: "Subagents V1, V2, V3 (Threat Intel, Banking Rails, Game Theory)"
+    verdict: "PASS (CERTIFIED, Invariants 1-4, Anti-Rollback, 5 Falsification Tests 100% Green)"
   - id: "slice-10-tripartite-industrial-benchmark-suite"
     title: "Phase 5: Tripartite Industrial Benchmark Suite & Automated Benchmark Leaderboard"
     status: "verified"

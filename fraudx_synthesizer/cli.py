@@ -320,7 +320,7 @@ def main() -> None:
     p_gen.add_argument("-o", "--output", type=str, default="synthetic_transactions.csv", help="Output file (.csv, .json, .jsonl) or directory for parallel runs")
     p_gen.add_argument("--parallel", action="store_true", default=False, help="Run multi-core parallel simulation pipeline")
     p_gen.add_argument("--workers", type=int, default=None, help="Number of parallel worker processes (defaults to CPU count - 2)")
-    p_gen.add_argument("--chunk-size", type=int, default=50000, help="Batch chunk size for streaming disk flushes")
+    p_gen.add_argument("--chunk-size", type=int, default=10000, help="Batch chunk size for streaming disk flushes")
     p_gen.add_argument("--include-disputes", action="store_true", default=False, help="Include post-authorization dispute and chargeback lifecycle columns in master output")
     p_gen.add_argument("--adversary-mode", type=str, choices=["intent", "playbook"], default="intent", help="Adversary decision architecture: 'intent' (first-principles POMDP/IDS) or 'playbook' (legacy static rules)")
     p_gen.add_argument("--export-institutional-views", action="store_true", default=False, help="Export partitioned institutional banking warehouse feeds")

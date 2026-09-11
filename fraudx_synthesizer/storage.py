@@ -137,7 +137,9 @@ class SimulationAggregates:
     # Top sampled threat interactions for graph visualization (capped to avoid memory blowup)
     threat_edges: List[Dict[str, Any]] = field(default_factory=list)
     threat_nodes_map: Dict[str, Dict[str, Any]] = field(default_factory=dict)
-    max_retained_nodes: int = 25000
+    threat_sample_records: List[Dict[str, Any]] = field(default_factory=list)
+    max_retained_nodes: int = 5000
+    max_sample_records: int = 1500
 
     def update(self, records: List[Dict[str, Any]]) -> None:
         """Incrementally updates running aggregates from a batch of transaction records."""
@@ -178,6 +180,10 @@ class SimulationAggregates:
                 self.botnets[bot] += 1
                 self.merchants_fraud[mer] += amt
                 self.mules_fraud[mule] += amt
+
+                # Store sample fraud records for forensic graph transformation
+                if len(self.threat_sample_records) < self.max_sample_records:
+                    self.threat_sample_records.append(r)
                 
                 # Graph sampling for visualizer
                 if len(self.threat_nodes_map) < self.max_retained_nodes:
@@ -256,8 +262,8 @@ class StreamingDatasetWriter:
         output_dir: str | Path,
         export_parquet: bool = True,
         export_csv: bool = False,
-        chunk_size: int = 50000,
-        max_retained_nodes: int = 25000,
+        chunk_size: int = 10000,
+        max_retained_nodes: int = 5000,
     ):
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
@@ -315,11 +321,16 @@ class StreamingDatasetWriter:
         with open(meta_path, "w", encoding="utf-8") as f:
             json.dump(meta, f, indent=2)
 
-        # Also write sampled threat graph for direct visualization consumption
-        graph_data = {
-            "nodes": list(self.aggregates.threat_nodes_map.values()),
-            "links": self.aggregates.threat_edges,
-        }
+        # Write forensic threat graph for direct visualization consumption
+        if self.aggregates.threat_sample_records:
+            from fraudx_synthesizer.graph_transformer import ForensicGraphTransformer
+            transformer = ForensicGraphTransformer()
+            graph_data = transformer.transform(self.aggregates.threat_sample_records)
+        else:
+            graph_data = {
+                "nodes": list(self.aggregates.threat_nodes_map.values()),
+                "links": self.aggregates.threat_edges,
+            }
         graph_path = self.output_dir / "threat_graph_sample.json"
         with open(graph_path, "w", encoding="utf-8") as f:
             json.dump(graph_data, f, indent=2)
@@ -347,9 +358,11 @@ def _worker_simulation_task(
         chunk_size=chunk_size,
     )
 
-    # Scale population proportionally with safe per-process memory caps
-    n_cards = min(5000, max(500, n_tx_target // 20))
-    n_merchants = min(500, max(50, n_tx_target // 200))
+    import gc
+
+    # Scale population proportionally with safe per-process memory caps (<150MB RSS per worker)
+    n_cards = min(1500, max(250, n_tx_target // 50))
+    n_merchants = min(300, max(40, n_tx_target // 300))
 
     engine = DiscreteEventEngine(
         n_cards=n_cards,
@@ -369,6 +382,8 @@ def _worker_simulation_task(
         )
         writer.write_chunk(batch)
         generated_so_far += len(batch)
+        del batch
+        gc.collect()
 
     summary = writer.finalize()
     return {
@@ -388,12 +403,13 @@ class ParallelSimulationCoordinator:
         num_workers: Optional[int] = None,
         region: str = "US",
         output_dir: str | Path = "data/simulation_run",
-        chunk_size: int = 50000,
+        chunk_size: int = 10000,
         adversary_mode: str = "intent",
         base_seed: int = 42,
     ):
         self.total_transactions = total_transactions
-        self.num_workers = num_workers or max(1, min(14, os.cpu_count() or 4))
+        # Safe default of max 4 workers to guarantee total memory stays < 1.5 GB on laptops/workstations
+        self.num_workers = num_workers or max(1, min(4, (os.cpu_count() or 4) // 2))
         self.region = region.upper()
         self.output_dir = Path(output_dir)
         self.chunk_size = chunk_size
@@ -526,5 +542,33 @@ class ParallelSimulationCoordinator:
         master["top_botnets"] = dict(sorted(master["top_botnets"].items(), key=lambda x: x[1], reverse=True)[:25])
         master["top_target_merchants"] = dict(sorted(master["top_target_merchants"].items(), key=lambda x: x[1], reverse=True)[:25])
         master["top_mule_rings"] = dict(sorted(master["top_mule_rings"].items(), key=lambda x: x[1], reverse=True)[:25])
+
+        # Consolidate forensic threat graph across worker shards
+        try:
+            from fraudx_synthesizer.graph_transformer import ForensicGraphTransformer
+            consolidated_fraud: List[Dict[str, Any]] = []
+            for r in worker_results:
+                w_dir = Path(r["worker_dir"])
+                pq_files = sorted(list((w_dir / "threat_intel_graph").glob("*.parquet")))
+                for pq in pq_files:
+                    df = pl.read_parquet(pq)
+                    if "is_fraud" in df.columns:
+                        df_f = df.filter(pl.col("is_fraud") == 1).head(350)
+                    else:
+                        df_f = df.head(350)
+                    consolidated_fraud.extend(df_f.to_dicts())
+                    if len(consolidated_fraud) >= 4000:
+                        break
+                if len(consolidated_fraud) >= 4000:
+                    break
+
+            if consolidated_fraud:
+                transformer = ForensicGraphTransformer()
+                master_graph = transformer.transform(consolidated_fraud)
+                master_graph_path = self.output_dir / "threat_graph_sample.json"
+                with open(master_graph_path, "w", encoding="utf-8") as f:
+                    json.dump(master_graph, f, indent=2)
+        except Exception:
+            pass
 
         return master

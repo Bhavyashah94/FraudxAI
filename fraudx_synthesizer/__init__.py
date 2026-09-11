@@ -71,6 +71,7 @@ from .syndicates import (
     SyndicateEntity,
     SyndicateRegistry,
 )
+from .graph_transformer import ForensicGraphTransformer
 from .hawkes import (
     ADVERSARY_HAWKES_PROFILES,
     PERSONA_HAWKES_PROFILES,
@@ -175,6 +176,7 @@ __all__ = [
     "compile_simulation_data_bundle",
     "generate_visualization_file",
     "render_standalone_html",
+    "ForensicGraphTransformer",
     "StreamingDatasetWriter",
     "ParallelSimulationCoordinator",
     "SimulationAggregates",
