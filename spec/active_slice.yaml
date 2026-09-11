@@ -2,38 +2,49 @@
 # Read this file at the start of any new session or task to immediately anchor context.
 
 current_slice:
-  id: "slice-12-adversarial-syndicate-ecology-and-forensic-graph"
-  title: "Adversarial Syndicate Ecology, Forensic Graph Rollup & Multi-Focal Orbital D3 Engine"
+  id: "slice-13-payment-rail-authorization-calibration"
+  title: "Payment Rail Authorization Calibration, Channel-Differentiated Velocity & Single Switch Unification"
   status: "verified"  # [planning, in_progress, testing, verified]
-  objective: >
-    Eliminate the 4 critical domain and topological unrealisms uncovered in the 1M-transaction Threat Graph:
-    1. Multi-Threat Syndicate Ecology: Replace monolithic 2-syndicate infrastructure with 6+ empirical
-       specialized threat groups (IAB/Stealer Brokers, Card Checking Botnets, ATO Retail Crews, Synthetic
-       Bust-Out Rings, CNP Reship & Gift Card Drain Rings, and FinCEN 3-Tier Layering Mule Networks).
-    2. Infrastructure & Telemetry Grounding: Authentic residential proxy pools (AS7922 Comcast, AS7018 AT&T,
-       AS55836 Jio, AS45609 Airtel), subnet CIDR fragmentation, and FoxIO JA4 TLS / p0f v3 TCP cross-layer telemetry.
-    3. Forensic Graph Rollup (Eliminating Star-Graph Dandelion Collapse): Hierarchical equivalence rollup
-       contracting degree-1 leaf cards into Breach Campaign Nodes (R proportional to log10 N_cards with inner count
-       badge and outer approval donut ring) while elevating cross-syndicate/cross-merchant pivot cards into glowing
-       amber diamond Bridge Nodes.
-    4. Edge Consolidation & Bézier Arcs (Eliminating Whiteout Spotlight): Consolidate parallel transaction lines
-       into weighted bidirectional links with logarithmic stroke width, inverse-density opacity, and quadratic Bézier arcs.
-    5. Multi-Focal Orbital Constellations: Multi-anchor radial D3 physics cleanly separating syndicates into distinct
-       island constellations across the canvas instead of force-collapsing into a single circular blob.
+  verification_metrics:
+    total_transactions: 1000000
+    approval_rate: 88.25%  # Targeted window: 88.0% - 92.5%
+    approved_count: 882510
+    declined_count: 117490
+    top_decline: "ISO 51 (Insufficient Funds): 87,090 (74.1% of all declines)"
+    iso_65_velocity_declines: "9,948 (8.47% of declines, < 1.0% of total transactions)"
+    fraud_prevalence: 3.05% (30,540 fraud txs)
+    wall_time: 812.02s (13.5 minutes across 4 workers)
+    throughput: 1231.5 tx/sec
+    threat_graph:
+      syndicates: 4
+      botnets: 5
+      unrolled_active_cards: 35
+      pivot_bridge_cards: 317
+      breach_campaigns: 7
+      targeted_merchants: 427
+      cash_out_mules: 51
+      zero_degree_orphan_nodes: 0  # 100% connected, no free-floating donut
+      total_links: 2645
+  target_spec_files:
+    - "spec/03_payment_rail_gaps.yaml"
+    - "spec/05_india_payment_rails.yaml"
 
-target_spec_files:
-  - "spec/04_adversarial_playbooks.yaml"
-  - "spec/06_adversarial_intent_mesh.yaml"
-
-acceptance_criteria:
-  - canonical_specification_04_updated: true
-  - multi_syndicate_registry_and_mule_rings_implemented: true
-  - forensic_graph_transformer_with_breach_rollup_and_bridge_elevation_implemented: true
-  - edge_consolidation_and_multi_focal_d3_forces_implemented: true
-  - unit_tests_and_entropy_falsification_passed: true
-  - scale_simulation_1M_recompiled_and_verified: true
+  acceptance_criteria:
+    - ledger_authorized_vs_attempt_velocity_partitioned: true
+    - channel_differentiated_velocity_and_botnet_detection_implemented: true
+    - emv_chip_primacy_and_oracle_leakage_eliminated: true
+    - rbi_100_percent_domestic_cnp_otp_enforced: true
+    - bank_decision_engine_unified_under_rail_verifier_switch: true
+    - active_hold_pruning_and_flight_transit_buffer_implemented: true
+    - statistical_acceptance_gate_passed: true  # Approval 88.25%, ISO 51 leading decline at 74.1%
+    - forensic_graph_orphan_merchants_eliminated_and_cardholders_unrolled: true
 
 previous_slices:
+  - id: "slice-12-adversarial-syndicate-ecology-and-forensic-graph"
+    title: "Adversarial Syndicate Ecology, Forensic Graph Rollup & Multi-Focal Orbital D3 Engine"
+    status: "verified"
+    audited_by: "Subagent 1 (Syndicates) & Subagent 2 (Forensic Graph Science)"
+    verdict: "PASS (CERTIFIED, 6 syndicates, multi-tier mules, zero-OOM streaming verified)"
   - id: "slice-11-first-principles-adversarial-intent-mesh"
     title: "First-Principles Computational Adversarial Threat Modeling & Intent Optimization Mesh"
     status: "verified"

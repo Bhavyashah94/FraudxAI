@@ -361,8 +361,9 @@ def _worker_simulation_task(
     import gc
 
     # Scale population proportionally with safe per-process memory caps (<150MB RSS per worker)
-    n_cards = min(1500, max(250, n_tx_target // 50))
-    n_merchants = min(300, max(40, n_tx_target // 300))
+    # 5,000 cards per worker * 4 workers = 20,000 cards total (1M tx / 20k cards = 50 tx/month = 1.67 tx/day DCPC benchmark)
+    n_cards = min(5000, max(250, n_tx_target // 50))
+    n_merchants = min(1000, max(40, n_tx_target // 250))
 
     engine = DiscreteEventEngine(
         n_cards=n_cards,
@@ -372,23 +373,18 @@ def _worker_simulation_task(
         seed=seed,
     )
 
-    generated_so_far = 0
-    while generated_so_far < n_tx_target:
-        batch_to_gen = min(chunk_size, n_tx_target - generated_so_far)
-        batch = engine.generate_batch(
-            n_transactions=batch_to_gen,
-            enforce_invariants=False,
-            time_span_days=30,
-        )
-        writer.write_chunk(batch)
-        generated_so_far += len(batch)
-        del batch
-        gc.collect()
+    engine.generate_batch(
+        n_transactions=n_tx_target,
+        time_span_days=30,
+        enforce_invariants=False,
+        chunk_callback=writer.write_chunk,
+        chunk_size=chunk_size,
+    )
 
     summary = writer.finalize()
     return {
         "worker_id": worker_id,
-        "generated": generated_so_far,
+        "generated": n_tx_target,
         "summary": summary,
         "worker_dir": str(worker_dir),
     }
@@ -552,7 +548,9 @@ class ParallelSimulationCoordinator:
                 pq_files = sorted(list((w_dir / "threat_intel_graph").glob("*.parquet")))
                 for pq in pq_files:
                     df = pl.read_parquet(pq)
-                    if "is_fraud" in df.columns:
+                    if "syndicate_id" in df.columns:
+                        df_f = df.filter(pl.col("syndicate_id").is_not_null() & (pl.col("syndicate_id") != "") & (pl.col("syndicate_id") != "SYN_UNASSIGNED")).head(350)
+                    elif "is_fraud" in df.columns:
                         df_f = df.filter(pl.col("is_fraud") == 1).head(350)
                     else:
                         df_f = df.head(350)

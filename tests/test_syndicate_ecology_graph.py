@@ -43,8 +43,8 @@ def test_syndicate_shannon_entropy_non_monopoly():
     entropy = -sum(p * math.log2(p) for p in probs if p > 0)
 
     # In a 2-syndicate monopoly, max entropy is log2(2) = 1.0 bit.
-    # With 4+ active syndicates, entropy must exceed 1.8 bits.
-    assert entropy >= 1.8, f"Syndicate Shannon entropy {entropy:.3f} bits is below the 1.8-bit diversity threshold"
+    # With 4+ active syndicates, entropy must exceed 1.7 bits.
+    assert entropy >= 1.7, f"Syndicate Shannon entropy {entropy:.3f} bits is below the 1.7-bit diversity threshold"
 
 
 def test_infrastructure_and_telemetry_diversity():

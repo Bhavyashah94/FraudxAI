@@ -47,11 +47,16 @@ class CandidateTransactionIntent:
     billing_shipping_match: int = 1
     pin_entered: bool = False
     emv_chip_present: bool = False
+    emv_cryptogram_valid: bool = True
     three_ds_requested: bool = False
     risk_score: float = 0.02
     vaai_score: int = 25
     haversine_velocity_kph: float = 0.0
     tx_count_1h: int = 0
+    tx_count_24h: int = 0
+    tx_attempts_1h: int = 0
+    distinct_mids_30m: int = 1
+    subminute_attempts_60s: int = 0
     ip_distance_km: float = 5.0
     asn_type: str = "residential"
 
@@ -108,48 +113,61 @@ class RailVerifierSwitch:
 
         pos_condition = "00" if ch.startswith("CP") else "59"
 
-        # 2. Card Status / Freeze Checks
+        # 2. Card Status / Freeze Checks (Cardholder app lock returns ISO 57)
         if card.is_frozen or card.check_freeze_status(intent.sim_time_sec):
             return RailVerificationResult(
                 approved=False,
-                iso_response_code=ISO8583Response.SUSPECTED_FRAUD_59.value,
+                iso_response_code=ISO8583Response.NOT_PERMITTED_57.value if hasattr(ISO8583Response, 'NOT_PERMITTED_57') else "57",
                 approved_amount=0.0,
                 trans_status_3ds="N",
                 eci="07" if ch.startswith("CNP") else "",
                 auth_code="",
-                decline_reason="CARD_FROZEN_OR_BLOCKED",
+                decline_reason="CARD_FROZEN_OR_BLOCKED_BY_CARDHOLDER",
                 pos_entry_mode=pos_entry,
                 pos_condition_code=pos_condition,
+                hop_origin="ISSUER_HOST",
             )
 
-        # 3. Channel Controls (E-Commerce / International enabled)
+        # 3. Hardware Cryptographic Primacy (Visa Core Rules / Mastercard Chapter 17)
+        # Authentic EMV Contact Chip + PIN or Biometric CDCVM Wallet:
+        # ARQC cryptogram (Tag 9F26) is non-replayable and validated by issuer cryptographic security module (HSM).
+        is_verified_hardware_crypto = (
+            (intent.emv_chip_present or ch == "CP_POS_CHIP")
+            and intent.emv_cryptogram_valid
+            and (ch in ("CP_POS_CHIP", "CP_POS_CONTACTLESS"))
+        )
+
+        # 4. Channel Controls (E-Commerce / International enabled)
         if ch.startswith("CNP") and not card.domestic_cnp_enabled:
             return RailVerificationResult(
                 approved=False,
-                iso_response_code=ISO8583Response.TRANSACTION_NOT_PERMITTED_CARDHOLDER_57.value if hasattr(ISO8583Response, 'TRANSACTION_NOT_PERMITTED_CARDHOLDER_57') else "57",
+                iso_response_code=ISO8583Response.NOT_PERMITTED_57.value if hasattr(ISO8583Response, 'NOT_PERMITTED_57') else "57",
                 approved_amount=0.0,
                 trans_status_3ds="N",
                 eci="07",
                 auth_code="",
-                decline_reason="CNP_DISABLED_BY_CARDHOLDER",
+                decline_reason="DOMESTIC_CNP_DISABLED_BY_CARDHOLDER",
                 pos_entry_mode=pos_entry,
                 pos_condition_code=pos_condition,
+                hop_origin="ISSUER_HOST",
             )
 
         if intent.is_cross_border and not card.international_enabled:
             return RailVerificationResult(
                 approved=False,
-                iso_response_code="57",
+                iso_response_code=ISO8583Response.NOT_PERMITTED_57.value if hasattr(ISO8583Response, 'NOT_PERMITTED_57') else "57",
                 approved_amount=0.0,
-                trans_status_3ds="N",
+                trans_status_3ds="N" if ch.startswith("CNP") else "",
                 eci="07" if ch.startswith("CNP") else "",
                 auth_code="",
-                decline_reason="CROSS_BORDER_DISABLED_BY_CARDHOLDER",
+                decline_reason="INTERNATIONAL_TRANSACTIONS_DISABLED",
                 pos_entry_mode=pos_entry,
                 pos_condition_code=pos_condition,
+                hop_origin="ISSUER_HOST",
             )
 
-        # 4. Kinematic Space-Time Velocity Veto
+        # 5. Kinematic Space-Time Geofencing (Supersonic Velocity Veto)
+        # Commercial aviation maximum speed ceiling (~900 km/h).
         if ch.startswith("CP") and intent.haversine_velocity_kph > 900.0:
             return RailVerificationResult(
                 approved=False,
@@ -164,8 +182,9 @@ class RailVerifierSwitch:
                 hop_origin="GATEWAY_FILTER",
             )
 
-        # 5. Activity Count Frequency Limits (ISO 65)
-        if intent.tx_count_1h >= 8:
+        # 6. Channel-Differentiated Velocity & Botnet Enumeration Limits (ISO 65)
+        # A. Core banking daily count limit (FIS / Fiserv / TSYS standard: 35 tx/24h)
+        if intent.tx_count_24h >= 35:
             return RailVerificationResult(
                 approved=False,
                 iso_response_code=ISO8583Response.ACTIVITY_COUNT_EXCEEDED_65.value,
@@ -173,19 +192,95 @@ class RailVerifierSwitch:
                 trans_status_3ds="N",
                 eci="07" if ch.startswith("CNP") else "",
                 auth_code="",
-                decline_reason="HOURLY_FREQUENCY_LIMIT_EXCEEDED",
+                decline_reason="DAILY_TRANSACTION_COUNT_LIMIT_EXCEEDED",
                 pos_entry_mode=pos_entry,
                 pos_condition_code=pos_condition,
+                hop_origin="ISSUER_HOST",
             )
 
-        # 6. Contactless Regulatory Rails (India RBI vs US)
+        # B. Card-Not-Present Card-Testing & Botnet Enumeration Checks
+        if ch.startswith("CNP"):
+            # Multi-merchant automated enumeration (e.g. automated checker bot testing across distinct MIDs).
+            # distinct_mids_30m is a PRIOR-WINDOW count (excludes current MID per ledger.py point-in-time semantics).
+            # Grounded in Visa VAAI / Mastercard SafetyNet spec/03 channel_differentiated_velocity_ceilings:
+            #   card_not_present_max_distinct_mids: 3 (prior unique MIDs in 30m = spec threshold).
+            # Compound condition: spec threshold of 3 prior MIDs combined with a fraud signal indicator.
+            # Unconditional veto at 5 prior distinct MIDs: even without VAAI signal, 5+ unique CNP merchants
+            # in 30 minutes is statistically outside normal human shopping behavior.
+            is_enumeration_attack = (
+                (intent.distinct_mids_30m >= 3 and (
+                    intent.vaai_score >= 60 or
+                    intent.subminute_attempts_60s >= 2 or
+                    (intent.amount <= 15.0 and intent.tx_attempts_1h >= 3)
+                ))
+                or intent.distinct_mids_30m >= 5
+            )
+            if is_enumeration_attack:
+                return RailVerificationResult(
+                    approved=False,
+                    iso_response_code=ISO8583Response.ACTIVITY_COUNT_EXCEEDED_65.value,
+                    approved_amount=0.0,
+                    trans_status_3ds="N",
+                    eci="07",
+                    auth_code="",
+                    decline_reason="CNP_MERCHANT_ENUMERATION_DETECTED",
+                    pos_entry_mode=pos_entry,
+                    pos_condition_code=pos_condition,
+                    hop_origin="NETWORK_SWITCH_VAAI",
+                )
+            # High-frequency sub-minute automated script burst (>= 3 attempts in 60s)
+            if intent.subminute_attempts_60s >= 3:
+                return RailVerificationResult(
+                    approved=False,
+                    iso_response_code=ISO8583Response.ACTIVITY_COUNT_EXCEEDED_65.value,
+                    approved_amount=0.0,
+                    trans_status_3ds="N",
+                    eci="07",
+                    auth_code="",
+                    decline_reason="HIGH_FREQUENCY_AUTOMATED_PROBE",
+                    pos_entry_mode=pos_entry,
+                    pos_condition_code=pos_condition,
+                    hop_origin="GATEWAY_FILTER",
+                )
+            # Normal CNP hourly throttle
+            if intent.tx_count_1h >= 8:
+                return RailVerificationResult(
+                    approved=False,
+                    iso_response_code=ISO8583Response.ACTIVITY_COUNT_EXCEEDED_65.value,
+                    approved_amount=0.0,
+                    trans_status_3ds="N",
+                    eci="07",
+                    auth_code="",
+                    decline_reason="CNP_HOURLY_FREQUENCY_LIMIT_EXCEEDED",
+                    pos_entry_mode=pos_entry,
+                    pos_condition_code=pos_condition,
+                    hop_origin="ISSUER_HOST",
+                )
+        else:
+            # Card-Present: Verified Contact Chip allows up to 15 tx/h (shopping trips, food courts, parking, transit)
+            max_cp_hourly = 15 if is_verified_hardware_crypto else 10
+            if intent.tx_count_1h >= max_cp_hourly:
+                return RailVerificationResult(
+                    approved=False,
+                    iso_response_code=ISO8583Response.ACTIVITY_COUNT_EXCEEDED_65.value,
+                    approved_amount=0.0,
+                    trans_status_3ds="",
+                    eci="",
+                    auth_code="",
+                    decline_reason="CP_HOURLY_FREQUENCY_LIMIT_EXCEEDED",
+                    pos_entry_mode=pos_entry,
+                    pos_condition_code=pos_condition,
+                    hop_origin="ISSUER_HOST",
+                )
+
+        # 7. Contactless Regulatory Rails (India RBI vs Global)
         if ch == "CP_POS_CONTACTLESS":
             if self.region == "IN" or card.currency == "INR":
                 # RBI Master Direction: ₹5,000 PIN-free ceiling
                 if intent.amount > 5000.0 and not intent.pin_entered:
                     return RailVerificationResult(
                         approved=False,
-                        iso_response_code=ISO8583Response.CUSTOMER_AUTHENTICATION_REQUIRED_65.value if hasattr(ISO8583Response, 'CUSTOMER_AUTHENTICATION_REQUIRED_65') else "65",
+                        iso_response_code=ISO8583Response.ACTIVITY_LIMIT_EXCEEDED_65.value,
                         approved_amount=0.0,
                         trans_status_3ds="",
                         eci="",
@@ -194,12 +289,13 @@ class RailVerifierSwitch:
                         regulatory_rule_triggered="RBI_NFC_PIN_MANDATE",
                         pos_entry_mode=pos_entry,
                         pos_condition_code=pos_condition,
+                        hop_origin="TERMINAL_SCA",
                     )
                 # 5 consecutive PINless transaction ceiling
                 if card.consecutive_pinless_contactless_count >= 5 and not intent.pin_entered:
                     return RailVerificationResult(
                         approved=False,
-                        iso_response_code="65",
+                        iso_response_code=ISO8583Response.ACTIVITY_LIMIT_EXCEEDED_65.value,
                         approved_amount=0.0,
                         trans_status_3ds="",
                         eci="",
@@ -208,9 +304,10 @@ class RailVerifierSwitch:
                         regulatory_rule_triggered="RBI_NFC_VELOCITY_CAP",
                         pos_entry_mode=pos_entry,
                         pos_condition_code=pos_condition,
+                        hop_origin="ISSUER_HOST",
                     )
 
-        # Monetary Bounds Validation
+        # 8. Monetary Bounds Validation
         max_cap = 20_000_000.0 if (self.region == "IN" or card.currency == "INR") else 250_000.0
         if intent.amount <= 0.0 or intent.amount > max_cap:
             return RailVerificationResult(
@@ -223,9 +320,10 @@ class RailVerifierSwitch:
                 decline_reason="INVALID_AMOUNT_BOUNDS",
                 pos_entry_mode=pos_entry,
                 pos_condition_code=pos_condition,
+                hop_origin="ISSUER_HOST",
             )
 
-        # VAAI Network Intelligence Check
+        # 9. VAAI Network Intelligence Check
         if intent.vaai_score >= 75:
             return RailVerificationResult(
                 approved=False,
@@ -240,27 +338,13 @@ class RailVerifierSwitch:
                 hop_origin="NETWORK_SWITCH_VAAI",
             )
 
-        # 7. 3DS 2.x Authentication & Exemption Engine (CNP Channels)
+        # 10. 3DS 2.x Authentication & Exemption Engine (CNP Channels)
         trans_status_3ds = ""
         eci = ""
         if ch.startswith("CNP"):
-            # Exemption Check 1: Low-Value Exemption (LVE: < $30 or < INR 2,000)
-            threshold_lve = 30.0 if card.currency == "USD" else 2000.0
-            if intent.amount < threshold_lve:
-                trans_status_3ds = "Y"
-                eci = "05"  # Authenticated / Frictionless Exemption
-            # Exemption Check 2: Transaction Risk Analysis (TRA) low risk (< 0.08)
-            elif intent.risk_score < 0.08 and intent.amount < (100.0 if card.currency == "USD" else 7500.0):
-                trans_status_3ds = "Y"
-                eci = "05"
-            elif intent.risk_score < 0.45:
-                # Frictionless flow for low/moderate risk below challenge threshold
-                trans_status_3ds = "Y"
-                eci = "05"
-            else:
-                # 3DS Challenge Step-Up Required (risk_score >= 0.45)
+            # Strict RBI Statutory Rule (India Domestic): 100% Mandatory AFA (OTP)
+            if (self.region == "IN" or card.currency == "INR") and not intent.is_cross_border:
                 if not intent.otp_submitted:
-                    # Challenge failed / OTP bypassed
                     return RailVerificationResult(
                         approved=False,
                         iso_response_code=ISO8583Response.SECURITY_VIOLATION_63.value,
@@ -268,15 +352,43 @@ class RailVerifierSwitch:
                         trans_status_3ds="N",
                         eci="07",
                         auth_code="",
-                        decline_reason="3DS_CHALLENGE_FAILED_OR_BYPASSED",
+                        decline_reason="RBI_MANDATORY_AFA_OTP_REQUIRED",
                         pos_entry_mode=pos_entry,
                         pos_condition_code=pos_condition,
                         hop_origin="ACS_3DS",
                     )
-                trans_status_3ds = "C"
+                trans_status_3ds = "Y"
                 eci = "05"
+            else:
+                # Global / US PSD2 & EMVCo 3DS 2.x Exemption Engine
+                if intent.amount < 30.0:
+                    trans_status_3ds = "Y"
+                    eci = "05"  # Low-Value Exemption (LVE)
+                elif intent.risk_score < 0.08 and intent.amount < 100.0:
+                    trans_status_3ds = "Y"
+                    eci = "05"  # TRA Exemption
+                elif intent.risk_score < 0.45:
+                    trans_status_3ds = "Y"
+                    eci = "05"  # Frictionless
+                else:
+                    # Step-Up Challenge (risk_score >= 0.45)
+                    if not intent.otp_submitted:
+                        return RailVerificationResult(
+                            approved=False,
+                            iso_response_code=ISO8583Response.SECURITY_VIOLATION_63.value,
+                            approved_amount=0.0,
+                            trans_status_3ds="N",
+                            eci="07",
+                            auth_code="",
+                            decline_reason="3DS_CHALLENGE_FAILED_OR_BYPASSED",
+                            pos_entry_mode=pos_entry,
+                            pos_condition_code=pos_condition,
+                            hop_origin="ACS_3DS",
+                        )
+                    trans_status_3ds = "C"
+                    eci = "05"
 
-        # 8. Cryptographic & Security Credentials Verification
+        # 11. Cryptographic & Security Credentials Verification
         if ch.startswith("CNP") and not intent.cvv_provided:
             return RailVerificationResult(
                 approved=False,
@@ -288,14 +400,15 @@ class RailVerifierSwitch:
                 decline_reason="CVV_MATCH_FAILED",
                 pos_entry_mode=pos_entry,
                 pos_condition_code=pos_condition,
+                hop_origin="ISSUER_HOST",
             )
 
-        # 9. Solvency & Balance Evaluation (Available Credit / Balance)
+        # 12. Solvency & Balance Evaluation (Available Credit / Balance)
         avail = card.get_available_balance()
         if intent.amount > avail:
             min_afd_avail = 500.0 if (self.region == "IN" or card.currency == "INR") else 10.0
-            # Partial approval allowed on Automated Fuel Dispenser MCC 5542 or CP channels with adequate balance
-            if (intent.mcc == 5542 or (ch.startswith("CP") and self.rng.random() < 0.35)) and avail >= min_afd_avail:
+            # Partial approval strictly negotiated for Automated Fuel Dispensers (MCC 5542) or Transit (MCC 4111, 4784)
+            if intent.mcc in (5542, 4111, 4784) and avail >= min_afd_avail:
                 approved_amt = round(avail, 2)
                 auth_code = f"A{self.rng.integers(10000, 99999)}"
                 return RailVerificationResult(
@@ -309,6 +422,7 @@ class RailVerifierSwitch:
                     hold_amount=approved_amt,
                     pos_entry_mode=pos_entry,
                     pos_condition_code=pos_condition,
+                    hop_origin="ISSUER_HOST",
                 )
             else:
                 return RailVerificationResult(
@@ -321,12 +435,13 @@ class RailVerifierSwitch:
                     decline_reason="INSUFFICIENT_FUNDS_OR_CREDIT_LIMIT_EXCEEDED",
                     pos_entry_mode=pos_entry,
                     pos_condition_code=pos_condition,
+                    hop_origin="ISSUER_HOST",
                 )
 
-        # 10. Real-Time Risk Score Thresholding & EMV Contact Chip Primacy
-        # Genuine EMV Contact Chip: Hardware cryptographic ARQC + PIN cannot be cloned (Visa Core Rules)
-        if ch == "CP_POS_CHIP" and intent.is_fraud == 0:
-            pass  # Protected by mitigating evidence
+        # 13. Real-Time Risk Score Thresholding (WITHOUT SYNTHETIC ORACLE LEAK)
+        # Authentic EMV Contact Chip + valid cryptogram carries statutory counterfeit dispute protection
+        if is_verified_hardware_crypto:
+            pass  # Hardware cryptogram verified
         elif intent.risk_score >= 0.88:
             return RailVerificationResult(
                 approved=False,
@@ -338,9 +453,10 @@ class RailVerifierSwitch:
                 decline_reason="BANK_ML_DECISION_ENGINE_FRAUD_DECLINE",
                 pos_entry_mode=pos_entry,
                 pos_condition_code=pos_condition,
+                hop_origin="ISSUER_HOST",
             )
 
-        # 11. Transaction Approval
+        # 14. Transaction Approval
         auth_code = f"A{self.rng.integers(10000, 99999)}"
         interchange_rate = 0.0175
         interchange = round(intent.amount * interchange_rate, 2)
@@ -359,4 +475,5 @@ class RailVerifierSwitch:
             settlement_amount=settlement,
             pos_entry_mode=pos_entry,
             pos_condition_code=pos_condition,
+            hop_origin="ISSUER_HOST",
         )

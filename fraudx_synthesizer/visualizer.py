@@ -493,7 +493,7 @@ def render_standalone_html(data_bundle: Dict[str, Any], title: str = "FraudxAI S
       <div class="metric-card">
         <div class="metric-title">Threat Graph Enclave</div>
         <div class="metric-val" style="color: var(--accent-purple);">{data_bundle['threat_graph']['summary']['syndicates_count']} Syndicates</div>
-        <div class="metric-sub">{data_bundle['threat_graph']['summary'].get('campaigns_count', 0)} Campaigns, {data_bundle['threat_graph']['summary'].get('bridge_cards_count', 0)} Pivot Cards ({data_bundle['threat_graph']['summary'].get('raw_cards_represented', 0):,} Cards Rollup), {data_bundle['threat_graph']['summary']['mules_count']} Mules</div>
+        <div class="metric-sub">{data_bundle['threat_graph']['summary'].get('cardholders_count', 0)} Active Cards, {data_bundle['threat_graph']['summary'].get('campaigns_count', 0)} Campaigns, {data_bundle['threat_graph']['summary'].get('bridge_cards_count', 0)} Pivots, {data_bundle['threat_graph']['summary'].get('merchants_count', 0)} Merchants, {data_bundle['threat_graph']['summary']['mules_count']} Mules</div>
       </div>
     </div>
 
@@ -503,6 +503,7 @@ def render_standalone_html(data_bundle: Dict[str, Any], title: str = "FraudxAI S
         <div class="graph-legend">
           <div class="legend-item"><div class="legend-dot" style="background: #f43f5e;"></div> Syndicate Group</div>
           <div class="legend-item"><div class="legend-dot" style="background: #fb923c;"></div> Botnet / Proxy Pool</div>
+          <div class="legend-item"><div class="legend-dot" style="background: #a855f7;"></div> Compromised Cardholder</div>
           <div class="legend-item"><div class="legend-dot" style="background: #8b5cf6;"></div> Breach Campaign Batch (N Cards)</div>
           <div class="legend-item"><div class="legend-dot" style="background: #f59e0b; transform: rotate(45deg); border-radius: 2px;"></div> Forensic Bridge Card (Pivot)</div>
           <div class="legend-item"><div class="legend-dot" style="background: #38bdf8;"></div> Merchant Target</div>
@@ -604,6 +605,7 @@ def render_standalone_html(data_bundle: Dict[str, Any], title: str = "FraudxAI S
       const linkColors = {{
         OPERATES: "#f43f5e",
         CONTROLS: "#fb923c",
+        COMPROMISES: "#c084fc",
         ATTACKS: "#f59e0b",
         TRANSACTS: "#38bdf8",
         CASH_OUT: "#10b981"
@@ -641,10 +643,11 @@ def render_standalone_html(data_bundle: Dict[str, Any], title: str = "FraudxAI S
         .force("link", d3.forceLink(links).id(d => d.id).distance(d => {{
           if (d.type === 'OPERATES') return 75;
           if (d.type === 'CONTROLS') return 90;
+          if (d.type === 'COMPROMISES') return 60;
           if (d.type === 'ATTACKS') return 80;
-          if (d.type === 'TRANSACTS') return 125;
-          if (d.type === 'CASH_OUT') return 110;
-          return 85;
+          if (d.type === 'TRANSACTS') return 110;
+          if (d.type === 'CASH_OUT') return 100;
+          return 80;
         }}).strength(0.35))
         .force("charge", d3.forceManyBody().strength(d => d.type === 'syndicate' ? -500 : -130))
         .force("x", d3.forceX(d => d.target_x || width / 2).strength(0.16))
@@ -749,6 +752,22 @@ def render_standalone_html(data_bundle: Dict[str, Any], title: str = "FraudxAI S
             .attr("stroke", "#a7f3d0")
             .attr("stroke-width", 2)
             .style("filter", "drop-shadow(0 0 5px rgba(16, 185, 129, 0.5))");
+        }} else if (d.type === 'card') {{
+          // Compromised Cardholder Glyph (Neon Purple with Light Purple Border)
+          el.append("circle")
+            .attr("r", r)
+            .attr("fill", "#a855f7")
+            .attr("stroke", "#f3e8ff")
+            .attr("stroke-width", 2)
+            .style("filter", "drop-shadow(0 0 5px rgba(168, 85, 247, 0.65))");
+
+          el.append("text")
+            .attr("text-anchor", "middle")
+            .attr("dy", r + 11)
+            .attr("fill", "#d8b4fe")
+            .attr("font-size", "8px")
+            .attr("font-weight", "600")
+            .text(d.label && d.label.length > 12 ? d.label.substring(0, 11) : (d.label || d.id));
         }} else {{
           // Standard Merchant / Botnet Circle
           el.append("circle")
@@ -1156,7 +1175,7 @@ def generate_visualization_from_dir(
     # Ensure forensic threat graph is populated
     is_forensic = (
         threat_sample is not None
-        and any(n.get("type") in ("breach_campaign", "bridge_card") for n in threat_sample.get("nodes", []))
+        and any(n.get("type") in ("breach_campaign", "bridge_card", "card") for n in threat_sample.get("nodes", []))
     )
     if not is_forensic:
         try:
@@ -1169,7 +1188,9 @@ def generate_visualization_from_dir(
             if threat_pqs:
                 for pq in threat_pqs:
                     df = pl.read_parquet(pq)
-                    if "is_fraud" in df.columns:
+                    if "syndicate_id" in df.columns:
+                        df = df.filter(pl.col("syndicate_id").is_not_null() & (pl.col("syndicate_id") != "") & (pl.col("syndicate_id") != "SYN_UNASSIGNED"))
+                    elif "is_fraud" in df.columns:
                         df = df.filter(pl.col("is_fraud") == 1)
                     records.extend(df.head(350).to_dicts())
                     if len(records) >= 3500:

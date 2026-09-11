@@ -311,8 +311,8 @@ def main() -> None:
     # Generate subcommand
     p_gen = subparsers.add_parser("generate", help="Generate batch transactions")
     p_gen.add_argument("-n", type=int, default=5000, help="Number of transactions to synthesize")
-    p_gen.add_argument("--cards", type=int, default=1000, help="Number of simulated cardholders")
-    p_gen.add_argument("--merchants", type=int, default=150, help="Number of simulated merchants")
+    p_gen.add_argument("-c", "--cards", type=int, default=1000, help="Number of simulated cardholders")
+    p_gen.add_argument("-m", "--merchants", type=int, default=150, help="Number of simulated merchants")
     p_gen.add_argument("--region", type=str, choices=["US", "IN"], default="US", help="Geographic banking ecosystem: US (USD dual-message) or IN (INR RBI AFA/RuPay/CoFT)")
     p_gen.add_argument("--fraud-rate", type=float, default=0.02, help="Fraud prevalence ratio")
     p_gen.add_argument("--days", type=int, default=30, help="Simulation duration in days")

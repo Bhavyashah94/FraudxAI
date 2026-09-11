@@ -40,6 +40,7 @@ class ISO8583Response(str, enum.Enum):
     SUSPECTED_FRAUD_59 = "59"
     SECURITY_VIOLATION_63 = "63"
     ACTIVITY_COUNT_EXCEEDED_65 = "65"
+    ACTIVITY_LIMIT_EXCEEDED_65 = "65"
     PIN_TRIES_EXCEEDED_75 = "75"
     INVALID_CVV_82 = "82"
     ISSUER_TIMEOUT_STIP_91 = "91"
@@ -167,6 +168,7 @@ class CardholderProfile:
     state: CardholderState = CardholderState.HOMESTEAD
     is_frozen: bool = False
     active_travel_until: float = -1.0
+    travel_transit_until: float = -1.0
     travel_lat: float = 0.0
     travel_lon: float = 0.0
     unauthorized_alert_time: float = -1.0
@@ -269,7 +271,10 @@ class CardholderProfile:
         if tx_id in self.active_holds:
             hold_amt, _ = self.active_holds.pop(tx_id)
             self.pending_holds = max(0.0, self.pending_holds - hold_amt)
-        self.posted_balance += settled_amount
+        if "DEBIT" in self.product_id or any(k in self.product_id for k in ("PREPAID", "EBT", "HSA")):
+            self.posted_balance = max(0.0, self.posted_balance - settled_amount)
+        else:
+            self.posted_balance += settled_amount
         self.current_balance = self.posted_balance + self.pending_holds
 
     def prune_expired_holds(self, current_time_sec: float) -> List[str]:
@@ -392,11 +397,15 @@ class CardholderProfile:
         """Calculates dynamic physical coordinates based on commute schedule, shopping trips, and travel state."""
         # 1. Travel State (Domestic or International)
         if self.active_travel_until > 0.0 and sim_time < self.active_travel_until:
+            if self.travel_transit_until > 0.0 and sim_time < self.travel_transit_until:
+                # Still in transit / flight: at departure airport or en route
+                return self.home_lat, self.home_lon, CardholderState.COMMUTING
             trav_state = CardholderState.INTL_TRAVEL if self.international_enabled else CardholderState.DOMESTIC_TRAVEL
             return self.travel_lat, self.travel_lon, trav_state
 
         if self.active_travel_until > 0.0 and sim_time >= self.active_travel_until:
             self.active_travel_until = -1.0
+            self.travel_transit_until = -1.0
             self.state = CardholderState.HOMESTEAD
 
         # 2. Relocation Episode (72-hour moving window)
@@ -474,6 +483,14 @@ class CardholderProfile:
         self.travel_lat = dest_lat
         self.travel_lon = dest_lon
         self.state = CardholderState.INTL_TRAVEL if is_international else CardholderState.DOMESTIC_TRAVEL
+        # Calculate flight transit holding buffer (commercial airline speed ~850 km/h + airport buffer)
+        d_lat = math.radians(dest_lat - self.home_lat)
+        d_lon = math.radians(dest_lon - self.home_lon)
+        a = math.sin(d_lat / 2.0) ** 2 + math.cos(math.radians(self.home_lat)) * math.cos(math.radians(dest_lat)) * math.sin(d_lon / 2.0) ** 2
+        c = 2.0 * math.asin(math.sqrt(min(1.0, a)))
+        d_km = 6371.0 * c
+        transit_hours = (d_km / 850.0) + 1.5 if d_km > 200.0 else 0.5
+        self.travel_transit_until = sim_time + transit_hours * 3600.0
 
     def trigger_unauthorized_alert(self, sim_time: float, rng: np.random.Generator) -> None:
         """Schedules cardholder fraud discovery based on calibrated vigilance survival distributions."""
@@ -1048,12 +1065,14 @@ class BankDecisionEngine:
         tau_decline: float = 0.85,
         tau_challenge: float = 0.45,
         max_speed_kmh: float = 900.0,
-        max_hourly_velocity: int = 6,
+        max_hourly_velocity: int = 15,
+        region: str = "US",
     ):
         self.tau_decline = tau_decline
         self.tau_challenge = tau_challenge
         self.max_speed_kmh = max_speed_kmh
         self.max_hourly_velocity = max_hourly_velocity
+        self.region = region.upper()
 
     def evaluate_authorization(
         self,
@@ -1078,77 +1097,37 @@ class BankDecisionEngine:
             return ISO8583Response.INVALID_CARD_14, None, 0.0
         if is_expired:
             return ISO8583Response.EXPIRED_CARD_54, None, 0.0
-        if card.is_frozen:
-            return ISO8583Response.SUSPECTED_FRAUD_59, None, 0.0
 
-        # 2. Network Attack Intelligence (Visa VAAI decline threshold 75)
-        if vaai_score >= 75:
-            return ISO8583Response.SUSPECTED_FRAUD_59, None, 0.0
+        # Delegate to unified institutional RailVerifierSwitch
+        from .rails import CandidateTransactionIntent, RailVerifierSwitch
+        switch = RailVerifierSwitch(region=card.region or self.region)
+        intent = CandidateTransactionIntent(
+            tx_id=f"TX_LEGACY_{int(sim_time)}",
+            card_id=card.card_id,
+            sim_time_sec=sim_time,
+            amount=amount,
+            currency=card.currency,
+            channel_type=channel,
+            merchant_id=f"M_{mcc}_LEGACY",
+            mcc=mcc,
+            merchant_lat=card.home_lat,
+            merchant_lon=card.home_lon,
+            is_cross_border=is_cross_border,
+            otp_submitted=otp_provided,
+            cvv_provided=cvv_valid,
+            pin_entered=(channel == "CP_POS_CHIP"),
+            emv_chip_present=(channel == "CP_POS_CHIP"),
+            emv_cryptogram_valid=True,
+            three_ds_requested=channel.startswith("CNP"),
+            risk_score=ml_risk_score,
+            vaai_score=vaai_score,
+            haversine_velocity_kph=velocity_kph,
+            tx_count_1h=count_1h,
+        )
+        res = switch.verify_intent(intent, card)
+        try:
+            code = ISO8583Response(res.iso_response_code)
+        except ValueError:
+            code = ISO8583Response.DO_NOT_HONOR_05
 
-        # 3. Indian Regulatory Rails (RBI Mandates)
-        if card.region == "IN":
-            if channel.startswith("CNP") and not is_cross_border and not card.domestic_cnp_enabled:
-                return ISO8583Response.NOT_PERMITTED_57, None, 0.0
-            if is_cross_border and not card.international_enabled:
-                return ISO8583Response.NOT_PERMITTED_57, None, 0.0
-
-            if channel.startswith("CNP") and not is_cross_border and not otp_provided:
-                return ISO8583Response.SECURITY_VIOLATION_63, "N", 0.0
-
-            if channel == "CP_POS_CONTACTLESS":
-                if amount > 5000.0:
-                    return ISO8583Response.DO_NOT_HONOR_05, "FORCE_CHIP_PIN", 0.0
-                if card.consecutive_pinless_contactless_count >= 5 or (
-                    card.cumulative_pinless_contactless_amount + amount > 15000.0
-                ):
-                    return ISO8583Response.DO_NOT_HONOR_05, "FORCE_CHIP_PIN", 0.0
-
-        # 4. Security & Cryptographic Validation
-        if not cvv_valid:
-            return ISO8583Response.INVALID_CVV_82, None, 0.0
-
-        # 5. Kinematic Speed Veto
-        if channel.startswith("CP") and velocity_kph > self.max_speed_kmh:
-            return ISO8583Response.SUSPECTED_FRAUD_59, None, 0.0
-
-        # 6. Velocity Counter Veto
-        if count_1h > self.max_hourly_velocity:
-            return ISO8583Response.ACTIVITY_COUNT_EXCEEDED_65, None, 0.0
-
-        # 7. Solvency & Credit Limit Check (evaluated on pre-auth available balance)
-        available = card.get_available_balance()
-        if amount > available:
-            min_afd_avail = 500.0 if card.region == "IN" else 10.0
-            if mcc == 5542 and available >= min_afd_avail:
-                return ISO8583Response.PARTIAL_APPROVAL_10, "Y", available
-            return ISO8583Response.INSUFFICIENT_FUNDS_51, None, 0.0
-
-        # 8. Cryptographic Mitigating Primacy (Visa Core Rules / Mastercard Chapter 17)
-        # Authentic EMV Contact Chip: Hardware cryptographic ARQC + PIN cannot be cloned or replayed.
-        # Carries a statutory counterfeit dispute bar. Issuers do not decline verified Chip+PIN with ISO 59.
-        if channel == "CP_POS_CHIP":
-            return ISO8583Response.APPROVED_00, "Y", amount
-
-        # 9. Machine Learning Risk Thresholds & 3DS Challenges (CNP, Contactless, Magstripe)
-        if ml_risk_score >= self.tau_decline:
-            # High-risk hard stop: Issuer declines without challenge
-            return ISO8583Response.SUSPECTED_FRAUD_59, "N", 0.0
-
-        if self.tau_challenge <= ml_risk_score < self.tau_decline:
-            # Medium-risk threshold: Triggers Strong Customer Authentication (SCA)
-            if channel.startswith("CNP"):
-                if otp_provided:
-                    # Legitimate cardholder (or attacker with intercepted OTP) completes 3DS challenge
-                    return ISO8583Response.APPROVED_00, "C", amount
-                else:
-                    # Attacker unable to provide OTP: Challenge failed/abandoned
-                    return ISO8583Response.DO_NOT_HONOR_05, "C", 0.0
-            elif channel == "CP_POS_CONTACTLESS":
-                # Contactless threshold step-up to Chip & PIN
-                return ISO8583Response.DO_NOT_HONOR_05, "FORCE_CHIP_PIN", 0.0
-            elif channel == "CP_POS_MAGSTRIPE":
-                # Magstripe without EMV cryptogram cannot be authenticated
-                return ISO8583Response.DO_NOT_HONOR_05, "N", 0.0
-
-        # Successful Frictionless Approval
-        return ISO8583Response.APPROVED_00, "Y", amount
+        return code, res.trans_status_3ds, (res.approved_amount if res.approved else 0.0)

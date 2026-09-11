@@ -218,3 +218,34 @@ global_dispute_and_chargeback_lifecycle:
     administrative_review_fee_usd: 500.00
     liability_determination: "LOSER_PAYS_ALL"
     rational_economic_veto_ceiling_usd: 1000.00 # Disputes < $1,000 abandoned if contested
+
+institutional_authorization_velocity_calibration:
+  grounded_authorities:
+    - "Visa Core Rules (VCR 2024-2026)"
+    - "Mastercard Transaction Processing Rules (Chapter 17)"
+    - "ISO 8583 Bit 39 Institutional Response Codes"
+    - "Federal Reserve Diary of Consumer Payment Choice (DCPC 2023-2024)"
+    - "Reserve Bank of India Master Directions (RBI/2020-21/73 & PSS Act 2007)"
+  
+  retail_authorization_benchmarks:
+    global_approval_rate_window: [0.880, 0.925]
+    card_present_approval_rate_window: [0.965, 0.985]
+    card_not_present_approval_rate_window: [0.820, 0.880]
+    overall_decline_rate_window: [0.075, 0.120]
+
+  decline_distribution_targets_within_declines:
+    iso_51_insufficient_funds_ratio: [0.40, 0.50]
+    iso_05_59_fraud_or_do_not_honor_ratio: [0.18, 0.25]
+    iso_54_82_14_expired_or_cvv_or_card_ratio: [0.08, 0.12]
+    iso_63_security_violation_3ds_drop_ratio: [0.06, 0.10]
+    iso_57_transaction_not_permitted_ratio: [0.04, 0.07]
+    iso_65_activity_count_limit_ratio: [0.03, 0.06]
+
+  channel_differentiated_velocity_ceilings:
+    card_present_emv_chip_hourly_cap: 15
+    card_not_present_hourly_cap: 8
+    card_not_present_distinct_mid_window_seconds: 1800 # 30 min
+    card_not_present_max_distinct_mids: 3
+    subminute_automated_burst_threshold: 3 # >= 3 attempts in 60s
+    daily_transaction_count_limit: 35      # 24h count limit
+    hold_active_pruning_policy: "PRUNE_ON_EVERY_TRANSACTION_EVALUATION"

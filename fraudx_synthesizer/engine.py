@@ -219,7 +219,11 @@ class DiscreteEventEngine:
 
                 prod_spec = specs.indian_products.get(product_id)
                 if prod_spec and prod_spec.credit_limit_median_inr > 0:
-                    credit_limit = float(self.rng.uniform(prod_spec.credit_limit_min_inr, max(prod_spec.credit_limit_min_inr + 1000.0, prod_spec.credit_limit_max_inr)))
+                    credit_limit = float(self.rng.triangular(
+                        prod_spec.credit_limit_min_inr,
+                        prod_spec.credit_limit_median_inr,
+                        max(prod_spec.credit_limit_min_inr + 1000.0, prod_spec.credit_limit_max_inr)
+                    ))
                 else:
                     credit_limit = 50000.0
 
@@ -232,7 +236,11 @@ class DiscreteEventEngine:
                 product_id = str(self.rng.choice(cohort_spec.default_assigned_products))
                 prod_spec = specs.products.get(product_id)
                 if prod_spec and prod_spec.credit_limit_median_usd > 0:
-                    credit_limit = float(self.rng.uniform(prod_spec.credit_limit_min_usd, max(prod_spec.credit_limit_min_usd + 100.0, prod_spec.credit_limit_max_usd)))
+                    credit_limit = float(self.rng.triangular(
+                        prod_spec.credit_limit_min_usd,
+                        prod_spec.credit_limit_median_usd,
+                        max(prod_spec.credit_limit_min_usd + 100.0, prod_spec.credit_limit_max_usd)
+                    ))
                 else:
                     credit_limit = 5000.0
 
@@ -266,7 +274,10 @@ class DiscreteEventEngine:
                 repay_cohort = str(self.rng.choice(["TRANSACTOR", "REVOLVER", "DISTRESSED"], p=[0.50, 0.40, 0.10]))
 
             billing_cycle_day = int(self.rng.choice([1, 5, 10, 15, 20, 25, 28]))
-            initial_balance = float(self.rng.uniform(0.05, 0.20) * credit_limit)
+            if "DEBIT" in product_id or any(k in product_id for k in ("PREPAID", "EBT", "HSA")):
+                initial_balance = float(self.rng.uniform(0.30, 0.70) * credit_limit)
+            else:
+                initial_balance = float(self.rng.uniform(0.05, 0.20) * credit_limit)
 
             card = CardholderProfile(
                 card_id=card_id,
@@ -331,6 +342,8 @@ class DiscreteEventEngine:
         start_time_seconds: float = 1704067200.0,  # 2024-01-01 00:00:00 UTC
         enforce_invariants: bool = True,
         active_macro_regime: Optional[str] = None,
+        chunk_callback: Optional[Any] = None,
+        chunk_size: int = 10000,
     ) -> List[Dict[str, Any]]:
         """Generates transactions via discrete-event priority queue with strict monotonicity."""
         records: List[Dict[str, Any]] = []
@@ -410,10 +423,19 @@ class DiscreteEventEngine:
         for c in self.cards:
             if "PREPAID" not in c.product_id and "EBT" not in c.product_id:
                 if "DEBIT" in c.product_id:
-                    for p_day in range(14, time_span_days + 1, 14):
+                    # Stagger paydays across first 14 days so workers don't all get paid on day 14
+                    stagger_day = (hash(c.card_id) % 14) + 1
+                    for p_day in range(stagger_day, time_span_days + 1, 14):
                         p_us = int((start_time_seconds + p_day * day_seconds) * 1_000_000)
                         self._schedule_event(time_us=p_us, event_type=EVT_PAYROLL_DEPOSIT, card_id=c.card_id)
                 else:
+                    # Schedule repayment for prior month's statement balance carried into simulation
+                    if c.posted_balance > 0.0:
+                        c.statement_balance = c.posted_balance
+                        prior_pay_day = float((hash(c.card_id) % 12) + 3)
+                        p_us = int((start_time_seconds + prior_pay_day * day_seconds) * 1_000_000)
+                        self._schedule_event(time_us=p_us, event_type=EVT_STATEMENT_PAYMENT, card_id=c.card_id)
+
                     stmt_day = c.billing_cycle_day
                     n_months = max(1, (time_span_days // 30) + 1)
                     for month_idx in range(n_months):
@@ -480,7 +502,15 @@ class DiscreteEventEngine:
             if evt_type == EVT_BILLING_CYCLE_CLOSE:
                 stmt_bal, min_due, due_time = card.close_billing_statement(tx_time_sec)
                 if stmt_bal > 0.0:
-                    due_us = int(due_time * 1_000_000)
+                    if card.repayment_cohort == "TRANSACTOR":
+                        # Autopay clears balance 3-5 days after statement closing
+                        pay_delay_days = float(self.rng.uniform(3.0, 5.0))
+                    elif card.repayment_cohort == "REVOLVER":
+                        # Revolvers make payment mid-grace period (10-15 days)
+                        pay_delay_days = float(self.rng.uniform(10.0, 15.0))
+                    else:
+                        pay_delay_days = 25.0
+                    due_us = int((tx_time_sec + pay_delay_days * 86400.0) * 1_000_000)
                     self._schedule_event(
                         time_us=due_us,
                         event_type=EVT_STATEMENT_PAYMENT,
@@ -768,6 +798,10 @@ class DiscreteEventEngine:
                         preferred_mcc = 5812  # Dining / Travel
                         is_cross_border = bool(card.international_enabled and self.rng.random() < 0.50)
                         ip_distance = float(self.rng.uniform(500.0, 3000.0))
+                        if card.state == CardholderState.HOMESTEAD:
+                            dest_lat = float(card.home_lat + self.rng.uniform(2.0, 15.0))
+                            dest_lon = float(card.home_lon + self.rng.uniform(2.0, 15.0))
+                            card.initiate_travel(tx_time_sec, duration_days=float(self.rng.uniform(2.0, 7.0)), dest_lat=dest_lat, dest_lon=dest_lon, is_international=is_cross_border)
                     elif rand_hard_neg < 0.018 and card.state == CardholderState.HOMESTEAD:
                         # Transition cardholder to 72-hour relocation episode
                         card.initiate_relocation_episode(tx_time_sec)
@@ -924,16 +958,32 @@ class DiscreteEventEngine:
                 billing_shipping_match=record.get("billing_shipping_match", 1),
                 pin_entered=False,
                 emv_chip_present=(channel == "CP_POS_CHIP"),
+                emv_cryptogram_valid=True,
                 three_ds_requested=channel.startswith("CNP"),
                 risk_score=ml_risk_score,
                 vaai_score=vaai_score,
                 haversine_velocity_kph=velocity_kph,
                 tx_count_1h=count_1h,
+                tx_count_24h=int(record.get("tx_count_24h", 0)),
+                tx_attempts_1h=int(record.get("tx_attempts_1h", 0)),
+                distinct_mids_30m=int(record.get("distinct_mids_30m", 1)),
+                subminute_attempts_60s=int(record.get("subminute_attempts_60s", 0)),
                 ip_distance_km=ip_distance,
                 asn_type=asn_type,
             )
 
             rail_result = self.rail_switch.verify_intent(intent, card)
+
+            # Record authorization outcome in streaming ledger
+            self.ledger.record_authorization_outcome(
+                card=card,
+                amount=amount,
+                merchant_id=merchant_id,
+                tx_time=tx_time_sec,
+                is_approved=rail_result.approved,
+                response_code=rail_result.iso_response_code,
+            )
+
             try:
                 auth_response = ISO8583Response(rail_result.iso_response_code)
             except ValueError:
@@ -1188,6 +1238,14 @@ class DiscreteEventEngine:
             last_global_tx_time = tx_time_sec
             records.append(record)
             tx_counter += 1
+
+            if chunk_callback is not None and len(records) >= chunk_size:
+                chunk_callback(records)
+                records = []
+
+        if chunk_callback is not None and records:
+            chunk_callback(records)
+            records = []
 
         return records
 

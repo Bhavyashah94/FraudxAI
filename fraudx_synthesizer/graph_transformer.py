@@ -134,7 +134,7 @@ class ForensicGraphTransformer:
             else:
                 leaf_cards.add(cid)
 
-        # 3. Form Breach Campaigns from Leaf Cards
+        # 3. Form Breach Campaigns and Unroll Active Cardholders
         # Group leaf cards by primary (syndicate_id, botnet_id, primary_scenario)
         campaign_groups: Dict[Tuple[str, str, str], List[str]] = defaultdict(list)
         for cid in leaf_cards:
@@ -214,49 +214,100 @@ class ForensicGraphTransformer:
                 },
             })
 
-        # Register Breach Campaign Nodes (Contracted Leaf Cards)
+        # Register Unrolled Cardholders & Breach Campaign Remainder Nodes
         card_to_campaign_map: Dict[str, str] = {}
-        for c_idx, ((sid, bid, scen), cards) in enumerate(campaign_groups.items()):
-            n_cards = len(cards)
-            tot_vol = sum(card_volumes[c] for c in cards)
-            tot_tx = sum(card_tx_counts[c] for c in cards)
-            tot_appr = sum(card_approvals[c] for c in cards)
-            appr_rate = round((tot_appr / max(1, tot_tx)) * 100.0, 1)
+        unrolled_card_ids: Set[str] = set()
 
-            camp_id = f"CAMP_{bid}_{c_idx:02d}"
-            for c in cards:
-                card_to_campaign_map[c] = camp_id
+        for c_idx, ((sid, bid, scen), cards) in enumerate(campaign_groups.items()):
+            # Sort cards by activity (fraud tx count and volume)
+            sorted_cards = sorted(
+                cards,
+                key=lambda c: (card_tx_counts[c], card_volumes[c]),
+                reverse=True,
+            )
+            # Unroll top active compromised cardholders as first-class nodes
+            num_unroll = min(len(sorted_cards), self.max_unrolled_cards_per_campaign)
+            cards_to_unroll = sorted_cards[:num_unroll]
+            remainder_cards = sorted_cards[num_unroll:]
 
             sax, say = syndicate_anchors.get(sid, (cx, cy))
             camp_angle = (c_idx * 0.9) + 0.3
-            camp_x = sax + 160.0 * math.cos(camp_angle)
-            camp_y = say + 160.0 * math.sin(camp_angle)
 
-            # Node radius scales logarithmically with card count: 10px to 26px
-            r_scale = min(26.0, max(10.0, 8.0 + 4.5 * math.log10(max(1, n_cards))))
+            # Register unrolled cardholder nodes
+            for u_idx, cid in enumerate(cards_to_unroll):
+                unrolled_card_ids.add(cid)
+                u_offset_angle = camp_angle + (u_idx - num_unroll / 2.0) * 0.25
+                card_x = sax + 140.0 * math.cos(u_offset_angle)
+                card_y = say + 140.0 * math.sin(u_offset_angle)
 
-            register_node({
-                "id": camp_id,
-                "label": f"Batch: {n_cards} Compromised Cards",
-                "type": "breach_campaign",
-                "radius": round(r_scale, 1),
-                "card_count": n_cards,
-                "total_volume_usd": round(tot_vol, 2),
-                "approval_rate": appr_rate,
-                "syndicate_id": sid,
-                "botnet_id": bid,
-                "target_x": round(camp_x, 1),
-                "target_y": round(camp_y, 1),
-                "details": {
-                    "Campaign ID": camp_id,
-                    "Compromised Cards": f"{n_cards:,}",
-                    "Total Extracted Volume": f"${tot_vol:,.2f}",
-                    "Tx Attempts": tot_tx,
-                    "Approval Rate": f"{appr_rate}%",
-                    "Primary Vector": scen,
-                    "Parent Botnet": bid,
-                },
-            })
+                c_vol = card_volumes[cid]
+                c_tx = card_tx_counts[cid]
+                c_appr = card_approvals[cid]
+                c_rate = round((c_appr / max(1, c_tx)) * 100.0, 1)
+                c_meta = card_metadata.get(cid, {})
+                c_merchs = sorted(list(card_merchants[cid]))
+
+                register_node({
+                    "id": cid,
+                    "label": f"Card: {cid[-6:] if len(cid) >= 6 else cid}",
+                    "type": "card",
+                    "radius": 9.5,
+                    "syndicate_id": sid,
+                    "botnet_id": bid,
+                    "target_x": round(card_x, 1),
+                    "target_y": round(card_y, 1),
+                    "details": {
+                        "Cardholder ID": cid,
+                        "Type": "COMPROMISED CARDHOLDER",
+                        "Breach Vector": scen,
+                        "Controlling Botnet": bid,
+                        "Affiliated Syndicate": sid,
+                        "Tx Attempts": c_tx,
+                        "Fraud Volume": f"${c_vol:,.2f}",
+                        "Approval Rate": f"{c_rate}%",
+                        "Latest Response": c_meta.get("latest_response", "N/A"),
+                        "Targeted Merchants": ", ".join(c_merchs[:8]) if c_merchs else "N/A",
+                    },
+                })
+
+            # If there are remainder cards, register a breach campaign batch node
+            if remainder_cards:
+                camp_id = f"CAMP_{bid}_{c_idx:02d}"
+                for c in remainder_cards:
+                    card_to_campaign_map[c] = camp_id
+
+                n_rem = len(remainder_cards)
+                tot_vol = sum(card_volumes[c] for c in remainder_cards)
+                tot_tx = sum(card_tx_counts[c] for c in remainder_cards)
+                tot_appr = sum(card_approvals[c] for c in remainder_cards)
+                appr_rate = round((tot_appr / max(1, tot_tx)) * 100.0, 1)
+
+                camp_x = sax + 175.0 * math.cos(camp_angle)
+                camp_y = say + 175.0 * math.sin(camp_angle)
+                r_scale = min(24.0, max(11.0, 8.0 + 4.5 * math.log10(max(1, n_rem))))
+
+                register_node({
+                    "id": camp_id,
+                    "label": f"Batch: {n_rem} Cards",
+                    "type": "breach_campaign",
+                    "radius": round(r_scale, 1),
+                    "card_count": n_rem,
+                    "total_volume_usd": round(tot_vol, 2),
+                    "approval_rate": appr_rate,
+                    "syndicate_id": sid,
+                    "botnet_id": bid,
+                    "target_x": round(camp_x, 1),
+                    "target_y": round(camp_y, 1),
+                    "details": {
+                        "Campaign ID": camp_id,
+                        "Compromised Cards": f"{n_rem:,}",
+                        "Total Extracted Volume": f"${tot_vol:,.2f}",
+                        "Tx Attempts": tot_tx,
+                        "Approval Rate": f"{appr_rate}%",
+                        "Primary Vector": scen,
+                        "Parent Botnet": bid,
+                    },
+                })
 
         # Register Elevated Bridge Cards (First-Class Glowing Amber Diamonds)
         for b_idx, cid in enumerate(sorted(list(bridge_cards))):
@@ -304,10 +355,8 @@ class ForensicGraphTransformer:
             })
 
         # Register Merchant Nodes
-        # If targeted by multiple syndicates, place near interstitial center; else orbit syndicate perimeter
         m_angle_step = 2.0 * math.pi / max(1, len(merchant_meta))
         for m_idx, (mid, meta) in enumerate(merchant_meta.items()):
-            # Count which syndicates targeted this merchant
             targeting_syns: Set[str] = set()
             for r in fraud_records:
                 if str(r.get("merchant_id", "")) == mid:
@@ -316,17 +365,16 @@ class ForensicGraphTransformer:
                         targeting_syns.add(s)
 
             if len(targeting_syns) > 1:
-                # Common cross-syndicate target merchant placed near center
-                mx = cx + 120.0 * math.cos(m_idx * m_angle_step)
-                my = cy + 120.0 * math.sin(m_idx * m_angle_step)
+                mx = cx + 110.0 * math.cos(m_idx * m_angle_step)
+                my = cy + 110.0 * math.sin(m_idx * m_angle_step)
             elif targeting_syns:
                 target_syn = next(iter(targeting_syns))
                 sax, say = syndicate_anchors.get(target_syn, (cx, cy))
-                mx = sax + 260.0 * math.cos(m_idx * 0.8)
-                my = say + 260.0 * math.sin(m_idx * 0.8)
+                mx = sax + 240.0 * math.cos(m_idx * 0.8)
+                my = say + 240.0 * math.sin(m_idx * 0.8)
             else:
-                mx = cx + 220.0 * math.cos(m_idx * m_angle_step)
-                my = cy + 220.0 * math.sin(m_idx * m_angle_step)
+                mx = cx + 200.0 * math.cos(m_idx * m_angle_step)
+                my = cy + 200.0 * math.sin(m_idx * m_angle_step)
 
             register_node({
                 "id": mid,
@@ -372,7 +420,6 @@ class ForensicGraphTransformer:
             })
 
         # 5. Weighted Edge Consolidation
-        # Group raw transaction links into consolidated directed conduits
         edge_accumulator: Dict[Tuple[str, str, str], Dict[str, Any]] = {}
 
         def record_edge(source: str, target: str, rel_type: str, amount: float, approved: bool) -> None:
@@ -402,12 +449,22 @@ class ForensicGraphTransformer:
             if sid and sid in node_ids and bid in node_ids:
                 record_edge(sid, bid, "OPERATES", 0.0, True)
 
-        # Botnet -> Campaign or Bridge Card links
+        # Botnet -> Unrolled Cardholder links
+        for cid in unrolled_card_ids:
+            bots = card_botnets.get(cid, set())
+            for bid in bots:
+                if bid in node_ids and cid in node_ids:
+                    record_edge(bid, cid, "COMPROMISES", card_volumes[cid], True)
+
+        # Botnet -> Remainder Campaign links
         for (sid, bid, scen), cards in campaign_groups.items():
+            remainder_cards = [c for c in cards if c not in unrolled_card_ids]
+            if not remainder_cards:
+                continue
             camp_id = f"CAMP_{bid}_{list(campaign_groups.keys()).index((sid, bid, scen)):02d}"
-            tot_vol = sum(card_volumes[c] for c in cards)
-            tot_tx = sum(card_tx_counts[c] for c in cards)
-            tot_appr = sum(card_approvals[c] for c in cards)
+            tot_vol = sum(card_volumes[c] for c in remainder_cards)
+            tot_tx = sum(card_tx_counts[c] for c in remainder_cards)
+            tot_appr = sum(card_approvals[c] for c in remainder_cards)
             if bid in node_ids and camp_id in node_ids:
                 key = (bid, camp_id, "CONTROLS")
                 edge_accumulator[key] = {
@@ -426,14 +483,18 @@ class ForensicGraphTransformer:
             mid = str(r.get("merchant_id", ""))
             mule_id = str(r.get("beneficiary_account_id", ""))
             bid = str(r.get("botnet_cluster_id", ""))
-            sid = str(r.get("syndicate_id", ""))
             amt = float(r.get("amount", 0.0))
             resp = str(r.get("response_code", "00"))
             is_appr = (resp in ("00", "10"))
 
-            # Determine the source entity for the card's action
-            # If bridge card, source is the card itself; if leaf card, source is its campaign node
-            card_source = cid if (cid in bridge_cards) else card_to_campaign_map.get(cid)
+            # Determine the source entity for the card's action:
+            # 1. If bridge card, source is the card itself
+            # 2. If unrolled cardholder, source is the card itself
+            # 3. If rolled up into campaign remainder, source is the campaign node
+            if cid in bridge_cards or cid in unrolled_card_ids:
+                card_source = cid
+            else:
+                card_source = card_to_campaign_map.get(cid)
 
             # Link Botnet -> Bridge Card
             if cid in bridge_cards and bid and bid in node_ids:
@@ -452,10 +513,8 @@ class ForensicGraphTransformer:
         for (src, dst, rel), data in edge_accumulator.items():
             cnt = data["count"]
             amt = round(data["amount"], 2)
-            # Logarithmic stroke width: 1.2px to 7.0px
             stroke_w = min(7.0, max(1.2, 1.2 + 1.5 * math.log10(max(1, cnt))))
             
-            # Curvature index for Bézier arcs
             pair_hash = hash(f"{src}-{dst}")
             curvature = ((pair_hash % 5) - 2) * 12.0
 
@@ -471,11 +530,21 @@ class ForensicGraphTransformer:
                 "curvature": curvature,
             })
 
+        # STRICT FORENSIC PRUNING:
+        # Eliminate all zero-degree disconnected nodes so that no orphan/free-floating nodes appear on the canvas
+        connected_node_ids = set()
+        for l in links:
+            connected_node_ids.add(l["source"])
+            connected_node_ids.add(l["target"])
+
+        nodes = [n for n in nodes if n["id"] in connected_node_ids]
+
         summary = {
             "syndicates_count": sum(1 for n in nodes if n["type"] == "syndicate"),
             "botnets_count": sum(1 for n in nodes if n["type"] == "botnet"),
             "campaigns_count": sum(1 for n in nodes if n["type"] == "breach_campaign"),
             "bridge_cards_count": sum(1 for n in nodes if n["type"] == "bridge_card"),
+            "cardholders_count": sum(1 for n in nodes if n["type"] == "card"),
             "raw_cards_represented": len(card_metadata),
             "merchants_count": sum(1 for n in nodes if n["type"] == "merchant"),
             "mules_count": sum(1 for n in nodes if n["type"] == "mule"),

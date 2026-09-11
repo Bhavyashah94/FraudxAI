@@ -62,17 +62,26 @@ class CardholderLedgerState:
     """Stateful tracking container for an individual cardholder."""
     card_id: str
     welford_30d: WelfordAccumulator
-    tx_history_1h: Deque[Tuple[float, float]] = field(default_factory=collections.deque)        # (timestamp, amount)
-    tx_history_24h: Deque[Tuple[float, float, str]] = field(default_factory=collections.deque) # (timestamp, amount, merchant_id)
+    tx_history_authorized_1h: Deque[Tuple[float, float]] = field(default_factory=collections.deque)        # (timestamp, amount) of approved transactions
+    tx_history_attempts_1h: Deque[Tuple[float, float, str]] = field(default_factory=collections.deque)      # (timestamp, amount, merchant_id) of all attempts
+    tx_history_24h: Deque[Tuple[float, float, str]] = field(default_factory=collections.deque)             # (timestamp, amount, merchant_id) of approved transactions
     last_tx_time: float = -1.0
     last_tx_lat: float = 0.0
     last_tx_lon: float = 0.0
 
+    @property
+    def tx_history_1h(self) -> Deque[Tuple[float, float]]:
+        """Backwards-compatibility property returning authorized transactions."""
+        return self.tx_history_authorized_1h
+
     def prune_expired(self, current_time: float) -> None:
         """Prunes historical entries older than rolling time horizons (strictly monotonic)."""
         cutoff_1h = current_time - 3600.0
-        while self.tx_history_1h and self.tx_history_1h[0][0] <= cutoff_1h:
-            self.tx_history_1h.popleft()
+        while self.tx_history_authorized_1h and self.tx_history_authorized_1h[0][0] <= cutoff_1h:
+            self.tx_history_authorized_1h.popleft()
+
+        while self.tx_history_attempts_1h and self.tx_history_attempts_1h[0][0] <= cutoff_1h:
+            self.tx_history_attempts_1h.popleft()
 
         cutoff_24h = current_time - 86400.0
         while self.tx_history_24h and self.tx_history_24h[0][0] <= cutoff_24h:
@@ -160,10 +169,22 @@ class StreamingLedger:
         state.prune_expired(tx_time)
 
         # 2. Point-in-time calculation: Read features BEFORE appending current transaction
-        count_1h = len(state.tx_history_1h)
+        count_1h = len(state.tx_history_authorized_1h)
+        attempts_1h = len(state.tx_history_attempts_1h)
         count_24h = len(state.tx_history_24h)
         sum_24h = sum(a for _, a, _ in state.tx_history_24h)
         distinct_merchants_24h = len(set(m for _, _, m in state.tx_history_24h))
+
+        # Recent 30m distinct MIDs and 60s subminute attempts from attempt history.
+        # distinct_mids_30m is a PRIOR-WINDOW measure: it counts unique MIDs seen before
+        # this transaction attempt (point-in-time). The current merchant_id is intentionally
+        # excluded — it has not yet been attempted. This matches the spec's enumeration
+        # threshold semantics: a cardholder with 3 prior distinct MIDs in 30m = spec ceiling.
+        cutoff_30m = tx_time - 1800.0
+        prior_mids_30m = set(m for t, _, m in state.tx_history_attempts_1h if t > cutoff_30m)
+        distinct_mids_30m = len(prior_mids_30m)
+        cutoff_60s = tx_time - 60.0
+        subminute_attempts_60s = len([t for t, _, _ in state.tx_history_attempts_1h if t > cutoff_60s])
 
         user_mean_30d = state.welford_30d.mean
         user_std_30d = state.welford_30d.std
@@ -287,6 +308,9 @@ class StreamingLedger:
             "z_score_amount_30d": round(z_score_amount, 3),
             "tx_count_1h": count_1h,
             "tx_count_24h": count_24h,
+            "tx_attempts_1h": attempts_1h,
+            "distinct_mids_30m": distinct_mids_30m,
+            "subminute_attempts_60s": subminute_attempts_60s,
             "tx_amount_sum_24h": round(sum_24h, 2),
             "distinct_merchants_24h": distinct_merchants_24h,
             "distance_from_last_tx_km": round(distance_from_last_tx_km, 3),
@@ -311,22 +335,43 @@ class StreamingLedger:
             "device_fingerprint_id": device_fingerprint_id,
         }
 
-        # 5. Mutate rolling telemetry state AFTER record generation (Point-in-time discipline)
-        state.tx_history_1h.append((tx_time, amount))
-        state.tx_history_24h.append((tx_time, amount, merchant_id))
-        state.welford_30d.update(amount)
+        # 5. Record attempt and spatial state (Point-in-time discipline)
+        state.tx_history_attempts_1h.append((tx_time, amount, merchant_id))
         state.last_tx_time = tx_time
         state.last_tx_lat = merchant_lat
         state.last_tx_lon = merchant_lon
 
-        # Physical location anchor protection for cardholder
+        # Physical location anchor protection for cardholder (legitimate CP transactions)
         if channel_type.startswith("CP") and is_fraud == 0:
             card.last_physical_lat = merchant_lat
             card.last_physical_lon = merchant_lon
             card.last_physical_time = tx_time
             card.last_merchant_id = merchant_id
 
+        # Actively release any expired pre-auth holds
+        card.prune_expired_holds(tx_time)
+
         return record
+
+    def record_authorization_outcome(
+        self,
+        card: CardholderProfile,
+        amount: float,
+        merchant_id: str,
+        tx_time: float,
+        is_approved: bool,
+        response_code: str = "00",
+    ) -> None:
+        """Records authorization outcome into the ledger's authorized transaction histories."""
+        state = self.get_or_create_state(card)
+        if not state.tx_history_attempts_1h or state.tx_history_attempts_1h[-1][0] != tx_time:
+            state.tx_history_attempts_1h.append((tx_time, amount, merchant_id))
+        if is_approved or response_code in ("00", "10"):
+            state.tx_history_authorized_1h.append((tx_time, amount))
+            state.tx_history_24h.append((tx_time, amount, merchant_id))
+            state.welford_30d.update(amount)
+        # Actively release any expired pre-auth holds
+        card.prune_expired_holds(tx_time)
 
 
 class DoubleEntryWorldLedger:
