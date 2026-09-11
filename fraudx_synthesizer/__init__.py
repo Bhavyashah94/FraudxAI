@@ -56,6 +56,11 @@ from .rails import (
     RailVerificationResult,
     RailVerifierSwitch,
 )
+from .storage import (
+    ParallelSimulationCoordinator,
+    SimulationAggregates,
+    StreamingDatasetWriter,
+)
 from .stream import (
     INFERENCE_ALLOWLIST,
     ZeroLeakageDataPartitioner,
@@ -170,5 +175,8 @@ __all__ = [
     "compile_simulation_data_bundle",
     "generate_visualization_file",
     "render_standalone_html",
+    "StreamingDatasetWriter",
+    "ParallelSimulationCoordinator",
+    "SimulationAggregates",
 ]
 

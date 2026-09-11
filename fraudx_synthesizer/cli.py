@@ -122,16 +122,35 @@ def _export_csv_view(file_path: Path, records: list[dict], fieldnames: list[str]
 
 
 def cmd_generate(args: argparse.Namespace) -> None:
-    """Generates a batch of synthetic transactions and saves to CSV or JSON."""
+    """Generates synthetic transactions via discrete event engine or parallel coordinator."""
+    if getattr(args, "parallel", False) or args.n >= 100000:
+        from .storage import ParallelSimulationCoordinator
+
+        coordinator = ParallelSimulationCoordinator(
+            total_transactions=args.n,
+            num_workers=args.workers,
+            region=args.region,
+            output_dir=args.output,
+            chunk_size=args.chunk_size,
+            adversary_mode=args.adversary_mode,
+            base_seed=args.seed,
+        )
+        summary = coordinator.run()
+        print(
+            f"Parallel simulation completed: {summary['total_transactions']:,} transactions written to {args.output}",
+            file=sys.stderr,
+        )
+        return
+
     engine = SimulationEngine(
         n_cards=args.cards,
         n_merchants=args.merchants,
         region=args.region,
-        adversary_mode=getattr(args, "adversary_mode", "intent"),
+        adversary_mode=args.adversary_mode,
         seed=args.seed,
     )
     print(
-        f"Generating {args.n} transactions (region={args.region}, fraud_prevalence={args.fraud_rate}, seed={args.seed})...",
+        f"Synthesizing {args.n} transactions ({args.region}, adversary_mode={args.adversary_mode})...",
         file=sys.stderr,
     )
     records = engine.generate_batch(
@@ -249,6 +268,23 @@ def cmd_benchmark(args: argparse.Namespace) -> None:
 
 def cmd_visualize(args: argparse.Namespace) -> None:
     """Generates synthetic batch and compiles it into an interactive standalone HTML visualizer."""
+    if getattr(args, "input", None):
+        from .visualizer import generate_visualization_from_dir
+
+        out_path = Path(args.output)
+        print(
+            f"Loading scale simulation from {args.input} (max_nodes={args.max_nodes})...",
+            file=sys.stderr,
+        )
+        res_path = generate_visualization_from_dir(
+            input_dir=args.input,
+            output_path=str(out_path),
+            max_nodes=args.max_nodes,
+            open_browser=args.open,
+        )
+        print(f"Scale visualizer dashboard generated: {res_path.resolve()}", file=sys.stderr)
+        return
+
     from .visualizer import generate_visualization_file
 
     out_path = Path(args.output)
@@ -281,7 +317,10 @@ def main() -> None:
     p_gen.add_argument("--fraud-rate", type=float, default=0.02, help="Fraud prevalence ratio")
     p_gen.add_argument("--days", type=int, default=30, help="Simulation duration in days")
     p_gen.add_argument("--seed", type=int, default=42, help="Deterministic random seed")
-    p_gen.add_argument("-o", "--output", type=str, default="synthetic_transactions.csv", help="Output file (.csv, .json, .jsonl)")
+    p_gen.add_argument("-o", "--output", type=str, default="synthetic_transactions.csv", help="Output file (.csv, .json, .jsonl) or directory for parallel runs")
+    p_gen.add_argument("--parallel", action="store_true", default=False, help="Run multi-core parallel simulation pipeline")
+    p_gen.add_argument("--workers", type=int, default=None, help="Number of parallel worker processes (defaults to CPU count - 2)")
+    p_gen.add_argument("--chunk-size", type=int, default=50000, help="Batch chunk size for streaming disk flushes")
     p_gen.add_argument("--include-disputes", action="store_true", default=False, help="Include post-authorization dispute and chargeback lifecycle columns in master output")
     p_gen.add_argument("--adversary-mode", type=str, choices=["intent", "playbook"], default="intent", help="Adversary decision architecture: 'intent' (first-principles POMDP/IDS) or 'playbook' (legacy static rules)")
     p_gen.add_argument("--export-institutional-views", action="store_true", default=False, help="Export partitioned institutional banking warehouse feeds")
@@ -302,6 +341,8 @@ def main() -> None:
     # Visualize subcommand
     p_vis = subparsers.add_parser("visualize", help="Generate and render interactive Cybercrime Threat Graph and Switch Funnel dashboard")
     p_vis.add_argument("-n", type=int, default=1500, help="Number of transactions to synthesize")
+    p_vis.add_argument("-i", "--input", type=str, default=None, help="Path to scale simulation directory to visualize")
+    p_vis.add_argument("--max-nodes", type=int, default=5000, help="Maximum number of entity nodes in interactive threat graph")
     p_vis.add_argument("--region", type=str, choices=["US", "IN"], default="US", help="Banking ecosystem region")
     p_vis.add_argument("--fraud-rate", type=float, default=0.04, help="Fraud prevalence ratio")
     p_vis.add_argument("--adversary-mode", type=str, choices=["intent", "playbook"], default="intent", help="Adversary decision mode: 'intent' or 'playbook'")

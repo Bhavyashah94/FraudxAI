@@ -928,3 +928,224 @@ def generate_visualization_file(
         webbrowser.open(out_file.resolve().as_uri())
 
     return out_file
+
+
+def compile_bundle_from_metadata(
+    meta: Dict[str, Any],
+    threat_graph_sample: Optional[Dict[str, Any]] = None,
+    sample_records: Optional[List[Dict[str, Any]]] = None,
+    max_nodes: int = 5000,
+) -> Dict[str, Any]:
+    """Compiles a visualization bundle from high-scale simulation metadata and threat samples."""
+    total_tx = int(meta.get("total_transactions", 0))
+    fraud_count = int(meta.get("total_fraud_count", 0))
+    legit_count = total_tx - fraud_count
+    approved_count = int(meta.get("approved_count", 0))
+    declined_count = int(meta.get("declined_count", 0))
+
+    region = str(meta.get("region", "US"))
+    total_vol = float(meta.get("total_volume", 0.0))
+    fraud_vol = float(meta.get("total_fraud_volume", 0.0))
+
+    # Macro-options breakdown
+    macro_stats = []
+    for sc, cnt in meta.get("macro_options", {}).items():
+        macro_stats.append({
+            "scenario": sc,
+            "count": cnt,
+            "pct": round(cnt / max(1, fraud_count) * 100, 1),
+            "amount_min": 0.0,
+            "amount_median": 0.0,
+            "amount_max": 0.0,
+            "amount_sum": 0.0,
+        })
+
+    # 4-Hop Funnel Drops
+    hop_drops = meta.get("hop_drops", {})
+    gateway_drops = hop_drops.get("GATEWAY_FILTER", 0)
+    vaai_drops = hop_drops.get("NETWORK_SWITCH_VAAI", 0)
+    acs_drops = hop_drops.get("ACS_3DS", 0)
+    issuer_drops = hop_drops.get("ISSUER_HOST", 0)
+
+    funnel_data = {
+        "total_ingress": total_tx,
+        "approved": approved_count,
+        "declined": declined_count,
+        "approval_rate": round(approved_count / max(1, total_tx) * 100, 1),
+        "hops": [
+            {
+                "id": "hop_1",
+                "name": "Hop 1: Gateway Edge Filter",
+                "description": "Browser Canvas Invariance, IP Reputation (>=85), Kinematic Supersonic Velocity",
+                "drop_count": gateway_drops,
+                "drop_pct": round(gateway_drops / max(1, total_tx) * 100, 2),
+            },
+            {
+                "id": "hop_2",
+                "name": "Hop 2: Network Switch In-Flight ML",
+                "description": "Visa Account Attack Intelligence (VAAI Field 44.5 >= 75) Carding Intercept",
+                "drop_count": vaai_drops,
+                "drop_pct": round(vaai_drops / max(1, total_tx) * 100, 2),
+            },
+            {
+                "id": "hop_3",
+                "name": "Hop 3: 3DS Access Control Server",
+                "description": "PSD2 Low-Value (<$30) & TRA (<$100) Exemptions vs 2FA Step-Up Challenge Drops",
+                "drop_count": acs_drops,
+                "drop_pct": round(acs_drops / max(1, total_tx) * 100, 2),
+            },
+            {
+                "id": "hop_4",
+                "name": "Hop 4: Issuer Core Banking Host",
+                "description": "DDA Solvency (ISO 51), Balance Oracle (ISO 10), Hourly Velocity (ISO 65), STIP (ISO 91)",
+                "drop_count": issuer_drops,
+                "drop_pct": round(issuer_drops / max(1, total_tx) * 100, 2),
+            },
+        ],
+    }
+
+    # Temporal series
+    h_legit = meta.get("hourly_legitimate", [0] * 24)
+    h_fraud = meta.get("hourly_fraud", [0] * 24)
+    temporal_series = [
+        {
+            "hour": h,
+            "legit": h_legit[h] if h < len(h_legit) else 0,
+            "fraud": h_fraud[h] if h < len(h_fraud) else 0,
+            "hard_neg": 0,
+            "total_amount": 0.0,
+        }
+        for h in range(24)
+    ]
+
+    # Threat Graph Construction from Sample
+    raw_nodes = []
+    raw_links = []
+    if threat_graph_sample:
+        raw_nodes = threat_graph_sample.get("nodes", [])
+        raw_links = threat_graph_sample.get("links", [])
+
+    # Filter to top max_nodes
+    if len(raw_nodes) > max_nodes:
+        raw_nodes = sorted(raw_nodes, key=lambda n: n.get("volume", 0), reverse=True)[:max_nodes]
+    retained_ids = {n["id"] for n in raw_nodes}
+
+    filtered_links = []
+    for l in raw_links:
+        if l["source"] in retained_ids and l["target"] in retained_ids:
+            filtered_links.append(l)
+
+    formatted_nodes = []
+    for n in raw_nodes:
+        n_type = str(n.get("type", "card")).lower()
+        formatted_nodes.append({
+            "id": n["id"],
+            "label": n.get("label", n["id"]),
+            "type": n_type,
+            "radius": 14 if n_type == "syndicate" else (11 if n_type in ("botnet", "mule_ring", "mule") else 8),
+            "details": {
+                "Entity ID": n["id"],
+                "Entity Type": n_type.upper(),
+                "Associated Volume": n.get("volume", 1),
+            },
+        })
+
+    threat_graph = {
+        "nodes": formatted_nodes,
+        "links": filtered_links,
+        "summary": {
+            "syndicates_count": sum(1 for n in formatted_nodes if n["type"] == "syndicate"),
+            "botnets_count": sum(1 for n in formatted_nodes if n["type"] == "botnet"),
+            "cards_count": sum(1 for n in formatted_nodes if n["type"] == "card"),
+            "merchants_count": sum(1 for n in formatted_nodes if n["type"] == "merchant"),
+            "mules_count": sum(1 for n in formatted_nodes if "mule" in n["type"]),
+            "total_links": len(filtered_links),
+        },
+    }
+
+    return {
+        "metadata": {
+            "region": region,
+            "seed": 42,
+            "total_transactions": total_tx,
+            "fraud_count": fraud_count,
+            "fraud_rate_pct": round(fraud_count / max(1, total_tx) * 100, 2),
+            "legitimate_count": legit_count,
+            "hard_negative_count": 0,
+            "total_volume_usd": total_vol,
+            "fraud_volume_usd": fraud_vol,
+        },
+        "macro_options": macro_stats,
+        "switch_funnel": funnel_data,
+        "temporal_series": temporal_series,
+        "threat_graph": threat_graph,
+        "table_records": sample_records or [],
+    }
+
+
+def generate_visualization_from_dir(
+    input_dir: str | Path,
+    output_path: str = "reports/fraudx_visualizer_scale.html",
+    max_nodes: int = 5000,
+    open_browser: bool = False,
+) -> Path:
+    """Renders visualizer dashboard from high-scale simulation output directory."""
+    in_path = Path(input_dir)
+    meta_path = in_path / "master_simulation_metadata.json"
+    if not meta_path.exists():
+        meta_path = in_path / "simulation_metadata.json"
+    if not meta_path.exists():
+        raise FileNotFoundError(f"Simulation metadata not found in {input_dir}")
+
+    meta = json.loads(meta_path.read_text(encoding="utf-8"))
+
+    # Load threat graph sample if present
+    graph_path = in_path / "threat_graph_sample.json"
+    threat_sample = None
+    if graph_path.exists():
+        threat_sample = json.loads(graph_path.read_text(encoding="utf-8"))
+    else:
+        # Check sub-worker directories
+        for w_dir in in_path.glob("worker_*"):
+            w_graph = w_dir / "threat_graph_sample.json"
+            if w_graph.exists():
+                threat_sample = json.loads(w_graph.read_text(encoding="utf-8"))
+                break
+
+    # Sample a few records from parquet if available
+    sample_records = []
+    try:
+        import polars as pl
+        pq_files = list(in_path.glob("**/*.parquet"))
+        if pq_files:
+            auth_pqs = [f for f in pq_files if "auth_stream" in str(f)]
+            target_pq = auth_pqs[0] if auth_pqs else pq_files[0]
+            df = pl.read_parquet(target_pq).head(150)
+            sample_records = df.to_dicts()
+    except Exception:
+        pass
+
+    bundle = compile_bundle_from_metadata(
+        meta=meta,
+        threat_graph_sample=threat_sample,
+        sample_records=sample_records,
+        max_nodes=max_nodes,
+    )
+
+    region = str(meta.get("region", "US"))
+    total_tx = int(meta.get("total_transactions", 0))
+    html_content = render_standalone_html(
+        bundle,
+        title=f"FraudxAI Scale Visualizer - {total_tx:,} Transactions ({region})",
+    )
+
+    out_file = Path(output_path)
+    out_file.parent.mkdir(parents=True, exist_ok=True)
+    out_file.write_text(html_content, encoding="utf-8")
+
+    if open_browser:
+        import webbrowser
+        webbrowser.open(out_file.resolve().as_uri())
+
+    return out_file
+

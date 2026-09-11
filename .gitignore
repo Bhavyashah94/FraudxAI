@@ -62,6 +62,7 @@ venv.bak/
 data/production_*.csv
 data/batch_*.csv
 data/test_*.csv
-data/large_*.csv
 data/*_production.csv
+data/*simulation*/
+data/smoke_test_parallel/
 reports/
