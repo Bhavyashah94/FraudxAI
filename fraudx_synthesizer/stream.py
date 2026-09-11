@@ -8,12 +8,17 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+from datetime import datetime, timezone
 import json
+import math
+from pathlib import Path
 import sys
 import time
 import urllib.request
 import urllib.error
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
+
+import numpy as np
 
 from .engine import SimulationEngine
 
@@ -108,6 +113,123 @@ def main():
         seed=args.seed,
         to_stdout=args.stdout,
     ))
+
+
+INFERENCE_ALLOWLIST = {
+    "transaction_id", "card_id", "pan_masked", "product_id", "cohort_id",
+    "merchant_id", "merchant_name", "mid", "tid", "mcc", "merchant_category",
+    "merchant_lat", "merchant_lon", "acquirer_bin", "gateway_provider",
+    "country_code", "postal_code", "timestamp_utc", "tx_time_seconds",
+    "hour_of_day", "day_of_week", "amount", "amount_minor", "currency",
+    "channel_type", "credit_limit", "current_balance", "available_balance",
+    "user_avg_tx_amount_30d", "user_std_tx_amount_30d", "z_score_amount_30d",
+    "tx_count_1h", "tx_count_24h", "tx_amount_sum_24h", "distinct_merchants_24h",
+    "distance_from_last_tx_km", "time_since_last_tx_seconds", "haversine_velocity_kph",
+    "ip_distance_from_home_km", "client_ip", "asn_type", "geo_risk_score",
+    "device_canvas_hash", "is_cross_border", "billing_shipping_match",
+    "avs_match_code", "cvv_match_flag", "mti", "stan", "rrn", "auth_code",
+    "response_code", "auth_response_code", "pos_entry_mode", "pos_condition_code",
+    "eci", "trans_status_3ds", "vaai_score", "clearing_mti", "clearing_delay_hours",
+    "settled_amount", "settled_amount_minor", "interchange_fee_minor",
+    "hawkes_intensity_R",
+}
+
+
+class ZeroLeakageDataPartitioner:
+    """Partitions unified synthetic transactions into 3 legally and architecturally isolated feeds."""
+
+    def __init__(self, mean_chargeback_lag_days: float = 21.0, seed: int = 42):
+        self.mean_chargeback_lag_days = mean_chargeback_lag_days
+        self.rng = np.random.default_rng(seed)
+
+    def partition_record(self, record: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any]]:
+        """Splits an individual record into (inference_feed, delayed_labels, threat_intel_graph_enclave)."""
+        # 1. Inference Feed (strictly point-in-time, zero target labels, zero graph ids)
+        inference_feed = {k: v for k, v in record.items() if k in INFERENCE_ALLOWLIST}
+
+        # 2. Delayed Labels (empirical chargeback / dispute maturity lag)
+        tx_time_sec = float(record.get("tx_time_seconds", 0.0))
+        # Log-normal chargeback reporting lag (mean ~ 21 days, range 3 to 120 days)
+        delay_days = float(self.rng.lognormal(mean=math.log(max(1.0, self.mean_chargeback_lag_days)), sigma=0.35))
+        delay_days = max(3.0, min(120.0, delay_days))
+        maturity_sec = tx_time_sec + delay_days * 86400.0
+        maturity_dt = datetime.fromtimestamp(maturity_sec, tz=timezone.utc).isoformat()
+
+        delayed_labels = {
+            "transaction_id": record.get("transaction_id", ""),
+            "card_id": record.get("card_id", ""),
+            "is_fraud": int(record.get("is_fraud", 0)),
+            "scenario_tag": str(record.get("scenario_tag", "")),
+            "tx_timestamp_utc": record.get("timestamp_utc", ""),
+            "label_maturity_timestamp_utc": maturity_dt,
+            "chargeback_delay_days": round(delay_days, 1),
+            "dispute_status": record.get("dispute_status", "NONE"),
+            "dispute_reason_code": record.get("dispute_reason_code", ""),
+            "rbi_liability_tier": record.get("rbi_liability_tier", ""),
+        }
+
+        # 3. Threat Intel Graph Enclave (isolated syndicate and network topology)
+        threat_intel_graph_enclave = {
+            "transaction_id": record.get("transaction_id", ""),
+            "card_id": record.get("card_id", ""),
+            "merchant_id": record.get("merchant_id", ""),
+            "syndicate_id": record.get("syndicate_id", ""),
+            "botnet_cluster_id": record.get("botnet_cluster_id", ""),
+            "mule_ring_id": record.get("mule_ring_id", ""),
+            "beneficiary_account_id": record.get("beneficiary_account_id", ""),
+            "ip_subnet_prefix": record.get("ip_subnet_prefix", ""),
+            "device_fingerprint_id": record.get("device_fingerprint_id", ""),
+            "asn_type": record.get("asn_type", "residential"),
+            "client_ip": record.get("client_ip", "127.0.0.1"),
+            "is_fraud": int(record.get("is_fraud", 0)),
+            "scenario_tag": str(record.get("scenario_tag", "")),
+        }
+
+        return inference_feed, delayed_labels, threat_intel_graph_enclave
+
+    def partition_batch(
+        self,
+        records: List[Dict[str, Any]],
+    ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]], List[Dict[str, Any]]]:
+        """Partitions an entire batch of records into 3 feeds."""
+        inf_batch: List[Dict[str, Any]] = []
+        labels_batch: List[Dict[str, Any]] = []
+        graph_batch: List[Dict[str, Any]] = []
+
+        for r in records:
+            inf, lbl, grp = self.partition_record(r)
+            inf_batch.append(inf)
+            labels_batch.append(lbl)
+            graph_batch.append(grp)
+
+        return inf_batch, labels_batch, graph_batch
+
+    def export_partitioned_feeds(
+        self,
+        records: List[Dict[str, Any]],
+        output_dir: str | Path,
+    ) -> Dict[str, Path]:
+        """Writes the 3 partitioned feeds to output directory as JSON lines."""
+        out_path = Path(output_dir)
+        out_path.mkdir(parents=True, exist_ok=True)
+
+        inf_batch, labels_batch, graph_batch = self.partition_batch(records)
+
+        paths = {
+            "inference_feed": out_path / "inference_feed.jsonl",
+            "delayed_labels": out_path / "delayed_labels.jsonl",
+            "threat_intel_graph_enclave": out_path / "threat_intel_graph_enclave.jsonl",
+        }
+
+        for feed_name, file_path in paths.items():
+            data = inf_batch if feed_name == "inference_feed" else (
+                labels_batch if feed_name == "delayed_labels" else graph_batch
+            )
+            with open(file_path, "w", encoding="utf-8") as f:
+                for row in data:
+                    f.write(json.dumps(row) + "\n")
+
+        return paths
 
 
 if __name__ == "__main__":

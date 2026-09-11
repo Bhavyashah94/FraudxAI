@@ -104,6 +104,7 @@ class CohortPersonaSpec:
     dominant_mccs: List[int]
     default_assigned_products: List[str]
     vigilance_weights: VigilanceTierWeights
+    hawkes_dynamics: Optional[Dict[str, float]] = None
 
 
 # ----------------------------------------------------------------------
@@ -431,6 +432,7 @@ def load_all_specs(spec_dir: Optional[str] = None) -> SpecRegistry:
             dominant_mccs=list(c_raw.get("dominant_mccs", [])),
             default_assigned_products=list(c_raw.get("default_assigned_products", [])),
             vigilance_weights=vigilance,
+            hawkes_dynamics=c_raw.get("hawkes_dynamics"),
         )
 
     # 3. Parse 03_payment_rail_gaps.yaml

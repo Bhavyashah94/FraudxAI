@@ -35,7 +35,7 @@ def test_us_institutional_records():
         assert len(r["stan"]) == 6
         assert r["stan"].isdigit()
         assert len(r["rrn"]) == 12
-        assert r["response_code"] in ["00", "05", "10", "14", "51", "54", "59", "63", "82"]
+        assert r["response_code"] in ["00", "05", "10", "14", "51", "54", "57", "59", "63", "65", "82"]
         assert r["pos_entry_mode"] in ["051", "071", "901", "012", "102", "031", "812"]
         assert r["pos_condition_code"] in ["00", "59"]
 

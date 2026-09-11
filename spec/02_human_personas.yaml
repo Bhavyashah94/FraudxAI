@@ -38,6 +38,13 @@ consumer_clusters:
       tier_2_app_checker: 0.45
       tier_3_statement: 0.12
       tier_4_passive: 0.08
+    hawkes_dynamics:
+      mu_0_hz: 0.0000110
+      alpha_excitation_hz: 0.00195
+      beta_decay_hz: 0.00285
+      branching_ratio_eta: 0.684
+      expected_cluster_size: 3.16
+      nocturnal_floor_beta_0: 0.035
 
   - id: "C2_FIXED_INCOME_SENIOR"
     name: "Fixed-Income Senior / Retiree"
@@ -65,6 +72,13 @@ consumer_clusters:
       tier_2_app_checker: 0.25
       tier_3_statement: 0.52
       tier_4_passive: 0.08
+    hawkes_dynamics:
+      mu_0_hz: 0.0000124
+      alpha_excitation_hz: 0.00145
+      beta_decay_hz: 0.00260
+      branching_ratio_eta: 0.558
+      expected_cluster_size: 2.26
+      nocturnal_floor_beta_0: 0.010
 
   - id: "C3_YOUNG_ADULT_STUDENT"
     name: "Young Adult / College Student"
@@ -92,6 +106,13 @@ consumer_clusters:
       tier_2_app_checker: 0.30
       tier_3_statement: 0.05
       tier_4_passive: 0.03
+    hawkes_dynamics:
+      mu_0_hz: 0.0000158
+      alpha_excitation_hz: 0.00210
+      beta_decay_hz: 0.00290
+      branching_ratio_eta: 0.724
+      expected_cluster_size: 3.62
+      nocturnal_floor_beta_0: 0.045
 
   - id: "C4_SUBURBAN_FAMILY"
     name: "Suburban Family Household"
@@ -125,6 +146,13 @@ consumer_clusters:
       tier_2_app_checker: 0.35
       tier_3_statement: 0.08
       tier_4_passive: 0.02
+    hawkes_dynamics:
+      mu_0_hz: 0.0000208
+      alpha_excitation_hz: 0.00225
+      beta_decay_hz: 0.00310
+      branching_ratio_eta: 0.726
+      expected_cluster_size: 3.65
+      nocturnal_floor_beta_0: 0.015
 
   - id: "C5_URBAN_TECH_PROFESSIONAL"
     name: "Urban Tech-Forward Professional"
@@ -152,6 +180,13 @@ consumer_clusters:
       tier_2_app_checker: 0.26
       tier_3_statement: 0.04
       tier_4_passive: 0.02
+    hawkes_dynamics:
+      mu_0_hz: 0.0000185
+      alpha_excitation_hz: 0.00180
+      beta_decay_hz: 0.00270
+      branching_ratio_eta: 0.667
+      expected_cluster_size: 3.00
+      nocturnal_floor_beta_0: 0.030
 
   - id: "C6_SMALL_BUSINESS_OWNER"
     name: "Small Business Owner-Operator"
@@ -185,6 +220,13 @@ consumer_clusters:
       tier_2_app_checker: 0.42
       tier_3_statement: 0.16
       tier_4_passive: 0.04
+    hawkes_dynamics:
+      mu_0_hz: 0.0000245
+      alpha_excitation_hz: 0.00205
+      beta_decay_hz: 0.00295
+      branching_ratio_eta: 0.695
+      expected_cluster_size: 3.28
+      nocturnal_floor_beta_0: 0.020
 
   - id: "C7_LUXURY_AFFLUENT"
     name: "High-Net-Worth Luxury Spender"
@@ -218,6 +260,13 @@ consumer_clusters:
       tier_2_app_checker: 0.32
       tier_3_statement: 0.24
       tier_4_passive: 0.04
+    hawkes_dynamics:
+      mu_0_hz: 0.0000325
+      alpha_excitation_hz: 0.00240
+      beta_decay_hz: 0.00320
+      branching_ratio_eta: 0.750
+      expected_cluster_size: 4.00
+      nocturnal_floor_beta_0: 0.030
 
 circadian_diurnal_model:
   mathematical_form: "periodic_24h_von_Mises_mixture"

@@ -24,8 +24,17 @@ from .engine import (
     SimulationEngine,
 )
 from .benchmark import (
+    AdversarialPrivacyEvaluator,
+    AdversarialPrivacySummary,
+    MLUtilityEvaluator,
+    MLUtilitySummary,
     ModelBenchmarkSummary,
+    StatisticalFidelityEvaluator,
+    StatisticalFidelitySummary,
+    TripartiteBenchmarkHarness,
+    TripartiteBenchmarkSummary,
     XAIBenchmarkHarness,
+    generate_tripartite_markdown_report,
 )
 from .evaluation import (
     GroundTruthXAIEvaluator,
@@ -38,14 +47,36 @@ from .invariants import (
 )
 from .ledger import (
     CardholderLedgerState,
+    DoubleEntryWorldLedger,
     StreamingLedger,
     WelfordAccumulator,
+)
+from .rails import (
+    CandidateTransactionIntent,
+    RailVerificationResult,
+    RailVerifierSwitch,
+)
+from .stream import (
+    INFERENCE_ALLOWLIST,
+    ZeroLeakageDataPartitioner,
 )
 from .syndicates import (
     BotnetCluster,
     MuleRing,
     SyndicateEntity,
     SyndicateRegistry,
+)
+from .hawkes import (
+    ADVERSARY_HAWKES_PROFILES,
+    PERSONA_HAWKES_PROFILES,
+    HawkesParameters,
+    RecursiveCircadianHawkesEngine,
+)
+from .invertible_flow import (
+    AffineCouplingLayer,
+    ConditionalRealNVPFlow,
+    LatentAumannShapleyAttributor,
+    TransactionFlowFeatureCodec,
 )
 from .world import (
     MCC_TAXONOMY,
@@ -76,6 +107,15 @@ __all__ = [
     "XAIBenchmarkResult",
     "XAIBenchmarkHarness",
     "ModelBenchmarkSummary",
+    "StatisticalFidelitySummary",
+    "MLUtilitySummary",
+    "AdversarialPrivacySummary",
+    "TripartiteBenchmarkSummary",
+    "StatisticalFidelityEvaluator",
+    "MLUtilityEvaluator",
+    "AdversarialPrivacyEvaluator",
+    "TripartiteBenchmarkHarness",
+    "generate_tripartite_markdown_report",
     "WelfordAccumulator",
     "CardholderLedgerState",
     "verify_transaction_invariants",
@@ -86,5 +126,19 @@ __all__ = [
     "MuleRing",
     "SyndicateEntity",
     "SyndicateRegistry",
+    "HawkesParameters",
+    "RecursiveCircadianHawkesEngine",
+    "PERSONA_HAWKES_PROFILES",
+    "ADVERSARY_HAWKES_PROFILES",
+    "ConditionalRealNVPFlow",
+    "AffineCouplingLayer",
+    "TransactionFlowFeatureCodec",
+    "LatentAumannShapleyAttributor",
+    "DoubleEntryWorldLedger",
+    "CandidateTransactionIntent",
+    "RailVerificationResult",
+    "RailVerifierSwitch",
+    "ZeroLeakageDataPartitioner",
+    "INFERENCE_ALLOWLIST",
 ]
 

@@ -85,6 +85,7 @@ class StreamingLedger:
     def __init__(self, seed: int = 42):
         self.rng = np.random.default_rng(seed)
         self.card_states: Dict[str, CardholderLedgerState] = {}
+        self.double_entry = DoubleEntryWorldLedger()
 
     def get_or_create_state(self, card: CardholderProfile) -> CardholderLedgerState:
         """Retrieves cardholder state or initializes with theoretical lognormal priors."""
@@ -326,3 +327,165 @@ class StreamingLedger:
             card.last_merchant_id = merchant_id
 
         return record
+
+
+class DoubleEntryWorldLedger:
+    """Multi-party double-entry accounting ledger guaranteeing bitwise balance conservation.
+    
+    Axiom: For every financial mutation across the payments ecosystem,
+    sum(Debits) == sum(Credits) to floating-point machine precision.
+    """
+
+    def __init__(self):
+        # Multi-party balance accounts
+        self.accounts: Dict[str, float] = collections.defaultdict(float)
+        # Pre-authorization hold state machine: tx_id -> (card_id, hold_amount, status)
+        self.active_holds: Dict[str, Tuple[str, float, str]] = {}
+        # Immutable double-entry journal log
+        self.journal: List[Dict[str, Any]] = []
+
+    def place_pre_auth_hold(
+        self,
+        tx_id: str,
+        card_id: str,
+        hold_amount: float,
+        sim_time_sec: float,
+    ) -> bool:
+        """Places pre-authorization hold reserving available funds in escrow.
+        
+        Double-Entry Leg:
+        - Debit: CARD_AVAILABLE:{card_id} (-hold_amount)
+        - Credit: ESCROW_HOLD:{card_id} (+hold_amount)
+        """
+        hold_amount = round(hold_amount, 2)
+        debit_acct = f"card_available:{card_id}"
+        credit_acct = f"escrow_hold:{card_id}"
+
+        self.accounts[debit_acct] -= hold_amount
+        self.accounts[credit_acct] += hold_amount
+        self.active_holds[tx_id] = (card_id, hold_amount, "HELD")
+
+        entry = {
+            "tx_id": tx_id,
+            "timestamp": sim_time_sec,
+            "action": "PRE_AUTH_HOLD",
+            "debits": {debit_acct: hold_amount},
+            "credits": {credit_acct: hold_amount},
+        }
+        self.journal.append(entry)
+        return True
+
+    def settle_hold(
+        self,
+        tx_id: str,
+        card_id: str,
+        merchant_id: str,
+        settled_amount: float,
+        interchange_rate: float = 0.0175,
+        network_fee_rate: float = 0.0015,
+        sim_time_sec: float = 0.0,
+    ) -> Tuple[float, float, float]:
+        """Settles clearing presentment with exact multi-party conservation.
+        
+        Double-Entry Allocation:
+        - Release Escrow Hold: Debit ESCROW_HOLD:{card_id} (hold_amount)
+        - Restore unused hold delta to available balance: Credit CARD_AVAILABLE:{card_id} (hold - settled)
+        - Post financial balance: Debit CARD_POSTED:{card_id} (settled_amount)
+        - Pay merchant net: Credit MERCHANT_SETTLEMENT:{merchant_id} (settled - interchange - network)
+        - Issuer fee: Credit ISSUER_INTERCHANGE (interchange)
+        - Network fee: Credit NETWORK_ASSESSMENT (network)
+        
+        Conservation Invariant:
+        Debits: settled_amount
+        Credits: (settled - interchange - network) + interchange + network == settled_amount
+        """
+        settled_amount = round(settled_amount, 2)
+        interchange_fee = round(settled_amount * interchange_rate, 2)
+        network_fee = round(settled_amount * network_fee_rate, 2)
+        merchant_net = round(settled_amount - interchange_fee - network_fee, 2)
+
+        # Retrieve hold
+        hold_data = self.active_holds.pop(tx_id, (card_id, settled_amount, "HELD"))
+        _, hold_amount, _ = hold_data
+
+        escrow_acct = f"escrow_hold:{card_id}"
+        card_avail_acct = f"card_available:{card_id}"
+        card_posted_acct = f"card_posted:{card_id}"
+        merchant_acct = f"merchant_settlement:{merchant_id}"
+        issuer_acct = "issuer_interchange"
+        network_acct = "network_assessment"
+
+        # 1. Release escrow hold
+        self.accounts[escrow_acct] -= hold_amount
+        # 2. Adjust available balance with difference between hold and settled
+        unused_hold = round(hold_amount - settled_amount, 2)
+        if unused_hold != 0.0:
+            self.accounts[card_avail_acct] += unused_hold
+
+        # 3. Post debit on cardholder
+        self.accounts[card_posted_acct] += settled_amount
+        # 4. Credit merchant net
+        self.accounts[merchant_acct] += merchant_net
+        # 5. Credit interchange
+        self.accounts[issuer_acct] += interchange_fee
+        # 6. Credit network assessment
+        self.accounts[network_acct] += network_fee
+
+        debits = {
+            card_posted_acct: settled_amount,
+            escrow_acct: hold_amount,
+        }
+        credits = {
+            merchant_acct: merchant_net,
+            issuer_acct: interchange_fee,
+            network_acct: network_fee,
+            card_avail_acct: hold_amount,
+        }
+
+        # Exact accounting reconciliation check
+        total_d = sum(debits.values())
+        total_c = sum(credits.values())
+        assert math.isclose(total_d, total_c, abs_tol=1e-5), (
+            f"Double-entry settlement discrepancy on {tx_id}: {total_d} != {total_c}"
+        )
+
+        entry = {
+            "tx_id": tx_id,
+            "timestamp": sim_time_sec,
+            "action": "CLEARING_SETTLEMENT",
+            "debits": debits,
+            "credits": credits,
+        }
+        self.journal.append(entry)
+        return merchant_net, interchange_fee, network_fee
+
+    def release_hold(self, tx_id: str, card_id: str, sim_time_sec: float = 0.0) -> float:
+        """Releases hold upon decline, reversal, or expiry without financial mutation."""
+        if tx_id not in self.active_holds:
+            return 0.0
+
+        _, hold_amount, _ = self.active_holds.pop(tx_id)
+        escrow_acct = f"escrow_hold:{card_id}"
+        avail_acct = f"card_available:{card_id}"
+
+        self.accounts[escrow_acct] -= hold_amount
+        self.accounts[avail_acct] += hold_amount
+
+        entry = {
+            "tx_id": tx_id,
+            "timestamp": sim_time_sec,
+            "action": "HOLD_RELEASE",
+            "debits": {escrow_acct: hold_amount},
+            "credits": {avail_acct: hold_amount},
+        }
+        self.journal.append(entry)
+        return hold_amount
+
+    def verify_global_balance_conservation(self) -> Tuple[bool, float]:
+        """Proves that sum(Debits) == sum(Credits) globally across all historical journal entries."""
+        total_debits = sum(sum(e["debits"].values()) for e in self.journal)
+        total_credits = sum(sum(e["credits"].values()) for e in self.journal)
+        discrepancy = abs(total_debits - total_credits)
+        is_conserved = discrepancy < 1e-5
+        return is_conserved, discrepancy
+

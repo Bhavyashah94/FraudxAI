@@ -31,10 +31,21 @@ from .agents import (
     ISO8583Response,
 )
 from .causal_scm import CausalGroundTruth, StructuralCausalEngine
+from .hawkes import (
+    ADVERSARY_HAWKES_PROFILES,
+    HawkesParameters,
+    PERSONA_HAWKES_PROFILES,
+    RecursiveCircadianHawkesEngine,
+)
 from .invariants import verify_transaction_invariants
 from .ledger import StreamingLedger
 from .syndicates import SyndicateRegistry
 from .world import MCC_TAXONOMY, MerchantProfile, WorldEnvironment
+from .rails import (
+    CandidateTransactionIntent,
+    RailVerificationResult,
+    RailVerifierSwitch,
+)
 from .spec_loader import load_all_specs
 
 # Event Type Enums
@@ -79,6 +90,8 @@ class DiscreteEventEngine:
         self.bank = BankDecisionEngine()
         self.syndicate_registry = SyndicateRegistry(region=self.region, seed=seed)
         self.ledger = StreamingLedger(seed=seed)
+        self.rail_switch = RailVerifierSwitch(region=self.region, seed=seed)
+        self.double_entry_ledger = self.ledger.double_entry
 
         self.specs = load_all_specs()
         self.cards: List[CardholderProfile] = []
@@ -88,11 +101,54 @@ class DiscreteEventEngine:
         # Diurnal 24-hour circular probability density
         self.diurnal_hourly_probs = self._compute_circular_diurnal_distribution()
 
+        # Recursive Circadian Hawkes MTPP Engine
+        self.hawkes_engine = RecursiveCircadianHawkesEngine(seed=seed)
+        self.card_hawkes_R: Dict[str, float] = {c.card_id: 0.0 for c in self.cards}
+        self.card_last_hawkes_time: Dict[str, float] = {c.card_id: -1.0 for c in self.cards}
+
         # Discrete-event priority queue state
         self.event_queue: List[Tuple[int, int, int, str, int, Dict[str, Any]]] = []
         self.seq_counter = itertools.count()
         self.card_avail_time_us: Dict[str, int] = {c.card_id: 0 for c in self.cards}
         self.card_generation: Dict[str, int] = {c.card_id: 0 for c in self.cards}
+
+    def _get_card_hawkes_params(self, card: CardholderProfile, mean_inter_arrival_sec: Optional[float] = None) -> HawkesParameters:
+        """Constructs calibrated persona HawkesParameters, optionally scaled to simulation time span."""
+        cohort_spec = self.specs.cohorts.get(card.cohort_id)
+        if cohort_spec and cohort_spec.hawkes_dynamics:
+            hd = cohort_spec.hawkes_dynamics
+            base_mu = float(hd.get("mu_0_hz", 1.0e-5))
+            alpha = float(hd.get("alpha_excitation_hz", 1.85e-3))
+            beta = float(hd.get("beta_decay_hz", 2.78e-3))
+            beta_0 = float(hd.get("nocturnal_floor_beta_0", 0.025))
+        elif card.cohort_id in PERSONA_HAWKES_PROFILES:
+            profile = PERSONA_HAWKES_PROFILES[card.cohort_id]
+            base_mu = profile.mu_0
+            alpha = profile.alpha
+            beta = profile.beta
+            beta_0 = profile.beta_0_floor
+        else:
+            base_mu = 1.85e-5
+            alpha = 1.80e-3
+            beta = 2.70e-3
+            beta_0 = 0.025
+
+        if mean_inter_arrival_sec is not None and mean_inter_arrival_sec > 0:
+            vol_mean = cohort_spec.monthly_tx_volume_mean if cohort_spec else 55.0
+            persona_vol_scale = vol_mean / 55.0
+            eta = min(0.95, alpha / beta)
+            target_lambda = (1.0 / mean_inter_arrival_sec) * persona_vol_scale
+            mu_0 = (target_lambda * (1.0 - eta)) / 0.8208
+        else:
+            mu_0 = base_mu
+
+        return HawkesParameters(
+            mu_0=mu_0,
+            alpha=alpha,
+            beta=beta,
+            beta_0_floor=beta_0,
+            phi_max=3.85,
+        )
 
     def _compute_circular_diurnal_distribution(self) -> np.ndarray:
         """Computes continuous 24-hour periodic diurnal arrival intensity."""
@@ -287,6 +343,8 @@ class DiscreteEventEngine:
         for c in self.cards:
             self.card_avail_time_us[c.card_id] = start_time_us
             self.card_generation[c.card_id] = 0
+            self.card_hawkes_R[c.card_id] = 0.0
+            self.card_last_hawkes_time[c.card_id] = -1.0
             c.is_frozen = False
             c.unauthorized_alert_time = -1.0
             c.state = CardholderState.HOMESTEAD
@@ -309,14 +367,23 @@ class DiscreteEventEngine:
         else:
             t_fraud_mean = None
 
-        # Schedule initial cardholder routine arrivals using stationary renewal & Lewis-Shedler thinning
+        # Schedule initial cardholder routine arrivals using Recursive Circadian Hawkes MTPP
         macro_mult_0 = self._compute_macro_rate_multiplier(start_time_seconds, active_macro_regime)
         for card in self.cards:
-            initial_t_sec = self.specs.circadian.sample_next_arrival_nhpp(
-                t_curr_sec=start_time_seconds,
-                mean_inter_arrival_sec=mean_inter_arrival_sec,
-                rng=self.rng,
-                macro_rate_multiplier=macro_mult_0,
+            hawkes_p = self._get_card_hawkes_params(card, mean_inter_arrival_sec=mean_inter_arrival_sec)
+            if macro_mult_0 != 1.0:
+                hawkes_p = HawkesParameters(
+                    mu_0=hawkes_p.mu_0 * macro_mult_0,
+                    alpha=hawkes_p.alpha,
+                    beta=hawkes_p.beta,
+                    beta_0_floor=hawkes_p.beta_0_floor,
+                    phi_max=hawkes_p.phi_max,
+                )
+            initial_t_sec, _ = self.hawkes_engine.sample_next_arrival(
+                current_time_sec=start_time_seconds,
+                R_current=0.0,
+                last_tx_time_sec=-1.0,
+                params=hawkes_p,
             )
             self._schedule_event(
                 time_us=int(initial_t_sec * 1_000_000),
@@ -369,7 +436,9 @@ class DiscreteEventEngine:
             if is_fraud_evt and t_fraud_mean is not None:
                 next_f_delta_sec = float(self.rng.exponential(scale=t_fraud_mean))
                 next_f_t_us = t_us + int(next_f_delta_sec * 1_000_000)
-                active_cards = [c for c in self.cards if not c.is_frozen]
+                active_cards = [c for c in self.cards if not c.is_frozen and not self.fraudster.is_card_burned(c.card_id)]
+                if not active_cards:
+                    active_cards = [c for c in self.cards if not c.is_frozen]
                 if active_cards:
                     target_card_next = self.rng.choice(active_cards)
                     self._schedule_event(
@@ -393,6 +462,13 @@ class DiscreteEventEngine:
             # Clearing Presentment Event ($T+1$ to $T+3$)
             if evt_type == EVT_CLEARING:
                 card.settle_hold(payload["tx_id"], payload["settled_amount"])
+                self.double_entry_ledger.settle_hold(
+                    tx_id=payload["tx_id"],
+                    card_id=card.card_id,
+                    merchant_id=payload.get("merchant_id", "M_DEFAULT"),
+                    settled_amount=payload["settled_amount"],
+                    sim_time_sec=tx_time_sec,
+                )
                 continue
 
             # Monthly Billing Cycle Close Event
@@ -715,59 +791,57 @@ class DiscreteEventEngine:
             record["normative_baseline"] = causal_gt.normative_baseline
             record["explanation_narrative"] = causal_gt.explanation_narrative
 
-            # Bank Decision & Authorization Switch
+            # Boundary Layer 1: Decoupled Payment Rail Verifier Switch
             velocity_kph = float(record.get("haversine_velocity_kph", 0.0))
             count_1h = int(record.get("tx_count_1h", 0))
             cvv_match = (int(record.get("cvv_match_flag", 1)) == 1)
 
-            auth_response, trans_status_3ds, approved_amt = self.bank.evaluate_authorization(
-                card=card,
+            intent = CandidateTransactionIntent(
+                tx_id=tx_id,
+                card_id=card.card_id,
+                sim_time_sec=tx_time_sec,
                 amount=amount,
-                channel=channel,
-                sim_time=tx_time_sec,
-                velocity_kph=velocity_kph,
-                count_1h=count_1h,
-                cvv_valid=cvv_match,
+                currency=card.currency,
+                channel_type=channel,
+                merchant_id=merchant_id,
                 mcc=mcc,
+                merchant_lat=merchant_lat,
+                merchant_lon=merchant_lon,
                 is_cross_border=is_cross_border,
-                otp_provided=otp_provided,
+                is_fraud=is_fraud,
+                scenario_tag=scenario_tag,
+                otp_submitted=otp_provided,
+                cvv_provided=cvv_match,
+                avs_code=override_avs or record.get("avs_match_code", "Y"),
+                billing_shipping_match=record.get("billing_shipping_match", 1),
+                pin_entered=False,
+                emv_chip_present=(channel == "CP_POS_CHIP"),
+                three_ds_requested=channel.startswith("CNP"),
+                risk_score=ml_risk_score,
                 vaai_score=vaai_score,
-                ml_risk_score=ml_risk_score,
+                haversine_velocity_kph=velocity_kph,
+                tx_count_1h=count_1h,
+                ip_distance_km=ip_distance,
+                asn_type=asn_type,
             )
+
+            rail_result = self.rail_switch.verify_intent(intent, card)
+            try:
+                auth_response = ISO8583Response(rail_result.iso_response_code)
+            except ValueError:
+                auth_response = ISO8583Response.DO_NOT_HONOR_05
+
+            trans_status_3ds = rail_result.trans_status_3ds
+            approved_amt = rail_result.approved_amount
+            pos_entry = rail_result.pos_entry_mode
+            pos_condition = rail_result.pos_condition_code
+            eci = rail_result.eci
+            auth_code = f"A{self.rng.integers(10000, 99999)}" if auth_response in (ISO8583Response.APPROVED_00, ISO8583Response.PARTIAL_APPROVAL_10) else ""
 
             # Generate Core ISO 8583 Protocol Fields
             stan_val = next(stan_counter) % 1000000
             stan_str = f"{stan_val:06d}"
             rrn_str = f"{int(tx_time_sec) % 10000000000:010d}{stan_val % 100:02d}"
-
-            if channel == "CP_POS_CHIP":
-                pos_entry = "051"
-            elif channel == "CP_POS_CONTACTLESS":
-                pos_entry = "071"
-            elif channel == "CP_POS_MAGSTRIPE":
-                pos_entry = "901"
-            elif channel == "CNP_WEB":
-                pos_entry = "012"
-            elif channel == "CNP_MOBILE":
-                pos_entry = "102"
-            elif channel == "UPI_QR_CREDIT":
-                pos_entry = "031"
-            else:
-                pos_entry = "812"
-
-            pos_condition = "00" if channel.startswith("CP") else "59"
-            auth_code = f"A{self.rng.integers(10000, 99999)}" if auth_response in (ISO8583Response.APPROVED_00, ISO8583Response.PARTIAL_APPROVAL_10) else ""
-
-            # 3DS Electronic Commerce Indicator (ECI)
-            if channel.startswith("CNP"):
-                if trans_status_3ds == "Y":
-                    eci = "05"  # Authenticated
-                elif trans_status_3ds == "A":
-                    eci = "06"  # Attempted
-                else:
-                    eci = "07"  # Non-authenticated / bypassed
-            else:
-                eci = ""
 
             record["mti"] = "0100"
             record["stan"] = stan_str
@@ -803,6 +877,12 @@ class DiscreteEventEngine:
                 hold_amount = approved_amt if approved_amt is not None and approved_amt > 0 else amount
                 expire_time_sec = tx_time_sec + 7.0 * 86400.0
                 card.place_hold(tx_id=tx_id, hold_amount=hold_amount, expire_time_sec=expire_time_sec)
+                self.double_entry_ledger.place_pre_auth_hold(
+                    tx_id=tx_id,
+                    card_id=card.card_id,
+                    hold_amount=hold_amount,
+                    sim_time_sec=tx_time_sec,
+                )
                 card.total_tx_count += 1
                 card.consecutive_declines = 0
 
@@ -812,10 +892,25 @@ class DiscreteEventEngine:
                     time_us=clearing_t_us,
                     event_type=EVT_CLEARING,
                     card_id=card.card_id,
-                    payload={"tx_id": tx_id, "settled_amount": settled_amount},
+                    payload={"tx_id": tx_id, "settled_amount": settled_amount, "merchant_id": merchant_id},
                 )
             else:
                 card.consecutive_declines += 1
+
+            # Update Hawkes excitation memory based on authorization feedback
+            hawkes_p = self._get_card_hawkes_params(card, mean_inter_arrival_sec=mean_inter_arrival_sec)
+            prev_R = self.card_hawkes_R.get(card.card_id, 0.0)
+            last_t = self.card_last_hawkes_time.get(card.card_id, -1.0)
+            new_R = self.hawkes_engine.update_feedback(
+                R_current=prev_R,
+                last_tx_time_sec=last_t,
+                event_time_sec=tx_time_sec,
+                iso_response_code=auth_response.value,
+                params=hawkes_p,
+            )
+            self.card_hawkes_R[card.card_id] = new_R
+            self.card_last_hawkes_time[card.card_id] = tx_time_sec
+            record["hawkes_intensity_R"] = round(new_R, 4)
 
             # Post-Authorization Dispute & Chargeback Lifecycle
             if is_fraud == 1 and auth_response in (ISO8583Response.APPROVED_00, ISO8583Response.PARTIAL_APPROVAL_10):
@@ -941,13 +1036,24 @@ class DiscreteEventEngine:
                             card_id=card.card_id,
                         )
                     else:
-                        # Standard NHPP renewal arrival with diurnal thinning and macro multiplier
+                        # Draw next routine event using Recursive Circadian Hawkes MTPP
                         macro_mult = self._compute_macro_rate_multiplier(tx_time_sec, active_macro_regime)
-                        next_arrival_sec = self.specs.circadian.sample_next_arrival_nhpp(
-                            t_curr_sec=tx_time_sec,
-                            mean_inter_arrival_sec=mean_inter_arrival_sec,
-                            rng=self.rng,
-                            macro_rate_multiplier=macro_mult,
+                        if macro_mult != 1.0:
+                            card_p = HawkesParameters(
+                                mu_0=hawkes_p.mu_0 * macro_mult,
+                                alpha=hawkes_p.alpha,
+                                beta=hawkes_p.beta,
+                                beta_0_floor=hawkes_p.beta_0_floor,
+                                phi_max=hawkes_p.phi_max,
+                            )
+                        else:
+                            card_p = hawkes_p
+
+                        next_arrival_sec, _ = self.hawkes_engine.sample_next_arrival(
+                            current_time_sec=tx_time_sec,
+                            R_current=self.card_hawkes_R[card.card_id],
+                            last_tx_time_sec=self.card_last_hawkes_time[card.card_id],
+                            params=card_p,
                         )
                         next_t_us = int(next_arrival_sec * 1_000_000)
                         self._schedule_event(

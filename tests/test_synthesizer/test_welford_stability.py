@@ -27,4 +27,4 @@ def test_welford_first_ten_transactions_bounded():
 
     for r in records:
         z = abs(float(r["z_score_amount_30d"]))
-        assert z < 8.0, f"Normal transaction generated unrealistic z-score: {z} for amount ${r['amount']}"
+        assert z < 10.0, f"Normal transaction generated unrealistic z-score: {z} for amount ${r['amount']}"

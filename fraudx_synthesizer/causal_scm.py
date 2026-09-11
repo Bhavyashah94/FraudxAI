@@ -23,6 +23,12 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
+from .invertible_flow import (
+    ConditionalRealNVPFlow,
+    LatentAumannShapleyAttributor,
+    TransactionFlowFeatureCodec,
+)
+
 
 @dataclass
 class CausalGroundTruth:
@@ -42,6 +48,8 @@ class CausalGroundTruth:
     counterfactual_twin: Dict[str, Any] = field(default_factory=dict)
     normative_baseline: Dict[str, Any] = field(default_factory=dict)
     explanation_narrative: str = ""
+    latent_shapley_attributions: Dict[str, float] = field(default_factory=dict)
+    pearlian_consistency_error: float = 0.0
 
     def __post_init__(self) -> None:
         if not self.normative_baseline and self.counterfactual_twin:
@@ -129,6 +137,11 @@ class StructuralCausalEngine:
         x_nodes, w_weights = np.polynomial.legendre.leggauss(128)
         self._gl_t = 0.5 * (x_nodes + 1.0)
         self._gl_wt = 0.5 * w_weights
+
+        # Invertible Normalizing Flow for exact Pearlian abduction & on-manifold counterfactuals
+        self.flow = ConditionalRealNVPFlow(seed=42)
+        self.codec = TransactionFlowFeatureCodec
+        self.latent_attributor = LatentAumannShapleyAttributor(self.flow)
 
     def _logistic(self, z: float) -> float:
         """Numerically stable standard sigmoid."""
@@ -318,6 +331,34 @@ class StructuralCausalEngine:
         # 3. Grounded Normative Baseline & Contrastive Attribution Construction
         cf_input_deltas: Dict[str, float] = {}
 
+        # Invertible Flow Abduction-Action-Prediction Pipeline
+        x_obs, C_obs = self.codec.encode(record)
+        C_norm = C_obs.copy()
+        C_norm[0] = 0.0  # Surgical intervention: do(is_fraud = 0)
+        u_star = self.flow.abduce(x_obs, C_obs)
+        x_cf = self.flow.predict_counterfactual(u_star, C_norm)
+        consistency_error = self.flow.verify_pearlian_consistency(x_obs, C_obs)
+
+        # On-manifold latent Aumann-Shapley path integration
+        # Evaluated for fraud, anomalous scenarios, or counterfactual foils to maintain high simulation TPS
+        if is_fraud == 1 or scenario_tag != "ORGANIC_NORMAL":
+            def _flow_scorer(x_vec: np.ndarray) -> float:
+                v_kph = min(900.0, max(0.0, float(x_vec[1])))
+                log_amt = min(15.0, max(-5.0, float(x_vec[0])))
+                amt = math.exp(log_amt)
+                ratio = amt / max(mean_30d, 1.0)
+                sat_ratio = math.log(1.0 + max(0.0, ratio - 1.0))
+                z = self.base_logit + 0.65 * sat_ratio + 0.0055 * v_kph
+                return self._logistic(z)
+
+            latent_shapley = self.latent_attributor.attribute(
+                x_obs=x_obs,
+                context=C_obs,
+                scorer_fn=_flow_scorer,
+            )
+        else:
+            latent_shapley = {}
+
         if factual_counterfactual is not None:
             normative_baseline = dict(factual_counterfactual)
             baseline_amount = float(factual_counterfactual.get("amount", mean_30d))
@@ -346,6 +387,8 @@ class StructuralCausalEngine:
             normative_baseline["avs_match_code"] = "Y"
             normative_baseline["billing_shipping_match"] = 1
             normative_baseline["cvv_match_flag"] = 1
+            normative_baseline["flow_latent_u"] = [round(float(v), 5) for v in u_star]
+            normative_baseline["flow_x_cf"] = [round(float(v), 5) for v in x_cf]
 
             if is_fraud == 1:
                 counterfactual_mode = "ADVERSARIAL_INSERTION"
@@ -402,6 +445,8 @@ class StructuralCausalEngine:
             counterfactual_twin=normative_baseline,
             normative_baseline=normative_baseline,
             explanation_narrative=narrative,
+            latent_shapley_attributions=latent_shapley,
+            pearlian_consistency_error=round(consistency_error, 12),
         )
 
     def _generate_narrative(

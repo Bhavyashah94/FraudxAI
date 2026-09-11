@@ -541,6 +541,11 @@ class AdaptiveFraudsterAgent:
             )
         return self.target_states[card.card_id]
 
+    def is_card_burned(self, card_id: str) -> bool:
+        """Returns True if the card is burned and discarded by adversary."""
+        target = self.target_states.get(card_id)
+        return target.is_burned if target else False
+
     def select_attack_playbook(
         self,
         card: CardholderProfile,
@@ -563,6 +568,8 @@ class AdaptiveFraudsterAgent:
                 chosen_scenario = FraudScenario.ADV_ATO_SILENT_BAKING.value
             elif target.fsm_state == FraudsterState.GATEWAY_HOP:
                 chosen_scenario = FraudScenario.ADV_MICRO_AUTH_PROBE.value
+            elif target.fsm_state == FraudsterState.AMOUNT_ADAPTATION:
+                chosen_scenario = FraudScenario.ADV_ATO_SILENT_BAKING.value
             else:
                 if card.region == "IN":
                     playbook_choices = [

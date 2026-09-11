@@ -186,38 +186,64 @@ def cmd_generate(args: argparse.Namespace) -> None:
 
 
 def cmd_benchmark(args: argparse.Namespace) -> None:
-    """Executes empirical XAI benchmark evaluation comparing TreeSHAP against causal ground truth."""
-    from .benchmark import XAIBenchmarkHarness
+    """Executes empirical XAI or Tripartite industrial benchmark evaluation."""
     import json
+    from dataclasses import asdict
+    from pathlib import Path
 
-    harness = XAIBenchmarkHarness(
-        n_transactions=args.samples,
-        fraud_prevalence=args.fraud_rate,
-        region=args.region,
-        seed=args.seed,
-    )
-    print(f"Executing XAI Benchmark on {args.samples} transactions ({args.model})...", file=sys.stderr)
-    summary = harness.run_benchmark(model_type=args.model)
+    if getattr(args, "tripartite", False):
+        from .benchmark import TripartiteBenchmarkHarness, generate_tripartite_markdown_report
 
-    if args.json:
-        from dataclasses import asdict
-        print(json.dumps(asdict(summary), indent=2))
+        harness = TripartiteBenchmarkHarness(
+            n_transactions=args.samples,
+            fraud_prevalence=args.fraud_rate,
+            region=args.region,
+            seed=args.seed,
+        )
+        print(f"Executing Tripartite Industrial Benchmark on {args.samples} transactions ({args.region})...", file=sys.stderr)
+        summary = harness.run_tripartite_benchmark()
+
+        if args.json:
+            print(json.dumps(asdict(summary), indent=2))
+        else:
+            report = generate_tripartite_markdown_report(summary)
+            print("\n" + report + "\n")
+
+        if getattr(args, "output_report", None):
+            report_content = generate_tripartite_markdown_report(summary)
+            Path(args.output_report).write_text(report_content, encoding="utf-8")
+            print(f"Report saved to {args.output_report}", file=sys.stderr)
+
     else:
-        print("\n" + "=" * 65)
-        print("  FRAUDX-AI EMPIRICAL XAI BENCHMARK RESULTS")
-        print("=" * 65)
-        print(f"  Model Architecture:           {summary.model_name.upper()}")
-        print(f"  Explainer Method:             {summary.explainer_name}")
-        print(f"  Evaluated Fraud Samples:      {summary.n_evaluated_samples}")
-        print(f"  Classifier ROC-AUC:           {summary.auc_roc:.4f}")
-        print(f"  Classifier PR-AUC:            {summary.pr_auc:.4f}")
-        print("-" * 65)
-        print(f"  Ranking Concordance (Kendall Tau):      {summary.mean_kendall_tau:.4f}")
-        print(f"  Rank Correlation (Spearman Rho):        {summary.mean_spearman_rho:.4f}")
-        print(f"  Directional Cosine Similarity:          {summary.mean_cosine_similarity:.4f}")
-        print(f"  Top-3 Support Recovery (Precision@3):   {summary.mean_precision_at_3:.4f}")
-        print(f"  Relative Attribution Error (RAE):       {summary.mean_relative_attribution_error:.4f}")
-        print("=" * 65 + "\n")
+        from .benchmark import XAIBenchmarkHarness
+
+        harness = XAIBenchmarkHarness(
+            n_transactions=args.samples,
+            fraud_prevalence=args.fraud_rate,
+            region=args.region,
+            seed=args.seed,
+        )
+        print(f"Executing XAI Benchmark on {args.samples} transactions ({args.model})...", file=sys.stderr)
+        summary = harness.run_benchmark(model_type=args.model)
+
+        if args.json:
+            print(json.dumps(asdict(summary), indent=2))
+        else:
+            print("\n" + "=" * 65)
+            print("  FRAUDX-AI EMPIRICAL XAI BENCHMARK RESULTS")
+            print("=" * 65)
+            print(f"  Model Architecture:           {summary.model_name.upper()}")
+            print(f"  Explainer Method:             {summary.explainer_name}")
+            print(f"  Evaluated Fraud Samples:      {summary.n_evaluated_samples}")
+            print(f"  Classifier ROC-AUC:           {summary.auc_roc:.4f}")
+            print(f"  Classifier PR-AUC:            {summary.pr_auc:.4f}")
+            print("-" * 65)
+            print(f"  Ranking Concordance (Kendall Tau):      {summary.mean_kendall_tau:.4f}")
+            print(f"  Rank Correlation (Spearman Rho):        {summary.mean_spearman_rho:.4f}")
+            print(f"  Directional Cosine Similarity:          {summary.mean_cosine_similarity:.4f}")
+            print(f"  Top-3 Support Recovery (Precision@3):   {summary.mean_precision_at_3:.4f}")
+            print(f"  Relative Attribution Error (RAE):       {summary.mean_relative_attribution_error:.4f}")
+            print("=" * 65 + "\n")
 
 
 def main() -> None:
@@ -239,12 +265,14 @@ def main() -> None:
     p_gen.set_defaults(func=cmd_generate)
 
     # Benchmark subcommand
-    p_bench = subparsers.add_parser("benchmark", help="Run empirical XAI benchmark")
+    p_bench = subparsers.add_parser("benchmark", help="Run empirical XAI or Tripartite benchmark")
     p_bench.add_argument("-n", "--samples", type=int, default=2000, help="Number of synthetic transactions")
     p_bench.add_argument("--model", type=str, choices=["lightgbm", "rf"], default="lightgbm", help="ML model architecture")
     p_bench.add_argument("--region", type=str, choices=["US", "IN"], default="US", help="Banking ecosystem region")
     p_bench.add_argument("--fraud-rate", type=float, default=0.05, help="Fraud prevalence ratio")
     p_bench.add_argument("--seed", type=int, default=42, help="Deterministic seed")
+    p_bench.add_argument("--tripartite", action="store_true", default=False, help="Run complete Tripartite Industrial Benchmark Suite")
+    p_bench.add_argument("--output-report", type=str, default=None, help="Path to write Markdown certification report")
     p_bench.add_argument("--json", action="store_true", help="Output benchmark metrics in JSON format")
     p_bench.set_defaults(func=cmd_benchmark)
 
