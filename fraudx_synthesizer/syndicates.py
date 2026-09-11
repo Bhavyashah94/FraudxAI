@@ -153,6 +153,10 @@ class SyndicateRegistry:
             self.syndicates.append(syn_in_3)
             self._playbook_to_syndicate["IN_ADV_RENT_PORTAL_CASHOUT"] = syn_in_3
             self._playbook_to_syndicate["ADV_CREDIT_LINE_CASH_OUT"] = syn_in_3
+            self._playbook_to_syndicate["INTENT_OMEGA_PROBE"] = syn_in_1
+            self._playbook_to_syndicate["INTENT_OMEGA_HARVEST"] = syn_in_3
+            self._playbook_to_syndicate["INTENT_OMEGA_BISECT_DRAIN"] = syn_in_3
+            self._playbook_to_syndicate["INTENT_OMEGA_INCUBATE"] = syn_in_2
 
         else:
             carding_botnet = BotnetCluster(
@@ -218,6 +222,10 @@ class SyndicateRegistry:
             self._playbook_to_syndicate["ADV_APPLE_PAY_YELLOW_PATH"] = syn_us_3
             self._playbook_to_syndicate["ADV_TRIANGULATION_FRAUD"] = syn_us_3
             self._playbook_to_syndicate["ADV_TOKEN_PROVISIONING_FRAUD"] = syn_us_3
+            self._playbook_to_syndicate["INTENT_OMEGA_PROBE"] = syn_us_1
+            self._playbook_to_syndicate["INTENT_OMEGA_HARVEST"] = syn_us_3
+            self._playbook_to_syndicate["INTENT_OMEGA_BISECT_DRAIN"] = syn_us_3
+            self._playbook_to_syndicate["INTENT_OMEGA_INCUBATE"] = syn_us_2
 
     def get_syndicate_for_playbook(self, playbook: str) -> Optional[SyndicateEntity]:
         """Returns the syndicate responsible for the specified playbook, if configured."""

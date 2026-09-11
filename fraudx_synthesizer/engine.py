@@ -71,11 +71,13 @@ class DiscreteEventEngine:
         center_lon: Optional[float] = None,
         radius_km: float = 35.0,
         adversary_mimicry: float = 0.55,
+        adversary_mode: str = "playbook",
         seed: int = 42,
     ):
         self.region = region.upper()
         self.seed = seed
         self.adversary_mimicry = adversary_mimicry
+        self.adversary_mode = str(adversary_mode).lower()
         self.rng = np.random.default_rng(seed)
         self.world = WorldEnvironment(
             n_merchants=n_merchants,
@@ -561,12 +563,93 @@ class DiscreteEventEngine:
                     "hour_of_day": hour_of_day,
                 }
 
-                attack_params = self.fraudster.select_attack_playbook(
-                    card=card,
-                    sim_time_seconds=tx_time_sec,
-                    world_center_lat=self.world.center_lat,
-                    world_center_lon=self.world.center_lon,
-                )
+                if self.adversary_mode == "intent":
+                    action_found = False
+                    for _ in range(5):
+                        attack_params = self.fraudster.select_intent_action(
+                            card=card,
+                            sim_time_seconds=tx_time_sec,
+                            world_center_lat=self.world.center_lat,
+                            world_center_lon=self.world.center_lon,
+                        )
+                        macro_opt = attack_params.get("macro_option")
+                        amt = float(attack_params.get("amount", 0.0))
+                        ch = str(attack_params.get("channel_type", "NONE"))
+
+                        if macro_opt == "OMEGA_PURGE" or amt <= 0.0 or ch == "NONE":
+                            # Target is burned or pruned. Adversary rotates to another unburned card.
+                            unburned = [c for c in self.cards if not self.fraudster.is_card_burned(c.card_id) and c.card_id != card.card_id]
+                            if unburned:
+                                card = self.rng.choice(unburned)
+                                continue
+                            else:
+                                break
+                        elif macro_opt == "OMEGA_INCUBATE":
+                            # Adversary delays attack until nocturnal window (02:00 local time)
+                            nocturnal_sec = tx_time_sec + float(attack_params.get("incubation_seconds", 3600.0))
+                            attack_params = self.fraudster.select_intent_action(
+                                card=card,
+                                sim_time_seconds=nocturnal_sec,
+                                world_center_lat=self.world.center_lat,
+                                world_center_lon=self.world.center_lon,
+                            )
+                            amt = float(attack_params.get("amount", 0.0))
+                            ch = str(attack_params.get("channel_type", "NONE"))
+                            if amt > 0.0 and ch != "NONE":
+                                action_found = True
+                                break
+                            else:
+                                unburned = [c for c in self.cards if not self.fraudster.is_card_burned(c.card_id) and c.card_id != card.card_id]
+                                if unburned:
+                                    card = self.rng.choice(unburned)
+                                    continue
+                                else:
+                                    break
+                        else:
+                            action_found = True
+                            break
+
+                    if not action_found or float(attack_params.get("amount", 0.0)) <= 0.0:
+                        fresh_cards = [c for c in self.cards if not self.fraudster.is_card_burned(c.card_id)]
+                        card = fresh_cards[0] if fresh_cards else card
+                        belief = self.fraudster.belief_states.get(card.card_id)
+                        if belief:
+                            belief.is_burned = False
+                            belief.p_valid = 0.50
+                            belief.consecutive_declines = 0
+                        attack_params = {
+                            "amount": 3.50,
+                            "channel_type": "CNP_WEB",
+                            "preferred_mcc": 5815,
+                            "is_fraud": 1,
+                            "scenario_tag": "INTENT_OMEGA_PROBE",
+                            "macro_option": "OMEGA_PROBE",
+                            "ip_distance_km": float(self.rng.uniform(15.0, 85.0)),
+                            "incubation_seconds": 0.0,
+                        }
+
+                    # Telemetry attributes for intent-driven attacks
+                    if attack_params.get("macro_option") == "OMEGA_PROBE":
+                        attack_params["asn_type"] = "datacenter"
+                        attack_params["vaai_score"] = int(self.rng.integers(55, 78))
+                        attack_params["otp_submitted"] = False
+                    elif attack_params.get("macro_option") == "OMEGA_HARVEST":
+                        attack_params["asn_type"] = "residential"
+                        attack_params["vaai_score"] = int(self.rng.integers(20, 50))
+                        dossier = self.fraudster.dossiers.get(card.card_id)
+                        attack_params["otp_submitted"] = bool(dossier and dossier.has_live_otp)
+                    elif attack_params.get("macro_option") == "OMEGA_BISECT_DRAIN":
+                        attack_params["asn_type"] = "residential"
+                        attack_params["vaai_score"] = int(self.rng.integers(30, 60))
+                        dossier = self.fraudster.dossiers.get(card.card_id)
+                        attack_params["otp_submitted"] = bool(dossier and dossier.has_live_otp)
+                else:
+                    attack_params = self.fraudster.select_attack_playbook(
+                        card=card,
+                        sim_time_seconds=tx_time_sec,
+                        world_center_lat=self.world.center_lat,
+                        world_center_lon=self.world.center_lon,
+                    )
                 playbook_name = str(attack_params.get("playbook_name", attack_params.get("scenario_tag", "")))
                 syn = self.syndicate_registry.get_syndicate_for_playbook(playbook_name)
                 syn_telemetry = syn.sample_telemetry(self.rng) if syn else {}
@@ -854,6 +937,7 @@ class DiscreteEventEngine:
             record["eci"] = eci
             record["trans_status_3ds"] = trans_status_3ds or "Y"
             record["vaai_score"] = vaai_score
+            record["hop_origin"] = rail_result.hop_origin
 
             # Dual-Message Clearing & Settlement ($T+1$ to $T+3$)
             record["clearing_mti"] = "0200"

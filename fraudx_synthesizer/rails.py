@@ -73,6 +73,7 @@ class RailVerificationResult:
     settlement_amount: float = 0.0
     pos_entry_mode: str = "051"
     pos_condition_code: str = "00"
+    hop_origin: str = "ISSUER_HOST"
 
 
 class RailVerifierSwitch:
@@ -160,6 +161,7 @@ class RailVerifierSwitch:
                 decline_reason="SUPERSONIC_PHYSICAL_VELOCITY",
                 pos_entry_mode=pos_entry,
                 pos_condition_code=pos_condition,
+                hop_origin="GATEWAY_FILTER",
             )
 
         # 5. Activity Count Frequency Limits (ISO 65)
@@ -235,6 +237,7 @@ class RailVerifierSwitch:
                 decline_reason="VAAI_NETWORK_FRAUD_SCORE_EXCEEDED",
                 pos_entry_mode=pos_entry,
                 pos_condition_code=pos_condition,
+                hop_origin="NETWORK_SWITCH_VAAI",
             )
 
         # 7. 3DS 2.x Authentication & Exemption Engine (CNP Channels)
@@ -268,6 +271,7 @@ class RailVerifierSwitch:
                         decline_reason="3DS_CHALLENGE_FAILED_OR_BYPASSED",
                         pos_entry_mode=pos_entry,
                         pos_condition_code=pos_condition,
+                        hop_origin="ACS_3DS",
                     )
                 trans_status_3ds = "C"
                 eci = "05"
