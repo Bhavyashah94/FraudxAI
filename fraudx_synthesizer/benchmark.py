@@ -40,7 +40,9 @@ FEATURE_SPECS = [
 FEATURE_NAMES: List[str] = [spec[0] for spec in FEATURE_SPECS]
 
 CANONICAL_ATTACK_INTERVENTIONS: Dict[str, set[str]] = {
+    "ADV_MICRO_AUTH_PROBE": {"amount", "tx_count_1h", "avs_mismatch", "cvv_match_flag"},
     "ADV_CARDING_MICRO_PROBE": {"amount", "tx_count_1h", "avs_mismatch", "cvv_match_flag"},
+    "ADV_ATO_SILENT_BAKING": {"amount", "ip_distance_from_home_km"},
     "ADV_NOCTURNAL_BURST": {"amount", "ip_distance_from_home_km", "is_cross_border", "tx_count_1h"},
     "ADV_DISTRIBUTED_BIN_ENUMERATION": {"amount", "tx_count_1h", "avs_mismatch", "cvv_match_flag"},
     "ADV_TRIANGULATION_FRAUD": {"amount", "billing_shipping_mismatch", "ip_distance_from_home_km"},
@@ -79,14 +81,16 @@ class XAIBenchmarkHarness:
 
     def __init__(
         self,
-        n_transactions: int = 2000,
-        fraud_prevalence: float = 0.05,
+        n_transactions: int = 3000,
+        fraud_prevalence: float = 0.06,
         region: str = "US",
+        adversary_mimicry: float = 0.55,
         seed: int = 42,
     ):
         self.n_transactions = n_transactions
         self.fraud_prevalence = fraud_prevalence
         self.region = region
+        self.adversary_mimicry = adversary_mimicry
         self.seed = seed
         self.evaluator = GroundTruthXAIEvaluator()
 
@@ -96,6 +100,7 @@ class XAIBenchmarkHarness:
             n_cards=max(100, int(self.n_transactions / 10)),
             n_merchants=max(30, int(self.n_transactions / 40)),
             region=self.region,
+            adversary_mimicry=self.adversary_mimicry,
             seed=self.seed,
         )
         records = engine.generate_batch(
@@ -296,10 +301,11 @@ class XAIBenchmarkHarness:
 def main() -> None:
     """CLI entrypoint for running the empirical XAI benchmark."""
     parser = argparse.ArgumentParser(prog="fraudx-benchmark", description="Empirical XAI Benchmark Harness")
-    parser.add_argument("-n", "--samples", type=int, default=2000, help="Number of synthetic transactions to generate")
+    parser.add_argument("-n", "--samples", type=int, default=3000, help="Number of synthetic transactions to generate")
     parser.add_argument("--model", type=str, choices=["lightgbm", "rf"], default="lightgbm", help="ML model architecture")
     parser.add_argument("--region", type=str, choices=["US", "IN"], default="US", help="Banking ecosystem region")
-    parser.add_argument("--fraud-rate", type=float, default=0.05, help="Fraud prevalence ratio")
+    parser.add_argument("--fraud-rate", type=float, default=0.06, help="Fraud prevalence ratio")
+    parser.add_argument("--mimicry", type=float, default=0.55, help="Adversary stealth mimicry ratio")
     parser.add_argument("--seed", type=int, default=42, help="Deterministic seed")
     parser.add_argument("--json", action="store_true", help="Output benchmark metrics in JSON format")
 
@@ -309,6 +315,7 @@ def main() -> None:
         n_transactions=args.samples,
         fraud_prevalence=args.fraud_rate,
         region=args.region,
+        adversary_mimicry=args.mimicry,
         seed=args.seed,
     )
 

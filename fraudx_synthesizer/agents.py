@@ -514,8 +514,9 @@ class TargetCardAdversaryState:
 class AdaptiveFraudsterAgent:
     """Stateful adversarial agent executing closed-loop adaptive cybercrime playbooks with per-target memory."""
 
-    def __init__(self, rng: np.random.Generator):
+    def __init__(self, rng: np.random.Generator, adversary_mimicry: float = 0.55):
         self.rng = rng
+        self.adversary_mimicry = adversary_mimicry
         self.target_states: Dict[str, TargetCardAdversaryState] = {}
         # Global fallback trackers
         self.state = FraudsterState.DUMP_INGESTION
@@ -550,6 +551,8 @@ class AdaptiveFraudsterAgent:
     ) -> Dict[str, Any]:
         """Generates attack transaction parameters guided by per-target memory and stateful adaptation."""
         target = self.get_or_create_target(card)
+        is_mimicry = bool(self.rng.random() < self.adversary_mimicry)
+        stealth_ip = float(self.rng.uniform(2.5, 32.0))
 
         if scenario_override is not None:
             chosen_scenario = scenario_override
@@ -588,15 +591,16 @@ class AdaptiveFraudsterAgent:
         # 1. Micro-Auth Probe (Global)
         if scenario_val in (FraudScenario.ADV_MICRO_AUTH_PROBE.value, "VELOCITY_BLITZ", "CARD_TESTING_BURST"):
             target.fsm_state = FraudsterState.MICRO_PROBING
-            amount = round(float(self.rng.uniform(0.50, 1.99)), 2)
+            amount = round(float(self.rng.uniform(3.50, 18.50)), 2) if is_mimicry else round(float(self.rng.uniform(0.50, 1.99)), 2)
             target.current_probe_amount = amount
             target.target_mcc = 8398
+            ip_dist = stealth_ip if is_mimicry else float(self.rng.uniform(250.0, 1500.0))
             return {
                 "amount": amount,
                 "channel_type": "CNP_WEB",
                 "is_fraud": 1,
                 "scenario_tag": FraudScenario.ADV_MICRO_AUTH_PROBE.value,
-                "ip_distance_km": float(self.rng.uniform(250.0, 1500.0)),
+                "ip_distance_km": ip_dist,
                 "preferred_mcc": 8398,
                 "is_cross_border": False,
                 "avs_code": "Z",
@@ -608,13 +612,20 @@ class AdaptiveFraudsterAgent:
             if target.fsm_state == FraudsterState.AMOUNT_ADAPTATION:
                 amount = round(target.current_probe_amount, 2)
             else:
-                if card.currency == "INR":
-                    low_b = min(card.credit_limit * 0.3, 30000.0)
-                    high_b = max(low_b + 500.0, min(card.credit_limit * 0.85, 250000.0))
+                if is_mimicry:
+                    amount = (
+                        round(float(self.rng.uniform(45.0, 320.0)), 2)
+                        if card.currency == "USD"
+                        else round(float(self.rng.uniform(2500.0, 18000.0)), 2)
+                    )
                 else:
-                    low_b = min(card.credit_limit * 0.35, 1500.0)
-                    high_b = max(low_b + 25.0, min(card.credit_limit * 0.85, 8000.0))
-                amount = round(float(self.rng.uniform(low_b, high_b)), 2)
+                    if card.currency == "INR":
+                        low_b = min(card.credit_limit * 0.3, 30000.0)
+                        high_b = max(low_b + 500.0, min(card.credit_limit * 0.85, 250000.0))
+                    else:
+                        low_b = min(card.credit_limit * 0.35, 1500.0)
+                        high_b = max(low_b + 25.0, min(card.credit_limit * 0.85, 8000.0))
+                    amount = round(float(self.rng.uniform(low_b, high_b)), 2)
                 target.current_probe_amount = amount
             target.target_mcc = 5732
             return {
@@ -622,7 +633,7 @@ class AdaptiveFraudsterAgent:
                 "channel_type": "CNP_WEB",
                 "is_fraud": 1,
                 "scenario_tag": FraudScenario.ADV_ATO_SILENT_BAKING.value,
-                "ip_distance_km": float(self.rng.uniform(10.0, 25.0)),
+                "ip_distance_km": float(self.rng.uniform(5.0, 25.0)),
                 "preferred_mcc": 5732,
                 "is_cross_border": False,
                 "asn_type": "residential",
@@ -631,24 +642,32 @@ class AdaptiveFraudsterAgent:
         # 3. Sleeper Bust-Out (Global & India)
         elif scenario_val in (FraudScenario.ADV_SLEEPER_BUST_OUT.value, "SLEEPER_BUST_OUT"):
             remaining = max(100.0, card.credit_limit - card.current_balance)
-            is_collusive_terminal = bool(self.rng.random() < 0.40)
-            threshold = 2000000.0 if card.currency == "INR" else 25000.0
-            if is_collusive_terminal or remaining <= threshold:
-                amount = round(float(self.rng.uniform(0.90, 0.98) * remaining), 2)
+            if is_mimicry:
+                amount = (
+                    round(float(self.rng.uniform(120.0, 480.0)), 2)
+                    if card.currency == "USD"
+                    else round(float(self.rng.uniform(8500.0, 35000.0)), 2)
+                )
             else:
-                if card.currency == "INR":
-                    split_target = min(remaining * 0.95, float(self.rng.uniform(1000000.0, 2000000.0)))
+                is_collusive_terminal = bool(self.rng.random() < 0.40)
+                threshold = 2000000.0 if card.currency == "INR" else 25000.0
+                if is_collusive_terminal or remaining <= threshold:
+                    amount = round(float(self.rng.uniform(0.90, 0.98) * remaining), 2)
                 else:
-                    split_target = min(remaining * 0.95, float(self.rng.uniform(12000.0, 24500.0)))
-                amount = round(split_target, 2)
+                    if card.currency == "INR":
+                        split_target = min(remaining * 0.95, float(self.rng.uniform(1000000.0, 2000000.0)))
+                    else:
+                        split_target = min(remaining * 0.95, float(self.rng.uniform(12000.0, 24500.0)))
+                    amount = round(split_target, 2)
             target.current_probe_amount = amount
             target.target_mcc = 5094
+            ip_dist = float(self.rng.uniform(4.0, 28.0)) if is_mimicry else float(self.rng.uniform(8.0, 48.0))
             return {
                 "amount": amount,
                 "channel_type": "CNP_WEB",
                 "is_fraud": 1,
                 "scenario_tag": FraudScenario.ADV_SLEEPER_BUST_OUT.value,
-                "ip_distance_km": float(self.rng.uniform(8.0, 48.0)),
+                "ip_distance_km": ip_dist,
                 "preferred_mcc": 5094,
                 "is_cross_border": False,
                 "asn_type": "residential",
@@ -656,15 +675,16 @@ class AdaptiveFraudsterAgent:
 
         # 4. Apple Pay Yellow Path (Global)
         elif scenario_val in (FraudScenario.ADV_APPLE_PAY_YELLOW_PATH.value, "COUNTERFEIT_CLONE"):
-            amount = round(float(self.rng.uniform(500.0, 2500.0)), 2)
+            amount = round(float(self.rng.uniform(45.0, 250.0)), 2) if is_mimicry else round(float(self.rng.uniform(500.0, 2500.0)), 2)
             target.current_probe_amount = amount
             target.target_mcc = 5732
+            ip_dist = float(self.rng.uniform(3.5, 25.0)) if is_mimicry else float(self.rng.uniform(6.0, 35.0))
             return {
                 "amount": amount,
                 "channel_type": "CP_POS_CONTACTLESS",
                 "is_fraud": 1,
                 "scenario_tag": FraudScenario.ADV_APPLE_PAY_YELLOW_PATH.value,
-                "ip_distance_km": float(self.rng.uniform(6.0, 35.0)),
+                "ip_distance_km": ip_dist,
                 "preferred_mcc": 5732,
                 "is_cross_border": False,
                 "override_lat": card.home_lat + float(self.rng.uniform(-0.05, 0.05)),
@@ -677,28 +697,37 @@ class AdaptiveFraudsterAgent:
             amount = round(float(self.rng.uniform(150.0, 650.0)), 2)
             target.current_probe_amount = amount
             target.target_mcc = 5311
+            if is_mimicry:
+                ip_dist = float(self.rng.uniform(12.0, 55.0))
+                is_cb = False
+                asn = "residential"
+            else:
+                ip_dist = float(self.rng.uniform(4500.0, 11500.0))
+                is_cb = True
+                asn = "datacenter"
             return {
                 "amount": amount,
                 "channel_type": "CNP_WEB",
                 "is_fraud": 1,
                 "scenario_tag": FraudScenario.ADV_NOCTURNAL_BURST.value,
-                "ip_distance_km": float(self.rng.uniform(4500.0, 11500.0)),
+                "ip_distance_km": ip_dist,
                 "preferred_mcc": 5311,
-                "is_cross_border": True,
-                "asn_type": "datacenter",
+                "is_cross_border": is_cb,
+                "asn_type": asn,
             }
 
         # 6. Distributed BIN Enumeration (PEA Additive Probing)
         elif scenario_val == FraudScenario.ADV_DISTRIBUTED_BIN_ENUMERATION.value:
-            amount = round(float(self.rng.uniform(1.00, 3.50)), 2)
+            amount = round(float(self.rng.uniform(4.50, 24.50)), 2) if is_mimicry else round(float(self.rng.uniform(1.00, 3.50)), 2)
             target.current_probe_amount = amount
             target.target_mcc = 8398
+            ip_dist = stealth_ip if is_mimicry else float(self.rng.uniform(180.0, 2800.0))
             return {
                 "amount": amount,
                 "channel_type": "CNP_WEB",
                 "is_fraud": 1,
                 "scenario_tag": FraudScenario.ADV_DISTRIBUTED_BIN_ENUMERATION.value,
-                "ip_distance_km": float(self.rng.uniform(180.0, 2800.0)),
+                "ip_distance_km": ip_dist,
                 "preferred_mcc": 8398,
                 "is_cross_border": False,
                 "asn_type": "residential",
@@ -707,15 +736,16 @@ class AdaptiveFraudsterAgent:
 
         # 7. Triangulation Fraud
         elif scenario_val == FraudScenario.ADV_TRIANGULATION_FRAUD.value:
-            amount = round(float(self.rng.uniform(250.0, 650.0)), 2)
+            amount = round(float(self.rng.uniform(35.0, 195.0)), 2) if is_mimicry else round(float(self.rng.uniform(250.0, 650.0)), 2)
             target.current_probe_amount = amount
             target.target_mcc = 5732
+            ip_dist = stealth_ip if is_mimicry else float(self.rng.uniform(250.0, 3500.0))
             return {
                 "amount": amount,
                 "channel_type": "CNP_WEB",
                 "is_fraud": 1,
                 "scenario_tag": FraudScenario.ADV_TRIANGULATION_FRAUD.value,
-                "ip_distance_km": float(self.rng.uniform(250.0, 3500.0)),
+                "ip_distance_km": ip_dist,
                 "preferred_mcc": 5732,
                 "is_cross_border": False,
                 "asn_type": "residential",
@@ -724,8 +754,14 @@ class AdaptiveFraudsterAgent:
         # 8. India: Reverse-Proxy Vishing & Digital Arrest
         elif scenario_val == FraudScenario.IN_ADV_REVERSE_PROXY_VISHING.value:
             avail = max(1500.0, card.get_available_balance())
-            probe_ratio = float(self.rng.choice([0.06, 0.15, 0.30, 0.65]))
-            amount = round(float(np.clip(probe_ratio * avail, 1500.0, 65000.0)), 2)
+            if is_mimicry:
+                probe_ratio = float(self.rng.choice([0.04, 0.08, 0.15]))
+                amount = round(float(np.clip(probe_ratio * avail, 1200.0, 15000.0)), 2)
+                ip_dist = stealth_ip
+            else:
+                probe_ratio = float(self.rng.choice([0.06, 0.15, 0.30, 0.65]))
+                amount = round(float(np.clip(probe_ratio * avail, 1500.0, 65000.0)), 2)
+                ip_dist = float(self.rng.uniform(120.0, 1850.0))
             target.current_probe_amount = amount
             target.target_mcc = 6051
             return {
@@ -733,7 +769,7 @@ class AdaptiveFraudsterAgent:
                 "channel_type": "CNP_WEB",
                 "is_fraud": 1,
                 "scenario_tag": FraudScenario.IN_ADV_REVERSE_PROXY_VISHING.value,
-                "ip_distance_km": float(self.rng.uniform(120.0, 1850.0)),
+                "ip_distance_km": ip_dist,
                 "preferred_mcc": 6051,
                 "is_cross_border": False,
                 "otp_submitted": True,
@@ -744,8 +780,14 @@ class AdaptiveFraudsterAgent:
         # 9. India: Malicious APK SMS Stealer
         elif scenario_val == FraudScenario.IN_ADV_APK_SMS_STEALER.value:
             avail = max(1200.0, card.get_available_balance())
-            probe_ratio = float(self.rng.choice([0.05, 0.12, 0.25, 0.50]))
-            amount = round(float(np.clip(probe_ratio * avail, 1000.0, 45000.0)), 2)
+            if is_mimicry:
+                probe_ratio = float(self.rng.choice([0.03, 0.07, 0.12]))
+                amount = round(float(np.clip(probe_ratio * avail, 800.0, 10000.0)), 2)
+                ip_dist = stealth_ip
+            else:
+                probe_ratio = float(self.rng.choice([0.05, 0.12, 0.25, 0.50]))
+                amount = round(float(np.clip(probe_ratio * avail, 1000.0, 45000.0)), 2)
+                ip_dist = float(self.rng.uniform(45.0, 950.0))
             target.current_probe_amount = amount
             target.target_mcc = 6513
             return {
@@ -753,7 +795,7 @@ class AdaptiveFraudsterAgent:
                 "channel_type": "CNP_MOBILE",
                 "is_fraud": 1,
                 "scenario_tag": FraudScenario.IN_ADV_APK_SMS_STEALER.value,
-                "ip_distance_km": float(self.rng.uniform(45.0, 950.0)),
+                "ip_distance_km": ip_dist,
                 "preferred_mcc": 6513,
                 "is_cross_border": False,
                 "otp_submitted": True,
@@ -763,7 +805,14 @@ class AdaptiveFraudsterAgent:
 
         # 10. India: International Non-3DS Bypass
         elif scenario_val == FraudScenario.IN_ADV_INTL_NON_3DS_BYPASS.value:
-            amount_usd = round(float(self.rng.uniform(25.0, 350.0)), 2)
+            if is_mimicry:
+                amount_usd = round(float(self.rng.uniform(15.0, 120.0)), 2)
+                ip_dist = float(self.rng.uniform(25.0, 150.0))
+                asn = "residential"
+            else:
+                amount_usd = round(float(self.rng.uniform(25.0, 350.0)), 2)
+                ip_dist = float(self.rng.uniform(5500.0, 12000.0))
+                asn = "datacenter"
             amount_inr = round(amount_usd * 83.5, 2)
             target.current_probe_amount = amount_inr
             target.target_mcc = 5732
@@ -772,19 +821,25 @@ class AdaptiveFraudsterAgent:
                 "channel_type": "CNP_WEB",
                 "is_fraud": 1,
                 "scenario_tag": FraudScenario.IN_ADV_INTL_NON_3DS_BYPASS.value,
-                "ip_distance_km": float(self.rng.uniform(5500.0, 12000.0)),
+                "ip_distance_km": ip_dist,
                 "preferred_mcc": 5732,
                 "is_cross_border": True,
                 "eci": "07",
-                "asn_type": "datacenter",
+                "asn_type": asn,
                 "cvv_match_flag": 1,
             }
 
         # 11. India: Rent Portal Liquidation
         elif scenario_val == FraudScenario.IN_ADV_RENT_PORTAL_CASHOUT.value:
             remaining = max(2000.0, card.credit_limit - card.current_balance)
-            probe_ratio = float(self.rng.choice([0.15, 0.35, 0.65, 0.85]))
-            amount = round(float(np.clip(probe_ratio * remaining, 2000.0, 75000.0)), 2)
+            if is_mimicry:
+                probe_ratio = float(self.rng.choice([0.08, 0.15, 0.25]))
+                amount = round(float(np.clip(probe_ratio * remaining, 1500.0, 18000.0)), 2)
+                ip_dist = stealth_ip
+            else:
+                probe_ratio = float(self.rng.choice([0.15, 0.35, 0.65, 0.85]))
+                amount = round(float(np.clip(probe_ratio * remaining, 2000.0, 75000.0)), 2)
+                ip_dist = float(self.rng.uniform(25.0, 450.0))
             target.current_probe_amount = amount
             target.target_mcc = 6513
             return {
@@ -792,7 +847,7 @@ class AdaptiveFraudsterAgent:
                 "channel_type": "CNP_WEB",
                 "is_fraud": 1,
                 "scenario_tag": FraudScenario.IN_ADV_RENT_PORTAL_CASHOUT.value,
-                "ip_distance_km": float(self.rng.uniform(25.0, 450.0)),
+                "ip_distance_km": ip_dist,
                 "preferred_mcc": 6513,
                 "is_cross_border": False,
                 "otp_submitted": True,
@@ -807,7 +862,7 @@ class AdaptiveFraudsterAgent:
             "channel_type": "CNP_WEB",
             "is_fraud": 1,
             "scenario_tag": scenario_val,
-            "ip_distance_km": float(self.rng.uniform(15.0, 85.0)),
+            "ip_distance_km": stealth_ip if is_mimicry else float(self.rng.uniform(15.0, 85.0)),
         }
 
     def receive_feedback(

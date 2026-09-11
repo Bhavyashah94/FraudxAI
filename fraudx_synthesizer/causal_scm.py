@@ -142,6 +142,7 @@ class StructuralCausalEngine:
         self,
         record: Dict[str, Any],
         scenario_tag: str = "ORGANIC_NORMAL",
+        factual_counterfactual: Optional[Dict[str, Any]] = None,
     ) -> CausalGroundTruth:
         """Evaluates causal risk and constructs exact counterfactual twin and attributions."""
         amount = float(record.get("amount", 25.0))
@@ -315,30 +316,41 @@ class StructuralCausalEngine:
             shapley_prob = {feat_name: round(v, 6) for feat_name, v in raw_psi.items()}
 
         # 3. Grounded Normative Baseline & Contrastive Attribution Construction
-        normative_baseline = dict(record)
         cf_input_deltas: Dict[str, float] = {}
 
-        baseline_amount = round(mean_30d, 2)
-        normative_baseline["amount"] = baseline_amount
-        normative_baseline["is_fraud"] = 0
-        normative_baseline["scenario_tag"] = "ORGANIC_NORMAL"
-        normative_baseline["haversine_velocity_kph"] = 0.0
-        normative_baseline["ip_distance_from_home_km"] = 0.0
-        normative_baseline["is_cross_border"] = False
-        normative_baseline["avs_match_code"] = "Y"
-        normative_baseline["billing_shipping_match"] = 1
-        normative_baseline["cvv_match_flag"] = 1
+        if factual_counterfactual is not None:
+            normative_baseline = dict(factual_counterfactual)
+            baseline_amount = float(factual_counterfactual.get("amount", mean_30d))
+            baseline_ip = float(factual_counterfactual.get("ip_distance_from_home_km", 0.0))
+            baseline_vel = float(factual_counterfactual.get("haversine_velocity_kph", 0.0))
+            baseline_bill = 1.0 if int(factual_counterfactual.get("billing_shipping_match", 1)) == 0 else 0.0
+            baseline_avs = 1.0 if str(factual_counterfactual.get("avs_match_code", "Y")) in ("N", "U") else 0.0
+            baseline_cvv = 1.0 if int(factual_counterfactual.get("cvv_match_flag", 1)) == 0 else 0.0
+            counterfactual_mode = "TRANSACTIONAL_MUTATION" if is_fraud == 1 else "ORGANIC_BASELINE"
 
-        if is_fraud == 1:
-            counterfactual_mode = "ADVERSARIAL_INSERTION"
             cf_input_deltas["amount"] = round(amount - baseline_amount, 2)
-            cf_input_deltas["haversine_velocity_kph"] = round(effective_velocity, 2)
-            cf_input_deltas["ip_distance_from_home_km"] = round(ip_dist - 0.0, 2)
-            cf_input_deltas["billing_shipping_mismatch"] = float(bill_mismatch)
-            cf_input_deltas["avs_mismatch_flag"] = float(avs_mismatch)
-            cf_input_deltas["cvv_mismatch_flag"] = float(cvv_mismatch)
+            cf_input_deltas["haversine_velocity_kph"] = round(effective_velocity - baseline_vel, 2)
+            cf_input_deltas["ip_distance_from_home_km"] = round(ip_dist - baseline_ip, 2)
+            cf_input_deltas["billing_shipping_mismatch"] = float(bill_mismatch - baseline_bill)
+            cf_input_deltas["avs_mismatch_flag"] = float(avs_mismatch - baseline_avs)
+            cf_input_deltas["cvv_mismatch_flag"] = float(cvv_mismatch - baseline_cvv)
         else:
-            counterfactual_mode = "ORGANIC_BASELINE"
+            normative_baseline = dict(record)
+            baseline_amount = round(mean_30d, 2)
+            normative_baseline["amount"] = baseline_amount
+            normative_baseline["is_fraud"] = 0
+            normative_baseline["scenario_tag"] = "ORGANIC_NORMAL"
+            normative_baseline["haversine_velocity_kph"] = 0.0
+            normative_baseline["ip_distance_from_home_km"] = 0.0
+            normative_baseline["is_cross_border"] = False
+            normative_baseline["avs_match_code"] = "Y"
+            normative_baseline["billing_shipping_match"] = 1
+            normative_baseline["cvv_match_flag"] = 1
+
+            if is_fraud == 1:
+                counterfactual_mode = "ADVERSARIAL_INSERTION"
+            else:
+                counterfactual_mode = "ORGANIC_BASELINE"
             cf_input_deltas["amount"] = round(amount - baseline_amount, 2)
             cf_input_deltas["haversine_velocity_kph"] = round(effective_velocity, 2)
             cf_input_deltas["ip_distance_from_home_km"] = round(ip_dist - 0.0, 2)

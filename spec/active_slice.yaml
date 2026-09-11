@@ -2,16 +2,17 @@
 # Read this file at the start of any new session or task to immediately anchor context.
 
 current_slice:
-  id: "slice-04-synthetic-leak-elimination-emv-primacy-and-intervention-support"
-  title: "Synthetic Leak Elimination, EMV Chip Cryptographic Primacy & Attack Script Intervention Support Benchmark"
+  id: "slice-05-adversary-mimicry-transactional-mutation-scaled-benchmarks"
+  title: "Adversarial Stealth Mimicry, Transactional Mutation Counterfactuals & Scaled Benchmark Cohorts"
   status: "verified"  # [planning, in_progress, testing, verified]
   objective: >
-    Address the synthetic leak and hard negative criticisms from the Prism peer review:
-    1. Eliminate IP Distance Leak: Replace 0.000 km shortcut across all 11 attack playbooks with realistic non-zero network distances (min >= 1.5 km).
-    2. Enforce EMV Chip Cryptographic Primacy: Place authentic EMV Contact Chip verification before ML threshold declines, ensuring 0% ISO 59 false declines.
-    3. Causal SCM Logarithmic Saturation: Saturate amount ratios via ln(1 + max(0, ratio - 1)) and suppress velocity-distance synergy on verified chip presence.
-    4. Attack Script Intervention Support Benchmark: Evaluate TreeSHAP against the attack script's actively intervened features (Precision@K, Recall@K).
-    5. Anti-Leak Tripwires: Ensure PR-AUC <= 0.985 for GBDT ensembles and single-feature attribution share <= 70%.
+    Implement recommendations from Section 9 of the Prism Project Brief:
+    1. Adversary Mimicry Dial: Introduce adversary_mimicry parameter in AdaptiveFraudsterAgent (default 0.55),
+       routing attacks through local residential proxies (2.5 - 32.0 km) and scaling amounts to blend with legitimate spend.
+    2. Transactional Mutation Counterfactuals: Ground counterfactuals by drawing the cardholder's factual scheduled transaction
+       and deriving exact input-space deltas from the adversary's surgical feature interventions.
+    3. Scaled Benchmark Cohorts: Update default benchmark harness to 3000 samples and 0.06 fraud rate, evaluating >= 35-50 test frauds.
+    4. Anti-Leak Tripwires Passed: Bring India GBDT PR-AUC from trivial 1.000 to 0.8072 and US to 0.5219 - 0.6524, passing all tripwires.
 
 target_spec_files:
   - "spec/01_financial_instruments.yaml"
@@ -21,9 +22,9 @@ target_spec_files:
   - "spec/05_india_payment_rails.yaml"
 
 acceptance_criteria:
-  - zero_synthetic_ip_distance_leak: true # Min IP distance >= 1.5 km, 0 captured by <= 0.5 split
-  - emv_chip_primacy_enforced: true # 0% ISO 59 on authentic EMV contact chip, >= 85% approval
-  - causal_scm_log_saturation_active: true # ln(1 + ratio) prevents log-odds explosion
-  - attack_script_intervention_support_benchmark_added: true # Precision@3 >= 0.70, Recall@3 >= 0.65
-  - anti_leak_tripwires_verified: true # PR-AUC realistic, single feature <= 70% share
+  - adversary_mimicry_parameter_active: true # 55% residential proxy routing (2.5 - 32.0 km)
+  - india_ip_distance_auc_collapsed: true # ROC-AUC dropped from 0.9881 to 0.8614
+  - trivial_gbdt_pr_auc_eliminated: true # India PR-AUC dropped from 1.0000 to 0.8072; US to 0.6524
+  - transactional_mutation_counterfactuals_integrated: true # Factual baseline preserved and contrasted
+  - anti_leak_tripwires_verified: true # Passed in both US and India under default CLI runs
   - all_63_tests_passed: true # 100% test pass rate in pytest (63/63)

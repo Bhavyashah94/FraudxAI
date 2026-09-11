@@ -59,10 +59,12 @@ class DiscreteEventEngine:
         center_lat: Optional[float] = None,
         center_lon: Optional[float] = None,
         radius_km: float = 35.0,
+        adversary_mimicry: float = 0.55,
         seed: int = 42,
     ):
         self.region = region.upper()
         self.seed = seed
+        self.adversary_mimicry = adversary_mimicry
         self.rng = np.random.default_rng(seed)
         self.world = WorldEnvironment(
             n_merchants=n_merchants,
@@ -73,7 +75,7 @@ class DiscreteEventEngine:
             seed=seed,
         )
         self.causal_engine = StructuralCausalEngine(base_prevalence=0.0020)
-        self.fraudster = AdaptiveFraudsterAgent(self.rng)
+        self.fraudster = AdaptiveFraudsterAgent(self.rng, adversary_mimicry=adversary_mimicry)
         self.bank = BankDecisionEngine()
         self.syndicate_registry = SyndicateRegistry(region=self.region, seed=seed)
         self.ledger = StreamingLedger(seed=seed)
@@ -462,7 +464,27 @@ class DiscreteEventEngine:
             override_cvv = None
             asn_type = "residential"
 
+            factual_tx = None
             if is_fraud_evt:
+                factual_channel = card.sample_channel(self.rng)
+                factual_amount = card.sample_spend_amount(self.rng)
+                factual_ip_dist = float(self.rng.uniform(0.5, 18.0))
+                factual_mcc = card.dominant_mccs[0] if card.dominant_mccs else 5411
+                factual_tx = {
+                    "amount": factual_amount,
+                    "channel_type": factual_channel,
+                    "ip_distance_from_home_km": factual_ip_dist,
+                    "is_cross_border": False,
+                    "mcc": factual_mcc,
+                    "avs_match_code": "Y",
+                    "cvv_match_flag": 1,
+                    "billing_shipping_match": 1,
+                    "is_fraud": 0,
+                    "scenario_tag": "ORGANIC_NORMAL",
+                    "haversine_velocity_kph": 0.0,
+                    "hour_of_day": hour_of_day,
+                }
+
                 attack_params = self.fraudster.select_attack_playbook(
                     card=card,
                     sim_time_seconds=tx_time_sec,
@@ -676,7 +698,11 @@ class DiscreteEventEngine:
             )
 
             # Real-Time Risk Scoring & Causal Evaluation (Pre-Authorization)
-            causal_gt = self.causal_engine.evaluate(record=record, scenario_tag=scenario_tag)
+            causal_gt = self.causal_engine.evaluate(
+                record=record,
+                scenario_tag=scenario_tag,
+                factual_counterfactual=factual_tx,
+            )
             ml_risk_score = causal_gt.risk_score
             record["risk_score"] = ml_risk_score
             record["base_risk"] = causal_gt.base_risk
@@ -684,6 +710,9 @@ class DiscreteEventEngine:
             record["analytical_shapley_probability"] = causal_gt.analytical_shapley_probability
             record["analytical_shapley_log_odds"] = causal_gt.analytical_shapley_log_odds
             record["counterfactual_input_deltas"] = causal_gt.counterfactual_input_deltas
+            record["counterfactual_mode"] = causal_gt.counterfactual_mode
+            record["counterfactual_twin"] = causal_gt.counterfactual_twin
+            record["normative_baseline"] = causal_gt.normative_baseline
             record["explanation_narrative"] = causal_gt.explanation_narrative
 
             # Bank Decision & Authorization Switch

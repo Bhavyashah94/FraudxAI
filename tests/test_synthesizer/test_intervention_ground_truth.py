@@ -64,7 +64,7 @@ def test_legitimate_hard_negatives_approval_primacy():
 def test_treeshap_intervention_recovery_and_anti_leak_tripwires():
     """Asserts that TreeSHAP recovers attack script interventions and satisfies anti-leak tripwires."""
     harness = XAIBenchmarkHarness(
-        n_transactions=1200,
+        n_transactions=1500,
         fraud_prevalence=0.06,
         region="US",
         seed=303,
