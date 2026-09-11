@@ -636,41 +636,39 @@ def render_standalone_html(data_bundle: Dict[str, Any], title: str = "FraudxAI S
         mule: "#10b981"
       }};
 
-      const nodes = DATA.threat_graph.nodes.map(d => Object.create(d));
+      const nodes = DATA.threat_graph.nodes.map(d => {{
+        const obj = Object.create(d);
+        obj.x = d.target_x || width / 2;
+        obj.y = d.target_y || height / 2;
+        return obj;
+      }});
       const links = DATA.threat_graph.links.map(d => Object.create(d));
 
       const simulation = d3.forceSimulation(nodes)
+        .alphaDecay(0.05)
+        .velocityDecay(0.65)
         .force("link", d3.forceLink(links).id(d => d.id).distance(d => {{
-          if (d.type === 'OPERATES') return 75;
-          if (d.type === 'CONTROLS') return 90;
-          if (d.type === 'COMPROMISES') return 60;
-          if (d.type === 'ATTACKS') return 80;
-          if (d.type === 'TRANSACTS') return 110;
-          if (d.type === 'CASH_OUT') return 100;
-          return 80;
-        }}).strength(0.35))
-        .force("charge", d3.forceManyBody().strength(d => d.type === 'syndicate' ? -500 : -130))
-        .force("x", d3.forceX(d => d.target_x || width / 2).strength(0.16))
-        .force("y", d3.forceY(d => d.target_y || height / 2).strength(0.16))
-        .force("collision", d3.forceCollide().radius(d => (d.radius || 10) + 14));
+          if (d.type === 'OPERATES') return 70;
+          if (d.type === 'CONTROLS') return 80;
+          if (d.type === 'COMPROMISES') return 55;
+          if (d.type === 'ATTACKS') return 75;
+          if (d.type === 'TRANSACTS') return 95;
+          if (d.type === 'CASH_OUT') return 90;
+          return 70;
+        }}).strength(0.4))
+        .force("charge", d3.forceManyBody().strength(d => d.type === 'syndicate' ? -400 : -100))
+        .force("x", d3.forceX(d => d.target_x || width / 2).strength(0.25))
+        .force("y", d3.forceY(d => d.target_y || height / 2).strength(0.25))
+        .force("collision", d3.forceCollide().radius(d => (d.radius || 10) + 8));
 
-      // Quadratic Bézier Curved Links
+      // Headless warm-up: Run 120 ticks so the graph is already in steady-state equilibrium when rendered
+      for (let i = 0; i < 120; ++i) {{
+        simulation.tick();
+      }}
+
+      // Fast, Hardware-Accelerated Link Path
       function linkArc(d) {{
-        const dx = d.target.x - d.source.x;
-        const dy = d.target.y - d.source.y;
-        const dr = Math.sqrt(dx * dx + dy * dy);
-        if (dr === 0) return `M${{d.source.x}},${{d.source.y}} L${{d.target.x}},${{d.target.y}}`;
-        const curv = d.curvature || 0;
-        if (Math.abs(curv) < 1) {{
-          return `M${{d.source.x}},${{d.source.y}} L${{d.target.x}},${{d.target.y}}`;
-        }}
-        const mx = (d.source.x + d.target.x) / 2;
-        const my = (d.source.y + d.target.y) / 2;
-        const nx = -dy / dr;
-        const ny = dx / dr;
-        const cx = mx + nx * curv;
-        const cy = my + ny * curv;
-        return `M${{d.source.x}},${{d.source.y}} Q${{cx}},${{cy}} ${{d.target.x}},${{d.target.y}}`;
+        return `M${{d.source.x}},${{d.source.y}} L${{d.target.x}},${{d.target.y}}`;
       }}
 
       const link = g.append("g")

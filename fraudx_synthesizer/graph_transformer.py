@@ -26,11 +26,15 @@ class ForensicGraphTransformer:
         self,
         canvas_width: int = 1400,
         canvas_height: int = 900,
-        max_unrolled_cards_per_campaign: int = 3,
+        max_unrolled_cards_per_campaign: int = 4,
+        max_bridge_cards: int = 18,
+        max_merchants: int = 60,
     ):
         self.canvas_width = canvas_width
         self.canvas_height = canvas_height
         self.max_unrolled_cards_per_campaign = max_unrolled_cards_per_campaign
+        self.max_bridge_cards = max_bridge_cards
+        self.max_merchants = max_merchants
 
     def transform(self, fraud_records: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Processes raw fraud records into a structured forensic node-link threat graph."""
@@ -47,6 +51,7 @@ class ForensicGraphTransformer:
         card_approvals: Dict[str, int] = defaultdict(int)
         card_scenarios: Dict[str, Set[str]] = defaultdict(set)
         card_metadata: Dict[str, Dict[str, Any]] = {}
+        merchant_tx_counts: Dict[str, int] = defaultdict(int)
 
         syndicate_meta: Dict[str, Dict[str, Any]] = {}
         botnet_meta: Dict[str, Dict[str, Any]] = {}
@@ -96,6 +101,7 @@ class ForensicGraphTransformer:
                     }
             if mid:
                 card_merchants[cid].add(mid)
+                merchant_tx_counts[mid] += 1
                 if mid not in merchant_meta:
                     merchant_meta[mid] = {
                         "id": mid,
@@ -120,19 +126,21 @@ class ForensicGraphTransformer:
                     "latest_response": f"ISO {resp}",
                 }
 
-        # 2. Partition Cards into Bridge Cards vs. Leaf Campaign Cards
-        bridge_cards: Set[str] = set()
+        # 2. Partition Cards into True Pivot Cards vs. Leaf Campaign Cards
+        # Cross-syndicate pivot cards are strictly ranked to prevent star-graph fan-out collapse
+        candidate_bridges = []
         leaf_cards: Set[str] = set()
 
         for cid, syns in card_syndicates.items():
-            merchs = card_merchants[cid]
-            botnets = card_botnets[cid]
-            # Bridge score: cross-syndicate, cross-botnet, or multi-merchant hub
-            score = (len(syns) - 1) * 4 + (len(botnets) - 1) * 2 + (len(merchs) - 1) * 2
-            if score >= 2 or len(syns) > 1 or len(merchs) >= 3:
-                bridge_cards.add(cid)
+            if len(syns) > 1:
+                candidate_bridges.append((len(syns), card_tx_counts[cid], card_volumes[cid], cid))
             else:
                 leaf_cards.add(cid)
+
+        candidate_bridges.sort(reverse=True)
+        bridge_cards: Set[str] = set(c for _, _, _, c in candidate_bridges[:self.max_bridge_cards])
+        for _, _, _, c in candidate_bridges[self.max_bridge_cards:]:
+            leaf_cards.add(c)
 
         # 3. Form Breach Campaigns and Unroll Active Cardholders
         # Group leaf cards by primary (syndicate_id, botnet_id, primary_scenario)
@@ -354,9 +362,22 @@ class ForensicGraphTransformer:
                 },
             })
 
+        # Filter merchants to top targeted merchants + any merchant needed by bridge cards or unrolled cards
+        merchants_needed = set()
+        for cid in bridge_cards:
+            merchants_needed.update(card_merchants.get(cid, set()))
+        for cid in unrolled_card_ids:
+            merchants_needed.update(card_merchants.get(cid, set()))
+
+        top_merchants_by_volume = set(
+            m for m, _ in sorted(merchant_tx_counts.items(), key=lambda x: x[1], reverse=True)[:self.max_merchants]
+        )
+        retained_merchants = top_merchants_by_volume | merchants_needed
+        active_merchant_meta = {m: meta for m, meta in merchant_meta.items() if m in retained_merchants}
+
         # Register Merchant Nodes
-        m_angle_step = 2.0 * math.pi / max(1, len(merchant_meta))
-        for m_idx, (mid, meta) in enumerate(merchant_meta.items()):
+        m_angle_step = 2.0 * math.pi / max(1, len(active_merchant_meta))
+        for m_idx, (mid, meta) in enumerate(active_merchant_meta.items()):
             targeting_syns: Set[str] = set()
             for r in fraud_records:
                 if str(r.get("merchant_id", "")) == mid:
