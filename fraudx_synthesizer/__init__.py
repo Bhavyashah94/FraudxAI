@@ -95,6 +95,11 @@ from .intent import (
     SwitchHopResult,
     TokenBindingResult,
 )
+from .visualizer import (
+    compile_simulation_data_bundle,
+    generate_visualization_file,
+    render_standalone_html,
+)
 
 __version__ = "0.3.0"
 
@@ -162,5 +167,8 @@ __all__ = [
     "MultiHopSwitchEngine",
     "SwitchHopResult",
     "TokenBindingResult",
+    "compile_simulation_data_bundle",
+    "generate_visualization_file",
+    "render_standalone_html",
 ]
 

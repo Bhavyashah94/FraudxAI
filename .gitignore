@@ -64,3 +64,4 @@ data/batch_*.csv
 data/test_*.csv
 data/large_*.csv
 data/*_production.csv
+reports/

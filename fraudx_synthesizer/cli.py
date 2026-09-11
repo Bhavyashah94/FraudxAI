@@ -247,6 +247,27 @@ def cmd_benchmark(args: argparse.Namespace) -> None:
             print("=" * 65 + "\n")
 
 
+def cmd_visualize(args: argparse.Namespace) -> None:
+    """Generates synthetic batch and compiles it into an interactive standalone HTML visualizer."""
+    from .visualizer import generate_visualization_file
+
+    out_path = Path(args.output)
+    print(
+        f"Synthesizing {args.n} transactions ({args.region}, adversary_mode={args.adversary_mode})...",
+        file=sys.stderr,
+    )
+    res_path = generate_visualization_file(
+        output_path=str(out_path),
+        n_transactions=args.n,
+        region=args.region,
+        fraud_rate=args.fraud_rate,
+        adversary_mode=args.adversary_mode,
+        seed=args.seed,
+        open_browser=args.open,
+    )
+    print(f"Interactive visualizer dashboard generated: {res_path.resolve()}", file=sys.stderr)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(prog="fraudx-sim", description="FraudX-Synthesizer CLI")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -277,6 +298,17 @@ def main() -> None:
     p_bench.add_argument("--output-report", type=str, default=None, help="Path to write Markdown certification report")
     p_bench.add_argument("--json", action="store_true", help="Output benchmark metrics in JSON format")
     p_bench.set_defaults(func=cmd_benchmark)
+
+    # Visualize subcommand
+    p_vis = subparsers.add_parser("visualize", help="Generate and render interactive Cybercrime Threat Graph and Switch Funnel dashboard")
+    p_vis.add_argument("-n", type=int, default=1500, help="Number of transactions to synthesize")
+    p_vis.add_argument("--region", type=str, choices=["US", "IN"], default="US", help="Banking ecosystem region")
+    p_vis.add_argument("--fraud-rate", type=float, default=0.04, help="Fraud prevalence ratio")
+    p_vis.add_argument("--adversary-mode", type=str, choices=["intent", "playbook"], default="intent", help="Adversary decision mode: 'intent' or 'playbook'")
+    p_vis.add_argument("--seed", type=int, default=42, help="Deterministic random seed")
+    p_vis.add_argument("-o", "--output", type=str, default="reports/fraudx_visualizer.html", help="Output HTML file path")
+    p_vis.add_argument("--open", action="store_true", default=False, help="Automatically open generated visualizer in default web browser")
+    p_vis.set_defaults(func=cmd_visualize)
 
     args = parser.parse_args()
     args.func(args)
