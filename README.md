@@ -205,7 +205,7 @@ FraudxAI includes an automated evaluation harness conforming to **Quantus (JMLR 
 
 #### CLI Benchmark:
 ```bash
-python -m fraudx_synthesizer.cli benchmark -n 2000 --model lightgbm
+python -m fraudx_synthesizer.cli benchmark -n 2000 --model lightgbm --seed 42
 ```
 
 ```
@@ -214,17 +214,22 @@ python -m fraudx_synthesizer.cli benchmark -n 2000 --model lightgbm
 =================================================================
   Model Architecture:           LIGHTGBM
   Explainer Method:             TreeSHAP (Interventional)
-  Evaluated Fraud Samples:      17
-  Classifier ROC-AUC:           0.9908
-  Classifier PR-AUC:            0.9209
+  Evaluated Fraud Samples:      35
+  Classifier ROC-AUC:           0.9685
+  Classifier PR-AUC:            0.7955
 -----------------------------------------------------------------
-  Ranking Concordance (Kendall Tau):      0.4371
-  Rank Correlation (Spearman Rho):        0.1107
-  Directional Cosine Similarity:          0.5158
-  Top-3 Support Recovery (Precision@3):   0.5882
-  Relative Attribution Error (RAE):       19.25
+  Ranking Concordance (Kendall Tau):      0.4439
+  Rank Correlation (Spearman Rho):        0.0010
+  Top-3 Support Recovery (Precision@3):   0.5333
+  Intervention Precision (P@3):           0.6286
+  Intervention Recall (R@3):              0.5643
+  Relative Attribution Error (RAE):       1539.6445
 =================================================================
 ```
+
+> **Attribution Metric Notes:**
+> * **Intervention Precision & Recall ($P@3$, $R@3$):** Measures whether the top-3 features identified by post-hoc explainers match the actual causal intervention levers injected during simulated adversary attacks.
+> * **Relative Attribution Error (RAE):** Quantifies magnitude discrepancy between tree explainer leaf-path attributions and ground-truth intervention logits. Without post-hoc loss-domain calibration, tree surrogates exhibit scale divergence while preserving partial rank concordance (Kendall's $\tau_b \approx 0.44$).
 
 #### Python Programmatic API:
 ```python
@@ -233,9 +238,9 @@ from fraudx_synthesizer import XAIBenchmarkHarness
 harness = XAIBenchmarkHarness(n_transactions=2000, fraud_prevalence=0.05, seed=42)
 summary = harness.run_benchmark(model_type="lightgbm")
 
-print(f"Kendall Tau Concordance: {summary.mean_kendall_tau:.4f}")
-print(f"Top-3 Precision:        {summary.mean_precision_at_3:.4f}")
-print(f"Cosine Similarity:      {summary.mean_cosine_similarity:.4f}")
+print(f"Kendall Tau Concordance:     {summary.mean_kendall_tau:.4f}")
+print(f"Intervention Precision (P@3): {summary.mean_intervention_precision_at_3:.4f}")
+print(f"Intervention Recall (R@3):    {summary.mean_intervention_recall_at_3:.4f}")
 ```
 
 ---
@@ -248,10 +253,11 @@ FraudxAI/
 ├── fraudx_synthesizer/              # Core Simulation & Causal Benchmark Engine
 │   ├── agents.py                   # Cardholders, Adaptive Fraudsters & Bank Decision Engine
 │   ├── benchmark.py                # Empirical TreeSHAP benchmark harness & Quantus metrics
-│   ├── causal_scm.py               # Structural Causal Model, EMV Mitigators & Shapley Quad
+│   ├── causal_scm.py               # BankModel ABC, HeuristicBankScorer & Ground Truth Levers
 │   ├── cli.py                      # Production CLI supporting dual regions & feed exports
-│   ├── engine.py                   # Monotonic Priority Queue Discrete-Event Engine
-│   ├── evaluation.py               # GroundTruthXAIEvaluator (Precision@k, Kendall Tau, RAE)
+│   ├── engine.py                   # Monotonic Priority Queue Discrete-Event Engine (stream_continuous)
+│   ├── evaluation.py               # GroundTruthXAIEvaluator (P@k, R@k, Kendall Tau, RAE)
+│   ├── experimental/               # Untrained / Experimental flow architectures (RealNVP)
 │   ├── invariants.py               # Antipodal Haversine kinematics & monetary conservation
 │   ├── ledger.py                   # StreamingLedger with point-in-time Welford tracking
 │   ├── spec_loader.py              # Spec loader parsing YAML configurations

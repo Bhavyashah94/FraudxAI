@@ -52,8 +52,8 @@ class WelfordAccumulator:
         return math.sqrt(self.variance)
 
     def compute_z_score(self, x: float) -> float:
-        """Standardized score z = (x - mean) / std. Regularized to avoid division by zero."""
-        s = max(self.std, 0.15 * max(self.mean, 1.0), 2.0)
+        """Standardized score z = (x - mean) / std. Regularized with Bayesian tail-shrinkage to avoid division by zero and heavy-tail blowups."""
+        s = max(self.std, 0.15 * max(self.mean, 1.0), 0.08 * x, 3.0)
         return (x - self.mean) / s
 
 

@@ -260,8 +260,9 @@ def cmd_benchmark(args: argparse.Namespace) -> None:
             print("-" * 65)
             print(f"  Ranking Concordance (Kendall Tau):      {summary.mean_kendall_tau:.4f}")
             print(f"  Rank Correlation (Spearman Rho):        {summary.mean_spearman_rho:.4f}")
-            print(f"  Directional Cosine Similarity:          {summary.mean_cosine_similarity:.4f}")
             print(f"  Top-3 Support Recovery (Precision@3):   {summary.mean_precision_at_3:.4f}")
+            print(f"  Intervention Precision (P@3):           {summary.mean_intervention_precision_at_3:.4f}")
+            print(f"  Intervention Recall (R@3):              {summary.mean_intervention_recall_at_3:.4f}")
             print(f"  Relative Attribution Error (RAE):       {summary.mean_relative_attribution_error:.4f}")
             print("=" * 65 + "\n")
 

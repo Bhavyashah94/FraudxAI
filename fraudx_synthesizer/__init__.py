@@ -15,8 +15,10 @@ from .agents import (
     ISO8583Response,
 )
 from .causal_scm import (
+    BankModel,
     CausalGroundTruth,
     CounterfactualCausalEngine,
+    HeuristicBankScorer,
     StructuralCausalEngine,
 )
 from .engine import (
@@ -123,6 +125,8 @@ __all__ = [
     "ISO8583Response",
     "FraudScenario",
     "ChannelType",
+    "BankModel",
+    "HeuristicBankScorer",
     "StructuralCausalEngine",
     "CounterfactualCausalEngine",
     "CausalGroundTruth",

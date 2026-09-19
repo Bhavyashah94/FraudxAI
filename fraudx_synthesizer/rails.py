@@ -242,8 +242,8 @@ class RailVerifierSwitch:
                     pos_condition_code=pos_condition,
                     hop_origin="GATEWAY_FILTER",
                 )
-            # Normal CNP hourly throttle
-            if intent.tx_count_1h >= 8:
+            # Normal CNP hourly throttle (calibrated to multi-stop shopping bursts)
+            if intent.tx_count_1h >= 10:
                 return RailVerificationResult(
                     approved=False,
                     iso_response_code=ISO8583Response.ACTIVITY_COUNT_EXCEEDED_65.value,

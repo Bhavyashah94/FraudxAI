@@ -41,3 +41,28 @@ def test_streaming_reproducibility_with_deterministic_clock():
         assert stream1[i]["transaction_id"] == stream2[i]["transaction_id"]
         assert stream1[i]["amount"] == stream2[i]["amount"]
         assert stream1[i]["risk_score"] == stream2[i]["risk_score"]
+
+
+def test_streaming_real_time_pacing():
+    """Streaming with real_time=True paces emissions according to inter-arrival delta."""
+    import itertools
+    import time
+
+    engine = SimulationEngine(n_cards=20, n_merchants=10, seed=42)
+    t0 = time.perf_counter()
+    # Pull 3 transactions with target_tps=50.0 (inter-arrival ~0.02s)
+    stream = list(
+        itertools.islice(
+            engine.stream_continuous(
+                duration_seconds=1.0,
+                target_tps=50.0,
+                start_time_seconds=0.0,
+                real_time=True,
+            ),
+            3,
+        )
+    )
+    elapsed = time.perf_counter() - t0
+    assert len(stream) == 3
+    # Two inter-arrival intervals of 1.0 / 50.0 = 0.02s each -> elapsed >= 0.03s
+    assert elapsed >= 0.03

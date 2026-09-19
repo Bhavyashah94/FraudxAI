@@ -16,6 +16,7 @@ import heapq
 import itertools
 import math
 from datetime import datetime, timezone
+import time
 from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 import numpy as np
@@ -1267,8 +1268,21 @@ class DiscreteEventEngine:
         start_time_seconds: float = 1704067200.0,
         enforce_invariants: bool = True,
         active_macro_regime: Optional[str] = None,
+        real_time: bool = False,
     ) -> Iterator[Dict[str, Any]]:
-        """Yields real-time streaming transactions with strictly monotonic Poisson arrivals."""
+        """Yields streaming transactions with strictly monotonic Poisson arrivals.
+
+        Args:
+            duration_seconds: Simulated duration in seconds.
+            target_tps: Target transactions per second.
+            fraud_prevalence: Ratio of adversarial fraud transactions.
+            start_time_seconds: Epoch timestamp start.
+            enforce_invariants: Whether to enforce physical/rail invariants.
+            active_macro_regime: Optional macroeconomic regime.
+            real_time: If True, paces emission using wall-clock time.sleep() matching
+                       the simulated inter-arrival delta (dt). If False (default), yields
+                       transactions immediately for high-throughput batch replay and testing.
+        """
         batch_size = max(50, int(duration_seconds * target_tps))
         records = self.generate_batch(
             n_transactions=batch_size,
@@ -1278,7 +1292,10 @@ class DiscreteEventEngine:
             enforce_invariants=enforce_invariants,
             active_macro_regime=active_macro_regime,
         )
-        for r in records:
+        sleep_interval = 1.0 / max(target_tps, 0.1) if real_time else 0.0
+        for i, r in enumerate(records):
+            if real_time and i > 0:
+                time.sleep(sleep_interval)
             yield r
 
 

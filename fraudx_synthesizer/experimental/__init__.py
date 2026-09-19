@@ -1,10 +1,6 @@
-"""Invertible flow module (DEPRECATED).
+"""Experimental models and prototypes for FraudxAI."""
 
-This module has been relocated to `fraudx_synthesizer.experimental.invertible_flow`.
-Please import from `fraudx_synthesizer.experimental` directly.
-"""
-
-from .experimental.invertible_flow import (
+from .invertible_flow import (
     AffineCouplingLayer,
     ConditionalRealNVPFlow,
     LatentAumannShapleyAttributor,

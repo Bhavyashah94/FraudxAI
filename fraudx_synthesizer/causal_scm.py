@@ -18,16 +18,36 @@ Provides:
 from __future__ import annotations
 
 import math
+from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
-from .invertible_flow import (
+from .experimental.invertible_flow import (
     ConditionalRealNVPFlow,
     LatentAumannShapleyAttributor,
     TransactionFlowFeatureCodec,
 )
+
+
+class BankModel(ABC):
+    """Abstract interface for pluggable fraud risk decision models.
+    
+    Allows external machine learning models (LightGBM, XGBoost, Neural Nets)
+    or custom rule engines to be plugged directly into the FraudxAI simulation
+    as first-class authorizers.
+    """
+
+    @abstractmethod
+    def score(self, record: Dict[str, Any]) -> float:
+        """Returns continuous risk probability in [0.0, 1.0]."""
+        ...
+
+    @abstractmethod
+    def decide(self, record: Dict[str, Any], threshold: float = 0.50) -> str:
+        """Returns ISO 8583 response code (e.g. '00' Approved, '05' Do Not Honor, '59' Suspected Fraud)."""
+        ...
 
 
 @dataclass
@@ -58,8 +78,13 @@ class CausalGroundTruth:
             self.counterfactual_twin = self.normative_baseline
 
 
-class StructuralCausalEngine:
-    """Evaluates structural causal risk and derives exact counterfactual attributions."""
+class HeuristicBankScorer(BankModel):
+    """Heuristic bank risk scoring function parameterized by domain-expert log-odds weights and synergy kernels.
+    
+    Serves as a baseline bank decision model and heuristic benchmark, NOT an empirical causal oracle.
+    Weights reflect empirical payment fraud heuristics (e.g. CVV mismatches, excessive velocity,
+    and EMV cryptogram dampening).
+    """
 
     def __init__(self, base_prevalence: float = 0.0020):
         self.base_prevalence = max(1e-5, min(0.999, base_prevalence))
@@ -489,6 +514,20 @@ class StructuralCausalEngine:
             )
         return f"Adversarial attack ({scenario_tag}, ${amount:.2f}) driven by {driver}."
 
+    def score(self, record: Dict[str, Any]) -> float:
+        """Computes continuous risk score using the heuristic polynomial."""
+        result = self.evaluate(record)
+        return result.risk_score
 
-# Backward compatibility alias
-CounterfactualCausalEngine = StructuralCausalEngine
+    def decide(self, record: Dict[str, Any], threshold: float = 0.50) -> str:
+        """Returns ISO 8583 response code based on risk threshold."""
+        score = self.score(record)
+        if score >= threshold:
+            return "59"  # Suspected Fraud
+        return "00"  # Approved
+
+
+# Backward compatibility aliases
+StructuralCausalEngine = HeuristicBankScorer
+CounterfactualCausalEngine = HeuristicBankScorer
+
