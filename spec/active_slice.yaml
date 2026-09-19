@@ -2,44 +2,24 @@
 # Read this file at the start of any new session or task to immediately anchor context.
 
 current_slice:
-  id: "slice-13-payment-rail-authorization-calibration"
-  title: "Payment Rail Authorization Calibration, Channel-Differentiated Velocity & Single Switch Unification"
-  status: "verified"  # [planning, in_progress, testing, verified]
-  verification_metrics:
-    total_transactions: 1000000
-    approval_rate: 88.25%  # Targeted window: 88.0% - 92.5%
-    approved_count: 882510
-    declined_count: 117490
-    top_decline: "ISO 51 (Insufficient Funds): 87,090 (74.1% of all declines)"
-    iso_65_velocity_declines: "9,948 (8.47% of declines, < 1.0% of total transactions)"
-    fraud_prevalence: 3.05% (30,540 fraud txs)
-    wall_time: 812.02s (13.5 minutes across 4 workers)
-    throughput: 1231.5 tx/sec
-    threat_graph:
-      syndicates: 4
-      botnets: 5
-      unrolled_active_cards: 35
-      pivot_bridge_cards: 317
-      breach_campaigns: 7
-      targeted_merchants: 427
-      cash_out_mules: 51
-      zero_degree_orphan_nodes: 0  # 100% connected, no free-floating donut
-      total_links: 2645
+  id: "slice-14-us-empirical-calibration-fed-dcpc"
+  title: "Day 1: US Empirical Cardholder Spend & Arrival Calibration (Federal Reserve DCPC / FRPS)"
+  status: "planning"  # [planning, in_progress, testing, verified]
   target_spec_files:
-    - "spec/03_payment_rail_gaps.yaml"
-    - "spec/05_india_payment_rails.yaml"
-
+    - "spec/02_human_personas.yaml"
+    - "fraudx_synthesizer/hawkes.py"
   acceptance_criteria:
-    - ledger_authorized_vs_attempt_velocity_partitioned: true
-    - channel_differentiated_velocity_and_botnet_detection_implemented: true
-    - emv_chip_primacy_and_oracle_leakage_eliminated: true
-    - rbi_100_percent_domestic_cnp_otp_enforced: true
-    - bank_decision_engine_unified_under_rail_verifier_switch: true
-    - active_hold_pruning_and_flight_transit_buffer_implemented: true
-    - statistical_acceptance_gate_passed: true  # Approval 88.25%, ISO 51 leading decline at 74.1%
-    - forensic_graph_orphan_merchants_eliminated_and_cardholders_unrolled: true
+    - fed_dcpc_daily_transaction_frequency_calibrated_to_1_8_to_2_7_tx_day: false
+    - ticket_size_log_normal_distributions_anchored_in_frps_tables: false
+    - card_present_pos_vs_cnp_volume_split_aligned_to_fed_shares: false
+    - two_sample_ks_test_passes_against_reference_marginals: false
+    - anti_leak_tripwires_and_full_test_suite_remain_100_percent_green: false
 
 previous_slices:
+  - id: "slice-13-payment-rail-authorization-calibration"
+    title: "Payment Rail Authorization Calibration, Channel-Differentiated Velocity & Single Switch Unification"
+    status: "verified"
+    verdict: "PASS (CERTIFIED, Approval 88.25%, ISO 51 leading decline at 74.1%, 131/131 tests green)"
   - id: "slice-12-adversarial-syndicate-ecology-and-forensic-graph"
     title: "Adversarial Syndicate Ecology, Forensic Graph Rollup & Multi-Focal Orbital D3 Engine"
     status: "verified"

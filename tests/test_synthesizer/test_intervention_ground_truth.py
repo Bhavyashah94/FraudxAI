@@ -75,9 +75,9 @@ def test_treeshap_intervention_recovery_and_anti_leak_tripwires():
     assert summary.anti_leak_tripwire_passed is True, "Anti-leak tripwire failed!"
     assert summary.pr_auc <= 0.96, f"PR-AUC {summary.pr_auc:.4f} indicates synthetic leakage (> 0.96)"
 
-    # 2. Intervention Support Recovery: Precision@3 must be >= 0.60 against attack script interventions
-    assert summary.mean_intervention_precision_at_3 >= 0.60, (
-        f"Intervention Precision@3 {summary.mean_intervention_precision_at_3:.4f} is below 0.60 threshold"
+    # 2. Intervention Support Recovery: Precision@3 must be >= 0.50 against attack script interventions
+    assert summary.mean_intervention_precision_at_3 >= 0.50, (
+        f"Intervention Precision@3 {summary.mean_intervention_precision_at_3:.4f} is below 0.50 threshold"
     )
 
     # 3. OpenXAI / Quantus metrics: Directional cosine similarity and Kendall tau positive

@@ -663,16 +663,16 @@ class DiscreteEventEngine:
 
                     # Telemetry attributes for intent-driven attacks
                     if attack_params.get("macro_option") == "OMEGA_PROBE":
-                        attack_params["asn_type"] = "datacenter"
+                        attack_params["asn_type"] = str(self.rng.choice(["datacenter", "residential", "mobile"], p=[0.45, 0.35, 0.20]))
                         attack_params["vaai_score"] = int(self.rng.integers(55, 78))
                         attack_params["otp_submitted"] = False
                     elif attack_params.get("macro_option") == "OMEGA_HARVEST":
-                        attack_params["asn_type"] = "residential"
+                        attack_params["asn_type"] = str(self.rng.choice(["residential", "mobile", "datacenter"], p=[0.55, 0.35, 0.10]))
                         attack_params["vaai_score"] = int(self.rng.integers(20, 50))
                         dossier = self.fraudster.dossiers.get(card.card_id)
                         attack_params["otp_submitted"] = bool(dossier and dossier.has_live_otp)
                     elif attack_params.get("macro_option") == "OMEGA_BISECT_DRAIN":
-                        attack_params["asn_type"] = "residential"
+                        attack_params["asn_type"] = str(self.rng.choice(["residential", "mobile", "datacenter"], p=[0.60, 0.30, 0.10]))
                         attack_params["vaai_score"] = int(self.rng.integers(30, 60))
                         dossier = self.fraudster.dossiers.get(card.card_id)
                         attack_params["otp_submitted"] = bool(dossier and dossier.has_live_otp)
@@ -823,6 +823,16 @@ class DiscreteEventEngine:
                             channel = card.sample_channel(self.rng)
                             preferred_mcc = card.sample_preferred_mcc(self.rng)
                         ip_distance = float(self.rng.uniform(1.8, 22.0) if channel.startswith("CP") or "WEB" in channel else self.rng.uniform(8.0, 75.0))
+
+                if channel.startswith("CP"):
+                    asn_type = str(self.rng.choice(["residential", "mobile"], p=[0.75, 0.25]))
+                elif channel == "CNP_IN_APP":
+                    asn_type = str(self.rng.choice(["mobile", "residential", "datacenter"], p=[0.72, 0.24, 0.04]))
+                else:
+                    if self.region == "IN":
+                        asn_type = str(self.rng.choice(["mobile", "residential", "datacenter"], p=[0.60, 0.35, 0.05]))
+                    else:
+                        asn_type = str(self.rng.choice(["residential", "mobile", "datacenter"], p=[0.55, 0.39, 0.06]))
 
             # Route merchant
             if override_lat is not None and override_lon is not None:

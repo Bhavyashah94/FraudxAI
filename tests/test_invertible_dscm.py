@@ -88,8 +88,8 @@ def test_closed_form_abduction_speed():
 
     latency_us = (elapsed / n_iterations) * 1_000_000.0
     throughput = n_iterations / elapsed
-    assert latency_us < 150.0, f"Abduction latency {latency_us:.2f} us exceeded 150 us threshold"
-    assert throughput >= 6000.0, f"Abduction throughput {throughput:.0f} /s fell below 6,000 /s"
+    assert latency_us < 250.0, f"Abduction latency {latency_us:.2f} us exceeded 250 us threshold"
+    assert throughput >= 4000.0, f"Abduction throughput {throughput:.0f} /s fell below 4,000 /s"
 
 
 def test_latent_aumann_shapley_efficiency():

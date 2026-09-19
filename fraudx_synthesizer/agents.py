@@ -760,11 +760,11 @@ class AdaptiveFraudsterAgent:
             if is_mimicry:
                 ip_dist = float(self.rng.uniform(12.0, 55.0))
                 is_cb = False
-                asn = "residential"
+                asn = str(self.rng.choice(["residential", "mobile"], p=[0.70, 0.30]))
             else:
                 ip_dist = float(self.rng.uniform(4500.0, 11500.0))
                 is_cb = True
-                asn = "datacenter"
+                asn = str(self.rng.choice(["datacenter", "residential", "mobile"], p=[0.40, 0.40, 0.20]))
             return {
                 "amount": amount,
                 "channel_type": "CNP_WEB",
@@ -868,11 +868,11 @@ class AdaptiveFraudsterAgent:
             if is_mimicry:
                 amount_usd = round(float(self.rng.uniform(15.0, 120.0)), 2)
                 ip_dist = float(self.rng.uniform(25.0, 150.0))
-                asn = "residential"
+                asn = str(self.rng.choice(["residential", "mobile"], p=[0.60, 0.40]))
             else:
                 amount_usd = round(float(self.rng.uniform(25.0, 350.0)), 2)
                 ip_dist = float(self.rng.uniform(5500.0, 12000.0))
-                asn = "datacenter"
+                asn = str(self.rng.choice(["datacenter", "residential", "mobile"], p=[0.35, 0.45, 0.20]))
             amount_inr = round(amount_usd * 83.5, 2)
             target.current_probe_amount = amount_inr
             target.target_mcc = 5732

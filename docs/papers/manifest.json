@@ -1,0 +1,988 @@
+{
+  "1707.02640": {
+    "arxiv_id": "1707.02640",
+    "title": "Credit Card Fraud Detection: A Realistic Modeling and a Novel Learning Strategy",
+    "category": "cs.LG",
+    "stance": "supporting",
+    "local_path": "docs/papers/1707.02640.pdf",
+    "size_kb": 583.7,
+    "url": "https://arxiv.org/pdf/1707.02640.pdf",
+    "downloaded_at": "2026-09-19 15:37:17"
+  },
+  "1811.10154": {
+    "arxiv_id": "1811.10154",
+    "title": "Stop Explaining Black Box Machine Learning Models for High Stakes Decisions and Use Interpretable Models Instead",
+    "category": "cs.LG",
+    "stance": "opposing",
+    "local_path": "docs/papers/1811.10154.pdf",
+    "size_kb": 1322.2,
+    "url": "https://arxiv.org/pdf/1811.10154.pdf",
+    "downloaded_at": "2026-09-19 15:37:22"
+  },
+  "2211.13358": {
+    "arxiv_id": "2211.13358",
+    "title": "Turning the Tables: Biased, Imbalanced, Dynamic Tabular Datasets for ML Evaluation",
+    "category": "cs.LG",
+    "stance": "supporting",
+    "local_path": "docs/papers/2211.13358.pdf",
+    "size_kb": 477.3,
+    "url": "https://arxiv.org/pdf/2211.13358.pdf",
+    "downloaded_at": "2026-09-19 15:37:25"
+  },
+  "2002.11097": {
+    "arxiv_id": "2002.11097",
+    "title": "Problems with Shapley-value-based explanations as feature importance measures",
+    "category": "cs.LG",
+    "stance": "opposing",
+    "local_path": "docs/papers/2002.11097.pdf",
+    "size_kb": 477.1,
+    "url": "https://arxiv.org/pdf/2002.11097.pdf",
+    "downloaded_at": "2026-09-19 15:37:30"
+  },
+  "1506.06980": {
+    "arxiv_id": "1506.06980",
+    "title": "Strategic Classification",
+    "category": "cs.LG",
+    "stance": "opposing",
+    "local_path": "docs/papers/1506.06980.pdf",
+    "size_kb": 349.7,
+    "url": "https://arxiv.org/pdf/1506.06980.pdf",
+    "downloaded_at": "2026-09-19 15:37:34"
+  },
+  "2202.06861": {
+    "arxiv_id": "2202.06861",
+    "title": "Quantus: An Explainable AI Toolkit for Responsible Evaluation of Neural Network Explanations",
+    "category": "cs.LG",
+    "stance": "supporting",
+    "local_path": "docs/papers/2202.06861.pdf",
+    "size_kb": 1538.8,
+    "url": "https://arxiv.org/pdf/2202.06861.pdf",
+    "downloaded_at": "2026-09-19 15:37:38"
+  },
+  "2002.06673": {
+    "arxiv_id": "2002.06673",
+    "title": "Performative Prediction",
+    "category": "cs.LG",
+    "stance": "opposing",
+    "local_path": "docs/papers/2002.06673.pdf",
+    "size_kb": 527.2,
+    "url": "https://arxiv.org/pdf/2002.06673.pdf",
+    "downloaded_at": "2026-09-19 15:37:43"
+  },
+  "2206.11104": {
+    "arxiv_id": "2206.11104",
+    "title": "OpenXAI: Towards a Transparent Evaluation of Model Explanations",
+    "category": "cs.LG",
+    "stance": "supporting",
+    "local_path": "docs/papers/2206.11104.pdf",
+    "size_kb": 556.4,
+    "url": "https://arxiv.org/pdf/2206.11104.pdf",
+    "downloaded_at": "2026-09-19 15:37:44"
+  },
+  "2209.15421": {
+    "arxiv_id": "2209.15421",
+    "title": "TabDDPM: Modelling Tabular Data with Diffusion Models",
+    "category": "cs.LG",
+    "stance": "opposing",
+    "local_path": "docs/papers/2209.15421.pdf",
+    "size_kb": 7435.5,
+    "url": "https://arxiv.org/pdf/2209.15421.pdf",
+    "downloaded_at": "2026-09-19 15:37:47"
+  },
+  "1911.02508": {
+    "arxiv_id": "1911.02508",
+    "title": "Fooling LIME and SHAP: Adversarial Attacks on Post hoc Explanation Methods",
+    "category": "cs.LG",
+    "stance": "opposing",
+    "local_path": "docs/papers/1911.02508.pdf",
+    "size_kb": 1183.1,
+    "url": "https://arxiv.org/pdf/1911.02508.pdf",
+    "downloaded_at": "2026-09-19 15:37:52"
+  },
+  "1907.00503": {
+    "arxiv_id": "1907.00503",
+    "title": "Modeling Tabular Data using Conditional GAN",
+    "category": "cs.LG",
+    "stance": "opposing",
+    "local_path": "docs/papers/1907.00503.pdf",
+    "size_kb": 1883.0,
+    "url": "https://arxiv.org/pdf/1907.00503.pdf",
+    "downloaded_at": "2026-09-19 15:37:54"
+  },
+  "1910.08260": {
+    "arxiv_id": "1910.08260",
+    "title": "Time-series Generative Adversarial Networks",
+    "category": "cs.LG",
+    "stance": "opposing",
+    "local_path": "docs/papers/1910.08260.pdf",
+    "size_kb": 284.7,
+    "url": "https://arxiv.org/pdf/1910.08260.pdf",
+    "downloaded_at": "2026-09-19 15:38:01"
+  },
+  "2102.11107": {
+    "arxiv_id": "2102.11107",
+    "title": "Towards Causal Representation Learning",
+    "category": "cs.LG",
+    "stance": "supporting",
+    "local_path": "docs/papers/2102.11107.pdf",
+    "size_kb": 1355.8,
+    "url": "https://arxiv.org/pdf/2102.11107.pdf",
+    "downloaded_at": "2026-09-19 15:38:08"
+  },
+  "2006.04683": {
+    "arxiv_id": "2006.04683",
+    "title": "Causal Strategic Classification",
+    "category": "cs.LG",
+    "stance": "opposing",
+    "local_path": "docs/papers/2006.04683.pdf",
+    "size_kb": 1098.5,
+    "url": "https://arxiv.org/pdf/2006.04683.pdf",
+    "downloaded_at": "2026-09-19 15:38:12"
+  },
+  "2510.15096": {
+    "arxiv_id": "2510.15096",
+    "title": "New Money: A Systematic Review of Synthetic Data Generation for Finance",
+    "category": "cs.AI",
+    "stance": "foundational",
+    "local_path": "docs/papers/2510.15096.pdf",
+    "size_kb": 2190.3,
+    "url": "https://arxiv.org/pdf/2510.15096.pdf",
+    "downloaded_at": "2026-09-19 15:38:15"
+  },
+  "2002.04333": {
+    "arxiv_id": "2002.04333",
+    "title": "Decisions, Counterfactual Explanations and Strategic Behavior",
+    "category": "cs.LG",
+    "stance": "opposing",
+    "local_path": "docs/papers/2002.04333.pdf",
+    "size_kb": 1227.0,
+    "url": "https://arxiv.org/pdf/2002.04333.pdf",
+    "downloaded_at": "2026-09-19 15:38:19"
+  },
+  "1904.12066": {
+    "arxiv_id": "1904.12066",
+    "title": "ABIDES: Towards High-Fidelity Market Simulation for AI Research",
+    "category": "cs.MA",
+    "stance": "supporting",
+    "local_path": "docs/papers/1904.12066.pdf",
+    "size_kb": 3060.0,
+    "url": "https://arxiv.org/pdf/1904.12066.pdf",
+    "downloaded_at": "2026-09-19 15:38:26"
+  },
+  "1910.10362": {
+    "arxiv_id": "1910.10362",
+    "title": "Strategic Classification is Causal Modeling in Disguise",
+    "category": "cs.LG",
+    "stance": "opposing",
+    "local_path": "docs/papers/1910.10362.pdf",
+    "size_kb": 483.2,
+    "url": "https://arxiv.org/pdf/1910.10362.pdf",
+    "downloaded_at": "2026-09-19 15:38:44"
+  },
+  "2003.01332": {
+    "arxiv_id": "2003.01332",
+    "title": "Heterogeneous Graph Transformer",
+    "category": "cs.LG",
+    "stance": "supporting",
+    "local_path": "docs/papers/2003.01332.pdf",
+    "size_kb": 3769.3,
+    "url": "https://arxiv.org/pdf/2003.01332.pdf",
+    "downloaded_at": "2026-09-19 15:38:51"
+  },
+  "2205.13084": {
+    "arxiv_id": "2205.13084",
+    "title": "BRIGHT: Graph Neural Networks in Real-Time Fraud Detection",
+    "category": "cs.LG",
+    "stance": "opposing",
+    "local_path": "docs/papers/2205.13084.pdf",
+    "size_kb": 2129.3,
+    "url": "https://arxiv.org/pdf/2205.13084.pdf",
+    "downloaded_at": "2026-09-19 15:38:59"
+  },
+  "1909.06711": {
+    "arxiv_id": "1909.06711",
+    "title": "Time-series Generative Adversarial Networks",
+    "category": "cs.LG",
+    "stance": "opposing",
+    "local_path": "docs/papers/1909.06711.pdf",
+    "size_kb": 2485.3,
+    "url": "https://arxiv.org/pdf/1909.06711.pdf",
+    "downloaded_at": "2026-09-19 15:39:04"
+  },
+  "1908.02591": {
+    "arxiv_id": "1908.02591",
+    "title": "Anti-Money Laundering in Bitcoin: Experimenting with Graph Convolutional Networks for Financial Forensics",
+    "category": "cs.LG",
+    "stance": "foundational",
+    "local_path": "docs/papers/1908.02591.pdf",
+    "size_kb": 7308.4,
+    "url": "https://arxiv.org/pdf/1908.02591.pdf",
+    "downloaded_at": "2026-09-19 15:39:08"
+  },
+  "2510.26076": {
+    "arxiv_id": "2510.26076",
+    "title": "New Money: A Systematic Review of Synthetic Data Generation for Finance",
+    "category": "cs.AI",
+    "stance": "foundational",
+    "local_path": "docs/papers/2510.26076.pdf",
+    "size_kb": 1361.7,
+    "url": "https://arxiv.org/pdf/2510.26076.pdf",
+    "downloaded_at": "2026-09-19 15:39:12"
+  },
+  "2307.13499": {
+    "arxiv_id": "2307.13499",
+    "title": "Finding money launderers using heterogeneous graph neural networks",
+    "category": "cs.LG",
+    "stance": "supporting",
+    "local_path": "docs/papers/2307.13499.pdf",
+    "size_kb": 1319.3,
+    "url": "https://arxiv.org/pdf/2307.13499.pdf",
+    "downloaded_at": "2026-09-19 15:39:17"
+  },
+  "2005.00625": {
+    "arxiv_id": "2005.00625",
+    "title": "GraphConsis: Alleviating the Inconsistency Problem of Applying Graph Neural Network to Fraud Detection",
+    "category": "cs.LG",
+    "stance": "supporting",
+    "local_path": "docs/papers/2005.00625.pdf",
+    "size_kb": 942.0,
+    "url": "https://arxiv.org/pdf/2005.00625.pdf",
+    "downloaded_at": "2026-09-19 15:39:25"
+  },
+  "2211.06977": {
+    "arxiv_id": "2211.06977",
+    "title": "Spade: A Real-Time Fraud Detection Framework on Evolving Graphs",
+    "category": "cs.DB",
+    "stance": "opposing",
+    "local_path": "docs/papers/2211.06977.pdf",
+    "size_kb": 685.5,
+    "url": "https://arxiv.org/pdf/2211.06977.pdf",
+    "downloaded_at": "2026-09-19 15:39:34"
+  },
+  "2210.14360": {
+    "arxiv_id": "2210.14360",
+    "title": "LaundroGraph: Self-Supervised Graph Representation Learning for Anti-Money Laundering",
+    "category": "cs.LG",
+    "stance": "supporting",
+    "local_path": "docs/papers/2210.14360.pdf",
+    "size_kb": 932.8,
+    "url": "https://arxiv.org/pdf/2210.14360.pdf",
+    "downloaded_at": "2026-09-19 15:39:41"
+  },
+  "2601.17935": {
+    "arxiv_id": "2601.17935",
+    "title": "FedGraph-VASP: Privacy-Preserving Federated Graph Learning for Anti-Money Laundering",
+    "category": "cs.CR",
+    "stance": "opposing",
+    "local_path": "docs/papers/2601.17935.pdf",
+    "size_kb": 430.9,
+    "url": "https://arxiv.org/pdf/2601.17935.pdf",
+    "downloaded_at": "2026-09-19 15:39:48"
+  },
+  "2008.08692": {
+    "arxiv_id": "2008.08692",
+    "title": "CARE-GNN: Enhancing Graph Neural Network-based Fraud Detectors against Camouflaged Fraudsters",
+    "category": "cs.LG",
+    "stance": "supporting",
+    "local_path": "docs/papers/2008.08692.pdf",
+    "size_kb": 2480.3,
+    "url": "https://arxiv.org/pdf/2008.08692.pdf",
+    "downloaded_at": "2026-09-19 15:40:05"
+  },
+  "2101.08030": {
+    "arxiv_id": "2101.08030",
+    "title": "Adversarial Attacks for Tabular Data: Application to Fraud Detection and Imbalanced Data",
+    "category": "cs.CR",
+    "stance": "opposing",
+    "local_path": "docs/papers/2101.08030.pdf",
+    "size_kb": 172.4,
+    "url": "https://arxiv.org/pdf/2101.08030.pdf",
+    "downloaded_at": "2026-09-19 15:38:00"
+  },
+  "2302.06280": {
+    "arxiv_id": "2302.06280",
+    "title": "Causal Strategic Classification: A Tale of Two Shifts",
+    "category": "cs.LG",
+    "stance": "opposing",
+    "local_path": "docs/papers/2302.06280.pdf",
+    "size_kb": 1018.7,
+    "url": "https://arxiv.org/pdf/2302.06280.pdf",
+    "downloaded_at": "2026-09-19 15:38:52"
+  },
+  "1705.07874": {
+    "arxiv_id": "1705.07874",
+    "title": "A Unified Approach to Interpreting Model Predictions",
+    "category": "cluster_1_xai_and_interpretability",
+    "stance": "supporting",
+    "local_path": "docs/papers/1705.07874.pdf",
+    "size_kb": 990.4,
+    "url": "https://arxiv.org/pdf/1705.07874.pdf",
+    "downloaded_at": "2026-09-19 15:53:05"
+  },
+  "1802.03888": {
+    "arxiv_id": "1802.03888",
+    "title": "From local explanations to global understanding with explainable AI for trees",
+    "category": "cluster_1_xai_and_interpretability",
+    "stance": "supporting",
+    "local_path": "docs/papers/1802.03888.pdf",
+    "size_kb": 3768.5,
+    "url": "https://arxiv.org/pdf/1802.03888.pdf",
+    "downloaded_at": "2026-09-19 15:53:09"
+  },
+  "1703.01365": {
+    "arxiv_id": "1703.01365",
+    "title": "Axiomatic Attribution for Deep Networks",
+    "category": "cluster_1_xai_and_interpretability",
+    "stance": "supporting",
+    "local_path": "docs/papers/1703.01365.pdf",
+    "size_kb": 3304.1,
+    "url": "https://arxiv.org/pdf/1703.01365.pdf",
+    "downloaded_at": "2026-09-19 15:53:14"
+  },
+  "1602.04938": {
+    "arxiv_id": "1602.04938",
+    "title": "“Why Should I Trust You?”: Explaining the Predictions of Any Classifier",
+    "category": "cluster_1_xai_and_interpretability",
+    "stance": "supporting",
+    "local_path": "docs/papers/1602.04938.pdf",
+    "size_kb": 4198.4,
+    "url": "https://arxiv.org/pdf/1602.04938.pdf",
+    "downloaded_at": "2026-09-19 15:53:17"
+  },
+  "1704.02685": {
+    "arxiv_id": "1704.02685",
+    "title": "Learning Important Features Through Propagating Activation Differences",
+    "category": "cluster_1_xai_and_interpretability",
+    "stance": "supporting",
+    "local_path": "docs/papers/1704.02685.pdf",
+    "size_kb": 911.5,
+    "url": "https://arxiv.org/pdf/1704.02685.pdf",
+    "downloaded_at": "2026-09-19 15:53:20"
+  },
+  "1910.13413": {
+    "arxiv_id": "1910.13413",
+    "title": "Feature relevance quantification in explainable AI: A causal problem",
+    "category": "cluster_1_xai_and_interpretability",
+    "stance": "foundational",
+    "local_path": "docs/papers/1910.13413.pdf",
+    "size_kb": 369.4,
+    "url": "https://arxiv.org/pdf/1910.13413.pdf",
+    "downloaded_at": "2026-09-19 15:53:22"
+  },
+  "2002.10273": {
+    "arxiv_id": "2002.10273",
+    "title": "Causal Shapley Values: Exploiting Causal Knowledge in Feature Attribution",
+    "category": "cluster_1_xai_and_interpretability",
+    "stance": "supporting",
+    "local_path": "docs/papers/2002.10273.pdf",
+    "size_kb": 150.1,
+    "url": "https://arxiv.org/pdf/2002.10273.pdf",
+    "downloaded_at": "2026-09-19 15:53:25"
+  },
+  "1910.06358": {
+    "arxiv_id": "1910.06358",
+    "title": "Asymmetric Shapley Values: Incorporating Causal Knowledge into Model-Agnostic Explainability",
+    "category": "cluster_1_xai_and_interpretability",
+    "stance": "supporting",
+    "local_path": "docs/papers/1910.06358.pdf",
+    "size_kb": 882.0,
+    "url": "https://arxiv.org/pdf/1910.06358.pdf",
+    "downloaded_at": "2026-09-19 15:53:28"
+  },
+  "2107.07436": {
+    "arxiv_id": "2107.07436",
+    "title": "FastSHAP: Real-Time Shapley Value Estimation",
+    "category": "cluster_1_xai_and_interpretability",
+    "stance": "supporting",
+    "local_path": "docs/papers/2107.07436.pdf",
+    "size_kb": 51072.5,
+    "url": "https://arxiv.org/pdf/2107.07436.pdf",
+    "downloaded_at": "2026-09-19 15:54:05"
+  },
+  "intelligible_models_for_healthcare": {
+    "openalex_id": "https://openalex.org/W2923546398",
+    "title": "Intelligible Models for Healthcare: Predicting Pneumonia Risk and Hospital Readmission",
+    "category": "cluster_1_xai_and_interpretability",
+    "stance": "foundational",
+    "local_path": "docs/papers/intelligible_models_for_healthcare.pdf",
+    "size_kb": 1579.1,
+    "url": "https://www.nature.com/articles/s41598-019-39071-y.pdf",
+    "downloaded_at": "2026-09-19 15:54:13"
+  },
+  "1711.00399": {
+    "arxiv_id": "1711.00399",
+    "title": "Counterfactual Explanations Without Opening the Black Box: Automated Decisions and the GDPR",
+    "category": "cluster_1_xai_and_interpretability",
+    "stance": "foundational",
+    "local_path": "docs/papers/1711.00399.pdf",
+    "size_kb": 1092.0,
+    "url": "https://arxiv.org/pdf/1711.00399.pdf",
+    "downloaded_at": "2026-09-19 15:54:17"
+  },
+  "2101.07738": {
+    "arxiv_id": "2101.07738",
+    "title": "How can I choose an explainer? An Application-grounded Evaluation of Post-hoc Explanations",
+    "category": "cluster_1_xai_and_interpretability",
+    "stance": "supporting",
+    "local_path": "docs/papers/2101.07738.pdf",
+    "size_kb": 2340.6,
+    "url": "https://arxiv.org/pdf/2101.07738.pdf",
+    "downloaded_at": "2026-09-19 15:54:20"
+  },
+  "2006.16234": {
+    "arxiv_id": "2006.16234",
+    "title": "True to the Model or True to the Data?",
+    "category": "cluster_1_xai_and_interpretability",
+    "stance": "foundational",
+    "local_path": "docs/papers/2006.16234.pdf",
+    "size_kb": 1154.6,
+    "url": "https://arxiv.org/pdf/2006.16234.pdf",
+    "downloaded_at": "2026-09-19 15:54:23"
+  },
+  "2004.04018": {
+    "arxiv_id": "2004.04018",
+    "title": "You Shouldn't Trust Me: Learning to Conceal Biases in Explanation Methods",
+    "category": "cluster_1_xai_and_interpretability",
+    "stance": "opposing",
+    "local_path": "docs/papers/2004.04018.pdf",
+    "size_kb": 103.9,
+    "url": "https://arxiv.org/pdf/2004.04018.pdf",
+    "downloaded_at": "2026-09-19 15:54:26"
+  },
+  "1906.07983": {
+    "arxiv_id": "1906.07983",
+    "title": "Explanations can be manipulated and geometry is to blame",
+    "category": "cluster_1_xai_and_interpretability",
+    "stance": "opposing",
+    "local_path": "docs/papers/1906.07983.pdf",
+    "size_kb": 9322.6,
+    "url": "https://arxiv.org/pdf/1906.07983.pdf",
+    "downloaded_at": "2026-09-19 15:54:33"
+  },
+  "1710.10547": {
+    "arxiv_id": "1710.10547",
+    "title": "Interpretation of Neural Networks is Fragile",
+    "category": "cluster_1_xai_and_interpretability",
+    "stance": "opposing",
+    "local_path": "docs/papers/1710.10547.pdf",
+    "size_kb": 6822.5,
+    "url": "https://arxiv.org/pdf/1710.10547.pdf",
+    "downloaded_at": "2026-09-19 15:54:40"
+  },
+  "1810.03292": {
+    "arxiv_id": "1810.03292",
+    "title": "Sanity Checks for Saliency Maps",
+    "category": "cluster_1_xai_and_interpretability",
+    "stance": "opposing",
+    "local_path": "docs/papers/1810.03292.pdf",
+    "size_kb": 10788.6,
+    "url": "https://arxiv.org/pdf/1810.03292.pdf",
+    "downloaded_at": "2026-09-19 15:54:47"
+  },
+  "1806.10758": {
+    "arxiv_id": "1806.10758",
+    "title": "A Benchmark for Interpretability Methods",
+    "category": "cluster_1_xai_and_interpretability",
+    "stance": "foundational",
+    "local_path": "docs/papers/1806.10758.pdf",
+    "size_kb": 2978.5,
+    "url": "https://arxiv.org/pdf/1806.10758.pdf",
+    "downloaded_at": "2026-09-19 15:54:50"
+  },
+  "1907.03036": {
+    "arxiv_id": "1907.03036",
+    "title": "The Dangers of Post-hoc Interpretability: Unjustified Counterfactual Explanations",
+    "category": "cluster_1_xai_and_interpretability",
+    "stance": "opposing",
+    "local_path": "docs/papers/1907.03036.pdf",
+    "size_kb": 3105.4,
+    "url": "https://arxiv.org/pdf/1907.03036.pdf",
+    "downloaded_at": "2026-09-19 15:54:55"
+  },
+  "2209.11370": {
+    "arxiv_id": "2209.11370",
+    "title": "Impossibility Theorems for Feature Attribution",
+    "category": "cluster_1_xai_and_interpretability",
+    "stance": "opposing",
+    "local_path": "docs/papers/2209.11370.pdf",
+    "size_kb": 600.8,
+    "url": "https://arxiv.org/pdf/2209.11370.pdf",
+    "downloaded_at": "2026-09-19 15:54:57"
+  },
+  "1908.08474": {
+    "arxiv_id": "1908.08474",
+    "title": "The many Shapley values for model explanation",
+    "category": "cluster_1_xai_and_interpretability",
+    "stance": "foundational",
+    "local_path": "docs/papers/1908.08474.pdf",
+    "size_kb": 503.3,
+    "url": "https://arxiv.org/pdf/1908.08474.pdf",
+    "downloaded_at": "2026-09-19 15:55:00"
+  },
+  "1909.08157": {
+    "arxiv_id": "1909.08157",
+    "title": "The Explanation Game: Explaining Machine Learning Models Using Shapley Values",
+    "category": "cluster_1_xai_and_interpretability",
+    "stance": "foundational",
+    "local_path": "docs/papers/1909.08157.pdf",
+    "size_kb": 318.4,
+    "url": "https://arxiv.org/pdf/1909.08157.pdf",
+    "downloaded_at": "2026-09-19 15:55:02"
+  },
+  "2102.10936": {
+    "arxiv_id": "2102.10936",
+    "title": "Shapley values for feature selection: The good, the bad, and the axioms",
+    "category": "cluster_1_xai_and_interpretability",
+    "stance": "foundational",
+    "local_path": "docs/papers/2102.10936.pdf",
+    "size_kb": 395.0,
+    "url": "https://arxiv.org/pdf/2102.10936.pdf",
+    "downloaded_at": "2026-09-19 15:55:05"
+  },
+  "1606.03490": {
+    "arxiv_id": "1606.03490",
+    "title": "The Mythos of Model Interpretability",
+    "category": "cluster_1_xai_and_interpretability",
+    "stance": "foundational",
+    "local_path": "docs/papers/1606.03490.pdf",
+    "size_kb": 359.2,
+    "url": "https://arxiv.org/pdf/1606.03490.pdf",
+    "downloaded_at": "2026-09-19 15:55:07"
+  },
+  "2109.01433": {
+    "arxiv_id": "2109.01433",
+    "title": "Relating the Partial Dependence Plot and Permutation Feature Importance to the Data-Generating Process",
+    "category": "cluster_1_xai_and_interpretability",
+    "stance": "foundational",
+    "local_path": "docs/papers/2109.01433.pdf",
+    "size_kb": 619.2,
+    "url": "https://arxiv.org/pdf/2109.01433.pdf",
+    "downloaded_at": "2026-09-19 15:55:10"
+  },
+  "1502.04592": {
+    "arxiv_id": "1502.04592",
+    "title": "Hawkes Processes in Finance",
+    "category": "cluster_2_synthetic_data_and_generative_models",
+    "stance": "supporting",
+    "local_path": "docs/papers/1502.04592.pdf",
+    "size_kb": 896.5,
+    "url": "https://arxiv.org/pdf/1502.04592.pdf",
+    "downloaded_at": "2026-09-19 15:55:24"
+  },
+  "1612.09328": {
+    "arxiv_id": "1612.09328",
+    "title": "The Neural Hawkes Process: A Neurally Self-Modulating Multivariate Point Process",
+    "category": "cluster_2_synthetic_data_and_generative_models",
+    "stance": "supporting",
+    "local_path": "docs/papers/1612.09328.pdf",
+    "size_kb": 1287.5,
+    "url": "https://arxiv.org/pdf/1612.09328.pdf",
+    "downloaded_at": "2026-09-19 15:55:26"
+  },
+  "2402.09563": {
+    "arxiv_id": "2402.09563",
+    "title": "ABIDES-Economist: Agent-Based Economic Simulation for Policy Evaluation",
+    "category": "cluster_2_synthetic_data_and_generative_models",
+    "stance": "supporting",
+    "local_path": "docs/papers/2402.09563.pdf",
+    "size_kb": 3697.3,
+    "url": "https://arxiv.org/pdf/2402.09563.pdf",
+    "downloaded_at": "2026-09-19 15:55:31"
+  },
+  "2006.14384": {
+    "arxiv_id": "2006.14384",
+    "title": "Get Real: Realism Metrics for Robust Limit Order Book Market Simulations",
+    "category": "cluster_2_synthetic_data_and_generative_models",
+    "stance": "supporting",
+    "local_path": "docs/papers/2006.14384.pdf",
+    "size_kb": 1136.2,
+    "url": "https://arxiv.org/pdf/2006.14384.pdf",
+    "downloaded_at": "2026-09-19 15:55:34"
+  },
+  "learning_conditional_generative_mod": {
+    "openalex_id": "https://openalex.org/W2112796928",
+    "title": "Learning Conditional Generative Models for Temporal Point Processes",
+    "category": "cluster_2_synthetic_data_and_generative_models",
+    "stance": "supporting",
+    "local_path": "docs/papers/learning_conditional_generative_mod.pdf",
+    "size_kb": 937.9,
+    "url": "https://hal.science/hal-03926082/document",
+    "downloaded_at": "2026-09-19 15:55:42"
+  },
+  "1908.07442": {
+    "arxiv_id": "1908.07442",
+    "title": "TabNet: Attentive Interpretable Tabular Learning",
+    "category": "cluster_2_synthetic_data_and_generative_models",
+    "stance": "opposing",
+    "local_path": "docs/papers/1908.07442.pdf",
+    "size_kb": 1521.6,
+    "url": "https://arxiv.org/pdf/1908.07442.pdf",
+    "downloaded_at": "2026-09-19 15:55:48"
+  },
+  "2102.08369": {
+    "arxiv_id": "2102.08369",
+    "title": "CTAB-GAN: Effective Table Data Synthesizing",
+    "category": "cluster_2_synthetic_data_and_generative_models",
+    "stance": "opposing",
+    "local_path": "docs/papers/2102.08369.pdf",
+    "size_kb": 5512.4,
+    "url": "https://arxiv.org/pdf/2102.08369.pdf",
+    "downloaded_at": "2026-09-19 15:55:54"
+  },
+  "2204.00401": {
+    "arxiv_id": "2204.00401",
+    "title": "CTAB-GAN+: Enhancing Tabular Data Synthesis",
+    "category": "cluster_2_synthetic_data_and_generative_models",
+    "stance": "opposing",
+    "local_path": "docs/papers/2204.00401.pdf",
+    "size_kb": 3433.2,
+    "url": "https://arxiv.org/pdf/2204.00401.pdf",
+    "downloaded_at": "2026-09-19 15:55:58"
+  },
+  "1703.06490": {
+    "arxiv_id": "1703.06490",
+    "title": "Generating Multi-label Discrete Patient Records using GANs (medGAN)",
+    "category": "cluster_2_synthetic_data_and_generative_models",
+    "stance": "opposing",
+    "local_path": "docs/papers/1703.06490.pdf",
+    "size_kb": 3710.7,
+    "url": "https://arxiv.org/pdf/1703.06490.pdf",
+    "downloaded_at": "2026-09-19 15:56:02"
+  },
+  "data_synthesis_based_on_generative": {
+    "openalex_id": "https://openalex.org/W2902901670",
+    "title": "Data Synthesis based on Generative Adversarial Networks (tableGAN)",
+    "category": "cluster_2_synthetic_data_and_generative_models",
+    "stance": "opposing",
+    "local_path": "docs/papers/data_synthesis_based_on_generative.pdf",
+    "size_kb": 2052.9,
+    "url": "https://arxiv.org/pdf/1811.11264",
+    "downloaded_at": "2026-09-19 15:56:07"
+  },
+  "2210.04018": {
+    "arxiv_id": "2210.04018",
+    "title": "STaSy: Score-based Tabular Data Synthesis",
+    "category": "cluster_2_synthetic_data_and_generative_models",
+    "stance": "opposing",
+    "local_path": "docs/papers/2210.04018.pdf",
+    "size_kb": 20009.1,
+    "url": "https://arxiv.org/pdf/2210.04018.pdf",
+    "downloaded_at": "2026-09-19 15:56:13"
+  },
+  "1907.13188": {
+    "arxiv_id": "1907.13188",
+    "title": "Quant GANs: Deep Generation of Financial Time Series",
+    "category": "cluster_2_synthetic_data_and_generative_models",
+    "stance": "opposing",
+    "local_path": "docs/papers/1907.13188.pdf",
+    "size_kb": 3797.8,
+    "url": "https://arxiv.org/pdf/1907.13188.pdf",
+    "downloaded_at": "2026-09-19 15:56:18"
+  },
+  "2402.12876": {
+    "arxiv_id": "2402.12876",
+    "title": "Financial Tabular Data Synthesis with Large Language Models",
+    "category": "cluster_2_synthetic_data_and_generative_models",
+    "stance": "opposing",
+    "local_path": "docs/papers/2402.12876.pdf",
+    "size_kb": 3515.4,
+    "url": "https://arxiv.org/pdf/2402.12876.pdf",
+    "downloaded_at": "2026-09-19 15:56:22"
+  },
+  "1706.02633": {
+    "arxiv_id": "1706.02633",
+    "title": "Real-valued Time Series Generation with Recurrent Conditional GANs",
+    "category": "cluster_2_synthetic_data_and_generative_models",
+    "stance": "opposing",
+    "local_path": "docs/papers/1706.02633.pdf",
+    "size_kb": 683.9,
+    "url": "https://arxiv.org/pdf/1706.02633.pdf",
+    "downloaded_at": "2026-09-19 15:56:25"
+  },
+  "conditional_wasserstein_gan_for_cat": {
+    "openalex_id": "https://openalex.org/W2605135824",
+    "title": "Conditional Wasserstein GAN for Categorical and Continuous Data",
+    "category": "cluster_2_synthetic_data_and_generative_models",
+    "stance": "opposing",
+    "local_path": "docs/papers/conditional_wasserstein_gan_for_cat.pdf",
+    "size_kb": 6042.6,
+    "url": "https://arxiv.org/pdf/1704.00028",
+    "downloaded_at": "2026-09-19 15:56:31"
+  },
+  "credit_card_fraud_detection_a_reali": {
+    "openalex_id": "https://openalex.org/W2756359217",
+    "title": "Credit Card Fraud Detection: A Realistic Modeling and a Novel Learning Strategy",
+    "category": "cluster_3_adversarial_dynamics_and_drift",
+    "stance": "supporting",
+    "local_path": null,
+    "open_access_landing_url": "http://hdl.handle.net/11311/1044896",
+    "downloaded_at": "2026-09-19 15:56:33"
+  },
+  "learner_inspector_game_in_fraud_det": {
+    "openalex_id": "https://openalex.org/W3002459337",
+    "title": "Learner-Inspector Game in Fraud Detection: An Adaptive Strategy for Data Streams",
+    "category": "cluster_3_adversarial_dynamics_and_drift",
+    "stance": "supporting",
+    "local_path": "docs/papers/learner_inspector_game_in_fraud_det.pdf",
+    "size_kb": 2474.5,
+    "url": "https://theses.hal.science/tel-02457134v1/file/TH2019MAKKISARA.pdf",
+    "downloaded_at": "2026-09-19 15:56:38"
+  },
+  "a_survey_on_concept_drift_adaptatio": {
+    "openalex_id": "https://openalex.org/W2099419573",
+    "title": "A Survey on Concept Drift Adaptation",
+    "category": "cluster_3_adversarial_dynamics_and_drift",
+    "stance": "supporting",
+    "local_path": "docs/papers/a_survey_on_concept_drift_adaptatio.pdf",
+    "size_kb": 730.6,
+    "url": "http://eprints.bournemouth.ac.uk/22491/1/ACM%20computing%20surveys.pdf",
+    "downloaded_at": "2026-09-19 15:56:48"
+  },
+  "statistical_theory_the_prequential": {
+    "openalex_id": "https://openalex.org/W2796293253",
+    "title": "Statistical Theory: The Prequential Approach",
+    "category": "cluster_3_adversarial_dynamics_and_drift",
+    "stance": "supporting",
+    "local_path": null,
+    "open_access_landing_url": "https://doi.org/10.2307/2981683",
+    "downloaded_at": "2026-09-19 15:56:50"
+  },
+  "1010.4781": {
+    "arxiv_id": "1010.4781",
+    "title": "Learning under Concept Drift: An Overview",
+    "category": "cluster_3_adversarial_dynamics_and_drift",
+    "stance": "supporting",
+    "local_path": "docs/papers/1010.4781.pdf",
+    "size_kb": 170.1,
+    "url": "https://arxiv.org/pdf/1010.4781.pdf",
+    "downloaded_at": "2026-09-19 15:57:04"
+  },
+  "data_mining_for_credit_card_fraud_a": {
+    "openalex_id": "https://openalex.org/W4395097551",
+    "title": "Data Mining for Credit Card Fraud: A Comparative Study of Tabular vs Structural Classifiers",
+    "category": "cluster_4_graph_ml_and_network_rails",
+    "stance": "foundational",
+    "local_path": "docs/papers/data_mining_for_credit_card_fraud_a.pdf",
+    "size_kb": 744.4,
+    "url": "https://ieeexplore.ieee.org/ielx7/6287639/6514899/10507824.pdf",
+    "downloaded_at": "2026-09-19 15:59:01"
+  },
+  "transaction_aggregation_as_a_strate": {
+    "openalex_id": "https://openalex.org/W1966493433",
+    "title": "Transaction Aggregation as a Strategy for Credit Card Fraud Detection",
+    "category": "cluster_3_adversarial_dynamics_and_drift",
+    "stance": "supporting",
+    "local_path": null,
+    "open_access_landing_url": "https://doi.org/10.1007/s10618-008-0116-z",
+    "downloaded_at": "2026-09-19 15:57:11"
+  },
+  "ieee_cis_fraud_detection_benchmark": {
+    "openalex_id": "https://openalex.org/W3127451226",
+    "title": "IEEE-CIS Fraud Detection Benchmark",
+    "category": "cluster_3_adversarial_dynamics_and_drift",
+    "stance": "supporting",
+    "local_path": null,
+    "open_access_landing_url": "https://doi.org/10.1109/iccece51280.2021.9342376",
+    "downloaded_at": "2026-09-19 15:57:14"
+  },
+  "2006.06822": {
+    "arxiv_id": "2006.06822",
+    "title": "Stochastic Run-Time Optimization in Performative Prediction",
+    "category": "cluster_3_adversarial_dynamics_and_drift",
+    "stance": "opposing",
+    "local_path": "docs/papers/2006.06822.pdf",
+    "size_kb": 5347.4,
+    "url": "https://arxiv.org/pdf/2006.06822.pdf",
+    "downloaded_at": "2026-09-19 15:57:18"
+  },
+  "2102.08570": {
+    "arxiv_id": "2102.08570",
+    "title": "Outside the Echo Chamber: Optimizing the Performative Risk",
+    "category": "cluster_3_adversarial_dynamics_and_drift",
+    "stance": "opposing",
+    "local_path": "docs/papers/2102.08570.pdf",
+    "size_kb": 696.7,
+    "url": "https://arxiv.org/pdf/2102.08570.pdf",
+    "downloaded_at": "2026-09-19 15:57:20"
+  },
+  "2102.12560": {
+    "arxiv_id": "2102.12560",
+    "title": "Alternative Microfoundations for Strategic Classification",
+    "category": "cluster_3_adversarial_dynamics_and_drift",
+    "stance": "opposing",
+    "local_path": "docs/papers/2102.12560.pdf",
+    "size_kb": 6734.5,
+    "url": "https://arxiv.org/pdf/2102.12560.pdf",
+    "downloaded_at": "2026-09-19 15:57:26"
+  },
+  "2010.05318": {
+    "arxiv_id": "2010.05318",
+    "title": "Linear Models for Performative Prediction: Convergence and Stability",
+    "category": "cluster_3_adversarial_dynamics_and_drift",
+    "stance": "opposing",
+    "local_path": "docs/papers/2010.05318.pdf",
+    "size_kb": 699.8,
+    "url": "https://arxiv.org/pdf/2010.05318.pdf",
+    "downloaded_at": "2026-09-19 15:57:30"
+  },
+  "1710.08097": {
+    "arxiv_id": "1710.08097",
+    "title": "Strategic Classification from Revealed Preferences",
+    "category": "cluster_3_adversarial_dynamics_and_drift",
+    "stance": "opposing",
+    "local_path": "docs/papers/1710.08097.pdf",
+    "size_kb": 402.3,
+    "url": "https://arxiv.org/pdf/1710.08097.pdf",
+    "downloaded_at": "2026-09-19 15:57:32"
+  },
+  "2011.11118": {
+    "arxiv_id": "2011.11118",
+    "title": "Adversarial Training for Tabular Data: Robust Fraud Classification",
+    "category": "cluster_3_adversarial_dynamics_and_drift",
+    "stance": "opposing",
+    "local_path": "docs/papers/2011.11118.pdf",
+    "size_kb": 3971.9,
+    "url": "https://arxiv.org/pdf/2011.11118.pdf",
+    "downloaded_at": "2026-09-19 15:57:48"
+  },
+  "2502.02290": {
+    "arxiv_id": "2502.02290",
+    "title": "FRAUD-RLA: Reinforcement Learning Attacks on Fraud Detection Systems",
+    "category": "cluster_3_adversarial_dynamics_and_drift",
+    "stance": "opposing",
+    "local_path": "docs/papers/2502.02290.pdf",
+    "size_kb": 309.0,
+    "url": "https://arxiv.org/pdf/2502.02290.pdf",
+    "downloaded_at": "2026-09-19 15:57:50"
+  },
+  "2203.12363": {
+    "arxiv_id": "2203.12363",
+    "title": "Ethereum Fraud Detection with Heterogeneous Graph Neural Networks",
+    "category": "cluster_4_graph_ml_and_network_rails",
+    "stance": "supporting",
+    "local_path": "docs/papers/2203.12363.pdf",
+    "size_kb": 830.0,
+    "url": "https://arxiv.org/pdf/2203.12363.pdf",
+    "downloaded_at": "2026-09-19 15:58:01"
+  },
+  "2609.07100": {
+    "arxiv_id": "2609.07100",
+    "title": "Temporal Heterogeneous Graph Transformer for Credit Card Fraud Detection (THGT-FD)",
+    "category": "cluster_4_graph_ml_and_network_rails",
+    "stance": "supporting",
+    "local_path": "docs/papers/2609.07100.pdf",
+    "size_kb": 813.7,
+    "url": "https://arxiv.org/pdf/2609.07100.pdf",
+    "downloaded_at": "2026-09-19 15:58:04"
+  },
+  "2402.14708": {
+    "arxiv_id": "2402.14708",
+    "title": "CaT-GNN: Enhancing Credit Card Fraud Detection via Causal Temporal Graph Neural Networks",
+    "category": "cluster_4_graph_ml_and_network_rails",
+    "stance": "supporting",
+    "local_path": "docs/papers/2402.14708.pdf",
+    "size_kb": 1061.8,
+    "url": "https://arxiv.org/pdf/2402.14708.pdf",
+    "downloaded_at": "2026-09-19 15:58:06"
+  },
+  "2603.23584": {
+    "arxiv_id": "2603.23584",
+    "title": "LineMVGNN: Anti-Money Laundering with Line-Graph-Assisted Multi-View Graph Neural Networks",
+    "category": "cluster_4_graph_ml_and_network_rails",
+    "stance": "supporting",
+    "local_path": "docs/papers/2603.23584.pdf",
+    "size_kb": 561.9,
+    "url": "https://arxiv.org/pdf/2603.23584.pdf",
+    "downloaded_at": "2026-09-19 15:58:09"
+  },
+  "2608.15177": {
+    "arxiv_id": "2608.15177",
+    "title": "FinFraudBench: A Heterogeneous Graph Benchmark for Financial Fraud Detection",
+    "category": "cluster_4_graph_ml_and_network_rails",
+    "stance": "foundational",
+    "local_path": "docs/papers/2608.15177.pdf",
+    "size_kb": 1558.2,
+    "url": "https://arxiv.org/pdf/2608.15177.pdf",
+    "downloaded_at": "2026-09-19 15:58:12"
+  },
+  "representation_learning_on_large_no": {
+    "openalex_id": "https://openalex.org/W2809684781",
+    "title": "Representation Learning on Large Non-Bipartite Transaction Networks using GraphSAGE",
+    "category": "cluster_4_graph_ml_and_network_rails",
+    "stance": "supporting",
+    "local_path": "docs/papers/representation_learning_on_large_no.pdf",
+    "size_kb": 3421.8,
+    "url": "https://jisajournal.springeropen.com/track/pdf/10.1186/s13174-018-0087-2",
+    "downloaded_at": "2026-09-19 15:58:22"
+  },
+  "2410.08121": {
+    "arxiv_id": "2410.08121",
+    "title": "Heterogeneous Graph Auto-Encoder for Credit Card Fraud Detection",
+    "category": "cluster_4_graph_ml_and_network_rails",
+    "stance": "supporting",
+    "local_path": "docs/papers/2410.08121.pdf",
+    "size_kb": 788.6,
+    "url": "https://arxiv.org/pdf/2410.08121.pdf",
+    "downloaded_at": "2026-09-19 15:58:25"
+  },
+  "2011.12193": {
+    "arxiv_id": "2011.12193",
+    "title": "xFraud: Explainable Fraud Transaction Detection on Bi-Relational Graph Neural Networks",
+    "category": "cluster_4_graph_ml_and_network_rails",
+    "stance": "supporting",
+    "local_path": "docs/papers/2011.12193.pdf",
+    "size_kb": 9213.4,
+    "url": "https://arxiv.org/pdf/2011.12193.pdf",
+    "downloaded_at": "2026-09-19 15:58:31"
+  },
+  "2104.08921": {
+    "arxiv_id": "2104.08921",
+    "title": "Adversarial Attacks on Graph Neural Networks in Financial Networks: Evasion via Fast Multi-Hop Splitting",
+    "category": "cluster_4_graph_ml_and_network_rails",
+    "stance": "opposing",
+    "local_path": "docs/papers/2104.08921.pdf",
+    "size_kb": 1140.0,
+    "url": "https://arxiv.org/pdf/2104.08921.pdf",
+    "downloaded_at": "2026-09-19 15:58:38"
+  },
+  "2203.04591": {
+    "arxiv_id": "2203.04591",
+    "title": "Privacy-Preserving Federated Subgraph Learning Across Banking Silos",
+    "category": "cluster_4_graph_ml_and_network_rails",
+    "stance": "opposing",
+    "local_path": "docs/papers/2203.04591.pdf",
+    "size_kb": 5152.2,
+    "url": "https://arxiv.org/pdf/2203.04591.pdf",
+    "downloaded_at": "2026-09-19 15:58:44"
+  },
+  "1603.01892": {
+    "arxiv_id": "1603.01892",
+    "title": "Anomalous Flocks in Financial Networks: Community Detection and Evasion in Banking Rails",
+    "category": "cluster_4_graph_ml_and_network_rails",
+    "stance": "opposing",
+    "local_path": "docs/papers/1603.01892.pdf",
+    "size_kb": 2320.3,
+    "url": "https://arxiv.org/pdf/1603.01892.pdf",
+    "downloaded_at": "2026-09-19 15:58:48"
+  },
+  "2309.11201": {
+    "arxiv_id": "2309.11201",
+    "title": "Advances in Continual Graph Learning for Anti-Money Laundering Systems: A Comprehensive Review",
+    "category": "cluster_4_graph_ml_and_network_rails",
+    "stance": "opposing",
+    "local_path": "docs/papers/2309.11201.pdf",
+    "size_kb": 1149.9,
+    "url": "https://arxiv.org/pdf/2309.11201.pdf",
+    "downloaded_at": "2026-09-19 15:58:52"
+  },
+  "topological_analysis_of_money_laund": {
+    "openalex_id": "https://openalex.org/W3163053496",
+    "title": "Topological Analysis of Money Laundering Networks: Structural Holes and Layering Evasion",
+    "category": "cluster_4_graph_ml_and_network_rails",
+    "stance": "opposing",
+    "local_path": "docs/papers/topological_analysis_of_money_laund.pdf",
+    "size_kb": 968.6,
+    "url": "https://arxiv.org/pdf/2105.04100",
+    "downloaded_at": "2026-09-19 15:58:55"
+  }
+}

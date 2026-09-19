@@ -1,0 +1,459 @@
+=== START OF Causal ===
+1
+Towards Causal Representation Learning
+Bernhard Schölkopf †, Francesco Locatello †, Stefan Bauer ⋆, Nan Rosemary Ke ⋆, Nal Kalchbrenner
+Anirudh Goyal, Yoshua Bengio
+Abstract—The two ﬁelds of machine learning and graphical
+causality arose and developed separately. However, there is now
+cross-pollination and increasing interest in both ﬁelds to beneﬁt
+from the advances of the other. In the present paper, we review
+fundamental concepts of causal inference and relate them to
+crucial open problems of machine learning, including transfer
+and generalization, thereby assaying how causality can contribute
+to modern machine learning research. This also applies in the
+opposite direction: we note that most work in causality starts
+from the premise that the causal variables are given. A central
+problem for AI and causality is, thus, causal representation
+learning, the discovery of high-level causal variables from low-
+level observations. Finally, we delineate some implications of
+causality for machine learning and propose key research areas
+at the intersection of both communities.
+I. INTRODUCTION
+If we compare what machine learning can do to what animals
+accomplish, we observe that the former is rather limited at some
+crucial feats where natural intelligence excels. These include
+transfer to new problems and any form of generalization that
+is not from one data point to the next (sampled from the
+same distribution), but rather from one problem to the next —
+both have been termed generalization, but the latter is a much
+harder form thereof, sometimes referred to as horizontal, strong,
+or out-of-distribution generalization. This shortcoming is not
+too surprising, given that machine learning often disregards
+information that animals use heavily: interventions in the world,
+domain shifts, temporal structure — by and large, we consider
+these factors a nuisance and try to engineer them away. In accor-
+dance with this, the majority of current successes of machine
+learning boil down to large scale pattern recognition on suitably
+collected independent and identically distributed (i.i.d.) data.
+To illustrate the implications of this choice and its relation to
+causal models, we start by highlighting key research challenges.
+a) Issue 1 – Robustness: With the widespread adoption
+of deep learning approaches in computer vision [101, 140],
+†: equal contribution.
+⋆: equal contribution.
+B. Schölkopf is at the Max-Planck Institute for Intelligent Systems, Max-
+Planck-Ring 4, 72076 Tübingen, Germany, bs@tuebingen.mpg.de.
+F. Locatello is at ETH Zurich, Computer Science Department and the Max
+Planck Institute for Intelligent Systems. Work partially done while interning
+at Google Research Amsterdam. francesco.locatello@gmail.com
+S.
+Bauer
+is
+at
+the
+Max-Planck
+Institute
+for
+Intelligent
+Systems,
+stefan.bauer@tuebingen.mpg.de.
+N.
+R.
+Ke
+is
+at
+Mila
+and
+the
+University
+of
+Montreal,
+rose-
+mary.nan.ke@gmail.com.
+N. Kalchbrenner is at Google Research Amsterdam, nalk@google.com.
+A.
+Goyal
+is
+at
+Mila
+and
+the
+University
+of
+Montreal,
+anirudhgoyal9119@gmail.com
+Y. Bengio is at Mila, the University of Montreal, CIFAR Senior Fellow
+yoshua.bengio@mila.quebec
+natural language processing [54], and speech recognition [85],
+a substantial body of literature explored the robustness of the
+prediction of state-of-the-art deep neural network architectures.
+The underlying motivation originates from the fact that in the
+real world there is often little control over the distribution from
+which the data comes from. In computer vision
+[75, 228],
+changes in the test distribution may, for instance, come
+from aberrations like camera blur, noise or compression
+quality [106, 129, 170, 206], or from shifts, rotations, or
+viewpoints [7, 11, 63, 282]. Motivated by this, new benchmarks
+were proposed to speciﬁcally test generalization of classiﬁcation
+and detection methods with respect to simple algorithmically
+generated interventions like spatial shifts, blur, changes in
+brightness or contrast [106, 170], time consistency [94, 227],
+control over background and rotation [11], as well as images
+collected in multiple environments [19]. Studying the failure
+modes of deep neural networks from simple interventions has
+the potential to lead to insights into the inductive biases of
+state-of-the-art architectures. So far, there has been no deﬁnitive
+consensus on how to solve these problems, although progress
+has been made using data augmentation, pre-training, self-
+supervision, and architectures with suitable inductive biases
+w.r.t. a perturbation of interest [233, 59, 63, 137, 170, 206]. It
+has been argued [188] that such ﬁxes may not be sufﬁcient,
+and generalizing well outside the i.i.d. setting requires learning
+not mere statistical associations between variables, but an
+underlying causal model. The latter contains the mechanisms
+giving rise to the observed statistical dependences, and allows
+to model distribution shifts through the notion of interventions
+[183, 237, 218, 34, 188, 181].
+b) Issue 2 – Learning Reusable Mechanisms: Infants’
+understanding of physics relies upon objects that can be
+tracked over time and behave consistently [52, 236]. Such a
+representation allows children to quickly learn new tasks as
+their knowledge and intuitive understanding of physics can
+be re-used [15, 52, 144, 250]. Similarly, intelligent agents that
+robustly solve real-world tasks need to re-use and re-purpose
+their knowledge and skills in novel scenarios. Machine
+learning models that incorporate or learn structural knowledge
+of an environment have been shown to be more efﬁcient and
+generalize better [14, 10, 16, 84, 197, 212, 8, 274, 26, 76, 83,
+141, 157, 177, 211, 245, 258, 272, 57, 182]. In a modular
+representation of the world where the modules correspond to
+physical causal mechanisms, many modules can be expected to
+behave similarly across different tasks and environments. An
+agent facing a new environment or task may thus only need
+to adapt a few modules in its internal representation of the
+world [220, 84]. When learning a causal model, one should
+thus require fewer examples to adapt as most knowledge, i.e.,
+arXiv:2102.11107v1  [cs.LG]  22 Feb 2021
+2
+modules, can be re-used without further training.
+c) A Causality Perspective: Causation is a subtle concept
+that cannot be fully described using the language of Boolean
+logic [151] or that of probabilistic inference; it requires the
+additional notion of intervention [237, 183]. The manipulative
+deﬁnition of causation [237, 183, 118] focuses on the fact that
+conditional probabilities (“seeing people with open umbrellas
+suggests that it is raining”) cannot reliably predict the outcome
+of an active intervention (“closing umbrellas does not stop the
+rain”). Causal relations can also be viewed as the components
+of reasoning chains [151] that provide predictions for situations
+that are very far from the observed distribution and may even
+remain purely hypothetical [163, 183] or require conscious
+deliberation [128]. In that sense, discovering causal relations
+means acquiring robust knowledge that holds beyond the
+support of an observed data distribution and a set of training
+tasks, and it extends to situations involving forms of reasoning.
+Our Contributions: In the present paper, we argue that
+causality, with its focus on representing structural knowledge
+about the data generating process that allows interventions and
+changes, can contribute towards understanding and resolving
+some limitations of current machine learning methods. This
+would take the ﬁeld a step closer to a form of artiﬁcial intelli-
+gence that involves thinking in the sense of Konrad Lorenz, i.e.,
+acting in an imagined space [163]. Despite its success, statistical
+learning provides a rather superﬁcial description of reality that
+only holds when the experimental conditions are ﬁxed. Instead,
+the ﬁeld of causal learning seeks to model the effect of inter-
+ventions and distribution changes with a combination of data-
+driven learning and assumptions not already included in the
+statistical description of a system. The present work reviews and
+synthesizes key contributions that have been made to this end:
+• We describe different levels of modeling in physical systems
+in Section II and present the differences between causal and
+statistical models in Section III. We do so not only in terms
+of modeling abilities but also discuss the assumptions and
+challenges involved.
+• We expand on the Independent Causal Mechanisms (ICM)
+principle as a key component that enables the estimation
+of causal relations from data in Section IV. In particular,
+we state the Sparse Mechanism Shift hypothesis as a con-
+sequence of the ICM principle and discuss its implications
+for learning causal models.
+• We review existing approaches to learn causal relations
+from appropriate descriptors (or features) in Section V. We
+cover both classical approaches and modern re-interpretations
+based on deep neural networks, with a focus on the
+underlying principles that enable causal discovery.
+• We discuss how useful models of reality may be learned
+from data in the form of causal representations, and discuss
+several current problems of machine learning from a causal
+point of view in Section VI.
+• We assay the implications of causality for practical machine
+learning in Section VII. Using causal language, we revisit
+robustness and generalization, as well as existing common
+practices such as semi-supervised learning, self-supervised
+The present paper expands [221], leading to partial text overlap.
+learning, data augmentation, and pre-training. We discuss
+examples at the intersection between causality and machine
+learning in scientiﬁc applications and speculate on the
+advantages of combining the strengths of both ﬁelds to
+build a more versatile AI.
+II. LEVELS OF CAUSAL MODELING
+The gold standard for modeling natural phenomena is a set of
+coupled differential equations modeling physical mechanisms
+responsible for the time evolution. This allows us to predict
+the future behavior of a physical system, reason about the
+effect of interventions, and predict statistical dependencies
+between variables that are generated by coupled time evolution.
+It also offers physical insights, explaining the functioning of
+the system, and lets us read off its causal structure. To this
+end, consider the coupled set of differential equations
+dx
+dt = f(x), x ∈Rd,
+(1)
+with initial value x(t0) = x0. The Picard–Lindelöf theorem
+states that at least locally, if f is Lipschitz, there exists a unique
+solution x(t). This implies in particular that the immediate
+future of x is implied by its past values.
+If we formally write this in terms of inﬁnitesimal differentials
+dt and dx = x(t + dt) −x(t), we get:
+x(t + dt) = x(t) + dt · f(x(t)).
+(2)
+From this, we can ascertain which entries of the vector x(t)
+mathematically determine the future of others x(t + dt). This
+tells us that if we have a physical system whose physical
+mechanisms are correctly described using such an ordinary
+differential equation (1), solved for dx
+dt (i.e., the derivative only
+appears on the left-hand side), then its causal structure can be
+directly read off.1
+While a differential equation is a rather comprehensive
+description of a system, a statistical model can be viewed as a
+much more superﬁcial one. It often does not refer to dynamic
+processes; instead, it tells us how some of the variables allow
+prediction of others as long as experimental conditions do not
+change. E.g., if we drive a differential equation system with
+certain types of noise, or we average over time, then it may
+be the case that statistical dependencies between components
+of x emerge, and those can then be exploited by machine
+learning. Such a model does not allow us to predict the effect
+of interventions; however, its strength is that it can often be
+learned from observational data, while a differential equation
+usually requires an intelligent human to come up with it. Causal
+modeling lies in between these two extremes. Like models in
+physics, it aims to provide understanding and predict the effect
+of interventions. However, causal discovery and learning try
+to arrive at such models in a data-driven way, replacing expert
+knowledge with weak and generic assumptions. The overall
+1Note that this requires that the differential equation system describes the
+causal physical mechanisms. If, in contrast, we considered a set of differential
+equations that phenomenologically correctly describe the time evolution of a
+system without capturing the underlying mechanisms (e.g., due to unobserved
+confounding, or a form of course-graining that does not preserve the causal
+structure [207]), then (2) may not be causally meaningful [221, 190].
+
+=== END OF {name} ===
+23
+learning and planning. In International Conference on Machine
+Learning, pages 3191–3199. PMLR, 2017.
+[233] Patrice Simard, Bernard Victorri, Yann LeCun, and John
+Denker. Tangent prop - a formalism for specifying selected
+invariances in an adaptive network. In J. Moody, S. Hanson,
+and R. P. Lippmann, editors, Advances in Neural Informa-
+tion Processing Systems, volume 4, pages 895–903. Morgan-
+Kaufmann, 1992. URL https://proceedings.neurips.cc/paper/
+1991/ﬁle/65658fde58ab3c2b6e5132a39fae7cb9-Paper.pdf.
+[234] Patrice Y Simard, David Steinkraus, John C Platt, et al. Best
+practices for convolutional neural networks applied to visual
+document analysis. In Proceedings of the Seventh International
+Conference on Document Analysis and Recognition (ICDAR
+2003), volume 3, 2003.
+[235] H. A. Simon. Causal ordering and identiﬁability. In W. C. Hood
+and T. C. Koopmans, editors, Studies in Econometric Methods,
+pages 49–74. John Wiley & Sons, New York, NY, 1953. Cowles
+Commission for Research in Economics, Monograph No. 14.
+[236] Elizabeth S Spelke. Principles of object perception. Cognitive
+science, 14(1):29–56, 1990.
+[237] P. Spirtes, C. Glymour, and R. Scheines. Causation, Prediction,
+and Search. MIT Press, Cambridge, MA, 2nd edition, 2000.
+[238] W. Spohn. Grundlagen der Entscheidungstheorie. Scriptor-
+Verlag, 1978.
+[239] I. Steinwart and A. Christmann. Support Vector Machines.
+Springer, New York, NY, 2008.
+[240] B. Steudel, D. Janzing, and B. Schölkopf. Causal Markov
+condition for submodular information measures. In Proceedings
+of the 23rd Annual Conference on Learning Theory (COLT),
+pages 464–476, 2010.
+[241] Jianyu Su, Stephen Adams, and Peter A Beling. Counterfactual
+multi-agent reinforcement learning with graph convolution
+communication. arXiv preprint 2004.00470, 2020.
+[242] Adarsh Subbaswamy and Suchi Saria.
+Counterfactual nor-
+malization: Proactively addressing dataset shift and improving
+reliability using causal mechanisms. arXiv preprint 1808.03253,
+2018.
+[243] Adarsh Subbaswamy, Peter Schulam, and Suchi Saria. Prevent-
+ing failures due to dataset shift: Learning predictive models
+that transport. arXiv preprint 1812.04597, 2018.
+[244] Chen Sun, Abhinav Shrivastava, Saurabh Singh, and Abhinav
+Gupta. Revisiting unreasonable effectiveness of data in deep
+learning era.
+In Proceedings of the IEEE international
+conference on computer vision, pages 843–852, 2017.
+[245] Chen Sun, Per Karlsson, Jiajun Wu, Joshua B Tenenbaum, and
+Kevin Murphy. Stochastic prediction of multi-agent interactions
+from partial observations. arXiv preprint 1902.09641, 2019.
+[246] X. Sun, D. Janzing, and B. Schölkopf.
+Causal inference
+by choosing graphs with most plausible Markov kernels. In
+Proceedings of the 9th International Symposium on Artiﬁcial
+Intelligence and Mathematics, 2006.
+[247] Raphael Suter, Djordje Miladinovic, Bernhard Schölkopf, and
+Stefan Bauer.
+Robustly disentangled causal mechanisms:
+Validating deep representations for interventional robustness.
+In International Conference on Machine Learning, pages 6056–
+6065. PMLR, 2019.
+[248] Richard S Sutton, Andrew G Barto, et al. Introduction to
+reinforcement learning, volume 135. MIT press Cambridge,
+1998.
+[249] Christian Szegedy, Wojciech Zaremba, Ilya Sutskever, Joan
+Bruna, Dumitru Erhan, Ian Goodfellow, and Rob Fergus.
+Intriguing properties of neural networks.
+arXiv preprint
+1312.6199, 2013.
+[250] Ern˝o Téglás, Edward Vul, Vittorio Girotto, Michel Gonzalez,
+Joshua B Tenenbaum, and Luca L Bonatti. Pure reasoning in
+12-month-old infants as probabilistic inference. Science, 332
+(6033):1054–1059, 2011.
+[251] J. Tian and J. Pearl.
+Causal discovery from changes.
+In
+Proceedings of the 17th Annual Conference on Uncertainty in
+Artiﬁcial Intelligence (UAI), pages 512–522, 2001.
+[252] Frederik Träuble, Elliot Creager, Niki Kilbertus, Anirudh
+Goyal, Francesco Locatello, Bernhard Schölkopf, and Stefan
+Bauer. Is independence all you need? on the generalization of
+representations learned from correlated data. arXiv preprint
+2006.07886, 2020.
+[253] Michael Tschannen, Josip Djolonga, Marvin Ritter, Aravindh
+Mahendran, Neil Houlsby, Sylvain Gelly, and Mario Lucic.
+Self-supervised learning of video-induced visual invariances.
+In Proceedings of the IEEE/CVF Conference on Computer
+Vision and Pattern Recognition, pages 13806–13815, 2020.
+[254] Angelos Tsiaras, Ingo Waldmann, G. Tinetti, Jonathan Ten-
+nyson, and Sergei Yurchenko. Water vapour in the atmosphere
+of the habitable-zone eight-earth-mass planet K2-18b. Nature
+Astronomy, 2019. doi: 10.1038/s41550-019-0878-9.
+[255] Sjoerd Van Steenkiste, Michael Chang, Klaus Greff, and Jürgen
+Schmidhuber.
+Relational neural expectation maximization:
+Unsupervised discovery of objects and their interactions. In 6th
+International Conference on Learning Representations (ICLR),
+2018.
+[256] Sjoerd van Steenkiste, Francesco Locatello, Jürgen Schmid-
+huber, and Olivier Bachem. Are disentangled representations
+helpful for abstract visual reasoning? In Advances in Neural
+Information Processing Systems, pages 14178–14191, 2019.
+[257] V. N. Vapnik. Statistical Learning Theory. Wiley, New York,
+NY, 1998.
+[258] Oriol Vinyals, Igor Babuschkin, Wojciech M Czarnecki,
+Michaël Mathieu, Andrew Dudzik, Junyoung Chung, David H
+Choi, Richard Powell, Timo Ewalds, Petko Georgiev, et al.
+Grandmaster level in StarCraft II using multi-agent reinforce-
+ment learning. Nature, 575(7782):350–354, 2019.
+[259] J. von Kügelgen, A. Mey, M. Loog, and B. Schölkopf. Semi-
+supervised learning, causality and the conditional cluster
+assumption. Conference on Uncertainty in Artiﬁcial Intelligence
+(UAI), 2020.
+[260] Julius von Kügelgen, Umang Bhatt, Amir-Hossein Karimi,
+Isabel Valera, Adrian Weller, and Bernhard Schölkopf. On
+the fairness of causal algorithmic recourse. arXiv 2010.06529,
+2020.
+[261] Julius von Kügelgen, Luigi Gresele, and Bernhard Schölkopf.
+Simpson’s paradox in Covid-19 case fatality rates: a mediation
+analysis of age-related causal effects. arXiv 2005.07180, 2020.
+[262] Julius von Kügelgen, Ivan Ustyuzhaninov, Peter Gehler,
+Matthias Bethge, and Bernhard Schölkopf. Towards causal
+generative scene models via competition of experts. arXiv
+2004.12906, 2020.
+[263] Haohan Wang, Zexue He, Zachary C. Lipton, and Eric P.
+Xing. Learning robust representations by projecting superﬁcial
+statistics out. arXiv preprint 1903.06256, 2019.
+[264] Nicholas Watters, Daniel Zoran, Theophane Weber, Peter
+Battaglia, Razvan Pascanu, and Andrea Tacchetti.
+Visual
+interaction networks: Learning a physics simulator from video.
+In Advances in neural information processing systems, pages
+4539–4547, 2017.
+[265] Nicholas Watters, Loic Matthey, Matko Bosnjak, Christopher P
+Burgess, and Alexander Lerchner. Cobra: Data-efﬁcient model-
+based rl through unsupervised object discovery and curiosity-
+driven exploration. arXiv preprint 1905.09275, 2019.
+[266] S. Weichwald, B. Schölkopf, T. Ball, and M. Grosse-Wentrup.
+Causal and anti-causal learning in pattern recognition for
+neuroimaging.
+In 4th International Workshop on Pattern
+Recognition in Neuroimaging (PRNI). IEEE, 2014.
+[267] Sebastian Weichwald. Pragmatism and Variable Transforma-
+tions in Causal Modelling. PhD thesis, ETH Zurich, 2019.
+[268] Marco Wiering and Martijn Van Otterlo.
+Reinforcement
+learning, volume 12. Springer, 2012.
+[269] Steffen Wiewel, Moritz Becher, and Nils Thuerey. Latent space
+physics: Towards learning the temporal evolution of ﬂuid ﬂow.
+In Computer Graphics Forum, volume 38, pages 71–82. Wiley
+24
+Online Library, 2019.
+[270] Laurenz Wiskott and Terrence J Sejnowski. Slow feature anal-
+ysis: unsupervised learning of invariances. Neural computation,
+14(4):715–70, April 2002. ISSN 0899-7667.
+[271] Chris Xie, Sachin Patil, Teodor Moldovan, Sergey Levine,
+and Pieter Abbeel. Model-based reinforcement learning with
+parametrized physical models and optimism-driven exploration.
+In 2016 IEEE international conference on robotics and au-
+tomation (ICRA), pages 504–511. IEEE, 2016.
+[272] Kexin Yi, Chuang Gan, Yunzhu Li, Pushmeet Kohli, Jiajun
+Wu, Antonio Torralba, and Joshua B Tenenbaum. CLEVRER:
+Collision events for video representation and reasoning. arXiv
+preprint 1910.01442, 2019.
+[273] Jinsung Yoon, James Jordon, and Mihaela van der Schaar.
+Ganite: Estimation of individualized treatment effects using
+generative adversarial nets. In International Conference on
+Learning Representations, 2018.
+[274] Vinicius Zambaldi, David Raposo, Adam Santoro, Victor Bapst,
+Yujia Li, Igor Babuschkin, Karl Tuyls, David Reichert, Timothy
+Lillicrap, Edward Lockhart, et al. Deep reinforcement learning
+with relational inductive biases. In International Conference
+on Learning Representations, 2018.
+[275] J. Zhang and E. Bareinboim.
+Near-optimal reinforcement
+learning in dynamic treatment regimes. In Advances in Neural
+Information Processing Systems 33, pages 13401–13411, 2019.
+[276] Junzhe Zhang and Elias Bareinboim. Fairness in decision-
+making - the causal explanation formula. In Proceedings of
+the Thirty-Second AAAI Conference on Artiﬁcial Intelligence,
+New Orleans, Louisiana, USA, pages 2037–2045, 2018.
+[277] K. Zhang and A. Hyvärinen. On the identiﬁability of the post-
+nonlinear causal model. In Proceedings of the 25th Annual
+Conference on Uncertainty in Artiﬁcial Intelligence (UAI),
+pages 647–655, 2009.
+[278] K. Zhang, J. Peters, D. Janzing, and B. Schölkopf. Kernel-
+based conditional independence test and application in causal
+discovery. In Proceedings of the 27th Annual Conference on
+Uncertainty in Artiﬁcial Intelligence (UAI), pages 804–813,
+2011.
+[279] K. Zhang, B. Schölkopf, K. Muandet, and Z. Wang. Domain
+adaptation under target and conditional shift. In Proceedings
+of the 30th International Conference on Machine Learning
+(ICML), pages 819–827, 2013.
+[280] K. Zhang, M. Gong, and B. Schölkopf. Multi-source domain
+adaptation: A causal view. In Proceedings of the 29th AAAI
+Conference on Artiﬁcial Intelligence, pages 3150–3157, 2015.
+[281] K. Zhang, B. Huang, J. Zhang, C. Glymour, and B. Schölkopf.
+Causal discovery from nonstationary/heterogeneous data: Skele-
+ton estimation and orientation determination. In Proceedings
+of the Twenty-Sixth International Joint Conference on Artiﬁcial
+Intelligence (IJCAI 2017), pages 1347–1353, 2017.
+[282] Richard Zhang. Making convolutional networks shift-invariant
+again. arXiv preprint 1904.11486, 2019.

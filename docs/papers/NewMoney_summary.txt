@@ -1,0 +1,113 @@
+=== START OF NewMoney ===
+New Money: A Systematic Review of Synthetic
+Data Generation for Finance
+James Meldrum1, Basem Suleiman2*, Fethi Rabhi2,
+Muhammad Johan Alibasa3
+1School of Computer Science, University of Sydney, Sydney, NSW,
+Australia.
+2Computer Science and Engineering, University of New South Wales,
+Sydney, NSW, Australia.
+3Faculty of Information Technology, Monash University Indonesia,
+Tangerang, Banten, Indonesia.
+*Corresponding author(s). E-mail(s): b.suleiman@unsw.edu.au;
+Contributing authors: jmel2994@uni.sydney.edu.au;
+f.rabhi@unsw.edu.au; johan.alibasa@monash.edu;
+Abstract
+Synthetic data generation has emerged as a promising approach to address the
+challenges of using sensitive financial data in machine learning applications. By
+leveraging generative models, such as Generative Adversarial Networks (GANs)
+and Variational Autoencoders (VAEs), it is possible to create artificial datasets
+that preserve the statistical properties of real financial records while mitigat-
+ing privacy risks and regulatory constraints. Despite the rapid growth of this
+field, a comprehensive synthesis of the current research landscape has been lack-
+ing. This systematic review consolidates and analyses 72 studies published since
+2018 that focus on synthetic financial data generation. We categorise the types
+of financial information synthesised, the generative methods employed, and the
+evaluation strategies used to assess data utility and privacy. The findings indicate
+that GAN-based approaches dominate the literature, particularly for generat-
+ing time-series market data and tabular credit data. While several innovative
+techniques demonstrate potential for improved realism and privacy preservation,
+there remains a notable lack of rigorous evaluation of privacy safeguards across
+studies. By providing an integrated overview of generative techniques, applica-
+tions, and evaluation methods, this review highlights critical research gaps and
+offers guidance for future work aimed at developing robust, privacy-preserving
+synthetic data solutions for the financial domain.
+1
+arXiv:2510.26076v1  [cs.LG]  30 Oct 2025
+Keywords: financial data, synthetic data generation, generative adversarial networks,
+systematic review
+1 Introduction
+Financial technology (Fintech) and the application of machine learning (ML) in the
+financial sector have expanded substantially over the past two decades (Yeo et al.,
+2025). Financial institutions increasingly rely on data-driven models for credit evalua-
+tion, fraud detection, algorithmic trading, and customer management. In 2020, 83% of
+financial organisations reported using machine learning within their operations (hora-
+cio, 2019), and spending on AI in the sector exceeded USD $11 billion, with projections
+rising to USD $31 billion by 2025 (Bouzarouata, 2023).
+The effective use of financial data enables more informed decisions and improved
+services (Soon, 2021). However, much of this data is highly sensitive, including personal
+identifiers, transaction records, and credit histories. Regulatory frameworks such as
+the GDPR in Europe and regulations enforced by ASIC in Australia impose strict
+controls on how this information can be used and shared (Strelcenia & Prakoonwit,
+2023).
+Synthetic data generation, which leverages generative models to produce artificial
+datasets, offers a promising approach to address these challenges (Martineau & Feris,
+2021). Synthetic datasets can replicate the statistical properties of real data while
+reducing privacy risks and enabling broader sharing and experimentation. In practice,
+generative models can create nearly unlimited quantities of realistic data that are
+unlinked to any specific individuals. Despite these advantages, research into synthetic
+data has historically focused on text and image generation, particularly in healthcare.
+Comprehensive analyses of synthetic data generation techniques applied to financial
+datasets remain limited.
+This observation motivates the present study. Specifically, we aim to address the
+following research questions:
+1. What types of financial data have been synthesised in the current literature?
+2. Which generative models have been employed for synthetic financial data genera-
+tion?
+3. What evaluation methods have been used to assess the quality and privacy of
+synthetic datasets?
+The contributions of this review are threefold. First, we provide an exhaustive syn-
+thesis of research on synthetic financial data generation published since 2018. Second,
+we critically analyse the generative techniques applied to a range of data types and
+financial tasks. Third, we review evaluation practices to inform standardisation efforts
+and highlight areas for further research.
+2
+
+=== END OF {name} ===
+Xiao, S., Xu, H., Yan, J., Farajtabar, M., Yang, X., Song, L., . . . Tong, S.J. (2018).
+Learning Conditional Generative Models for Temporal Point Processes (Tech.
+Rep.). Retrieved from www.aaai.org
+Xu, L., Skoularidou, M., Cuesta-Infante, A., Veeramachaneni, K. (2019). Modeling
+tabular data using conditional gan. Advances in neural information processing
+systems, 32, ,
+Yadav, P., Gaur, M., Fatima, N., Sarwar, S. (2023, 4). Qualitative and Quantitative
+Evaluation of Multivariate Time-Series Synthetic Data Generated Using MTS-
+TGAN: A Novel Approach. Applied Sciences (Switzerland), 13(7), ,
+https://
+doi.org/10.3390/app13074136
+Yeo, W.J., Van Der Heever, W., Mao, R., Cambria, E., Satapathy, R., Mengaldo, G.
+(2025). A comprehensive review on financial explainable ai. Artificial Intelligence
+Review, 58(6), 1–49,
+Yin, X., Han, Y., Sun, H., Xu, Z., Yu, H., Duan, X. (2021). Multi-Attention Generative
+Adversarial Network for Multivariate Time Series Prediction. IEEE Access, 9,
+57351–57363, https://doi.org/10.1109/ACCESS.2021.3065969
+Yoon, J., Jarrett, D., Van der Schaar, M. (2019). Time-series generative adversarial
+networks. Advances in neural information processing systems, 32, ,
+Zhang, K., Zhong, G., Dong, J., Wang, S., Wang, Y. (2019). Stock Market Prediction
+Based on Generative Adversarial Network. Procedia computer science (Vol. 147,
+pp. 400–406). Elsevier B.V.
+Zhang, Y., Zaidi, N., Zhou, J., Li, G.
+(2023).
+Interpretable tabular data gen-
+eration.
+Knowledge and Information Systems, ,
+https://doi.org/10.1007/
+s10115-023-01834-5
+Zhang, Z., Yang, L., Chen, L., Liu, Q., Meng, Y., Wang, P., Li, M. (2020, 2). A
+generative adversarial network based method for generating negative financial
+samples. International Journal of Distributed Sensor Networks, 16(2), , https://
+doi.org/10.1177/1550147720907053
+36
+Zhao, Z., Kunar, A., Birke, R., Chen, L.Y. (2021). Ctab-gan: Effective table data
+synthesizing. Asian conference on machine learning (pp. 97–112).
+37

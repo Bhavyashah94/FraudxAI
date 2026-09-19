@@ -1,0 +1,323 @@
+=== START OF TabDDPM ===
+TabDDPM: Modelling Tabular Data with Diffusion Models
+Akim Kotelnikov 1 2 Dmitry Baranchuk 2 Ivan Rubachev 1 2 Artem Babenko 2
+Abstract
+Denoising diffusion probabilistic models are be-
+coming the leading generative modeling paradigm
+for many important data modalities. Being the
+most prevalent in the computer vision community,
+diffusion models have recently gained some atten-
+tion in other domains, including speech, NLP, and
+graph-like data. In this work, we investigate if the
+framework of diffusion models can be advanta-
+geous for general tabular problems, where data
+points are typically represented by vectors of het-
+erogeneous features. The inherent heterogeneity
+of tabular data makes it quite challenging for ac-
+curate modeling since the individual features can
+be of a completely different nature, i.e., some of
+them can be continuous and some can be discrete.
+To address such data types, we introduce TabD-
+DPM — a diffusion model that can be universally
+applied to any tabular dataset and handles any fea-
+ture types. We extensively evaluate TabDDPM
+on a wide set of benchmarks and demonstrate its
+superiority over existing GAN/VAE alternatives,
+which is consistent with the advantage of diffu-
+sion models in other fields. The source code of
+TabDDPM is available at GitHub.
+1. Introduction
+Denoising diffusion probabilistic models (DDPM) (Sohl-
+Dickstein et al., 2015; Ho et al., 2020) have recently become
+an object of great research interest in the generative model-
+ing community since they often outperform the alternative
+approaches both in terms of the realism of individual sam-
+ples and their diversity (Dhariwal & Nichol, 2021). The
+most impressive successes of DDPM were demonstrated in
+the domain of natural images (Dhariwal & Nichol, 2021;
+Saharia et al., 2022; Rombach et al., 2022), where the ad-
+vantages of diffusion models are successfully exploited in
+1HSE university, Moscow, Russia 2Yandex, Moscow, Russia.
+Correspondence to: Akim Kotelnikov <ya@akotelnikov.ru>.
+Proceedings of the 40 th International Conference on Machine
+Learning, Honolulu, Hawaii, USA. PMLR 202, 2023. Copyright
+2023 by the author(s).
+applications, such as colorization (Song et al., 2021), in-
+painting (Song et al., 2021), segmentation (Baranchuk et al.,
+2021), super-resolution (Saharia et al., 2021; Li et al., 2021),
+semantic editing (Meng et al., 2021) and others. Beyond
+computer vision, the DDPM framework is also investigated
+in other fields, such as NLP (Austin et al., 2021; Li et al.,
+2022), waveform signal processing (Kong et al., 2020; Chen
+et al., 2020b), molecular graphs (Jing et al., 2022; Hooge-
+boom et al., 2022), time series (Tashiro et al., 2021), testify-
+ing the universality of diffusion models across a wide range
+of problems.
+Our work aims to investigate if the universality of DDPM
+can be extended to the case of general tabular problems,
+which are ubiquitous in various industrial applications that
+include data described by a set of heterogeneous features.
+For many such applications, the demand for high-quality
+generative models is especially acute because of the modern
+privacy regulations, like GDPR, which prevent publishing
+real user data, while the synthetic data produced by gen-
+erative models can be shared. However, training a high-
+quality model of tabular data can be more challenging than
+in computer vision or NLP due to the heterogeneity of indi-
+vidual features and relatively small sizes of typical tabular
+datasets. This paper shows that despite these two intricacies,
+the diffusion models can successfully approximate typical
+distributions of tabular data, leading to state-of-the-art per-
+formance on most of the benchmarks. In more detail, the
+main contributions of this work are the following:
+1. We introduce TabDDPM — a simple design of DDPM
+for tabular problems that can be applied to any tabular
+task and work with mixed data types, including numeri-
+cal and categorical features.
+2. We demonstrate that TabDDPM outperforms the alter-
+native approaches designed for tabular data, including
+GAN-based and VAE-based methods, and illustrate the
+sources of this advantage on several datasets.
+3. We observe that shallow interpolation-based methods,
+e.g., SMOTE (Chawla et al., 2002), produce surprisingly
+effective synthetic data that provides competitively high
+ML efficiency. Compared with SMOTE, we show that
+TabDDPM’s data is preferable for privacy-concerned
+scenarios when synthetic data is used to substitute the
+real user data that cannot be shared.
+1
+arXiv:2209.15421v2  [cs.LG]  7 Oct 2024
+TabDDPM: Modelling Tabular Data with Diffusion Models
+2. Related Work
+Diffusion models (Sohl-Dickstein et al., 2015; Ho et al.,
+2020) is a paradigm of generative modeling that aims to
+approximate the target distribution by the endpoint of the
+Markov chain, which starts from a given parametric distri-
+bution, typically a standard Gaussian. Each Markov step is
+performed by a deep neural network that effectively learns
+to invert the diffusion process with a known Gaussian ker-
+nel. Ho et al. demonstrated the equivalence of diffusion
+models and score matching (Song & Ermon, 2019; 2020),
+showing them to be two different perspectives on the grad-
+ual conversion of a simple known distribution into a target
+distribution via the iterative denoising process. Several re-
+cent works (Nichol, 2021; Dhariwal & Nichol, 2021) have
+developed more powerful model architectures as well as
+different advanced learning protocols, which led to the “vic-
+tory” of DDPM over GANs in terms of generative quality
+and diversity in the computer vision field. In this work, we
+demonstrate that one can also successfully use diffusion
+models for tabular problems.
+Generative models for tabular problems are currently an
+active research direction in the machine learning community
+since high-quality synthetic data is in great demand for
+many tabular tasks. First, the tabular datasets are often
+limited in size, unlike in vision or NLP problems, for which
+massive “extra” data is available on the Internet. Second,
+proper synthetic datasets do not contain actual user data.
+Therefore, they are not subject to GDPR-like regulations
+and can be publicly shared without violating anonymity.
+The recent works have developed a large number of models,
+including tabular VAEs (Xu et al., 2019) and GAN-based
+approaches (Xu et al., 2019; Engelmann & Lessmann, 2021;
+Jordon et al., 2018; Fan et al., 2020; Torfi et al., 2022; Zhao
+et al., 2021; Kim et al., 2021; Zhang et al., 2021; Nock
+& Guillame-Bert, 2022; Wen et al., 2022). By extensive
+evaluations on a large number of public benchmarks, we
+show that TabDDPM surpasses the existing alternatives,
+often by a large margin.
+“Shallow” synthetics generation. Unlike unstructured im-
+ages or natural texts, tabular data is typically structured,
+i.e., the individual features are often interpretable and it is
+unclear if their modeling requires several layers of “deep” ar-
+chitectures. Therefore, the simple interpolation techniques,
+like SMOTE (Chawla et al., 2002) (originally proposed to
+address class imbalance) can serve as simple and powerful
+solutions as demonstrated in (Camino et al., 2020), where
+SMOTE is shown to outperform tabular GANs for minor
+class oversampling. In the experiments, we demonstrate
+the advantage of TabDDPM’s synthetics over synthetics
+produced with interpolation techniques from the privacy-
+preserving perspective.
+3. Background
+Diffusion models (Sohl-Dickstein et al., 2015; Ho et al.,
+2020) are likelihood-based generative models that handle
+the data through forward and reverse Markov processes. The
+forward process q (x1:T |x0) = QT
+t=1 q (xt|xt−1) gradually
+adds noise to an initial sample x0 from the data distribu-
+tion q (x0) sampling noise from the predefined distributions
+q (xt|xt−1) with variances {β1, ..., βT }.
+The reverse process p (x0:T ) = QT
+t=1 p (xt−1|xt) gradually
+denoises a latent variable xT ∼q (xT ) and allows generating
+new data samples from q(x0). Distributions p (xt−1|xt) are
+usually unknown and approximated by a neural network
+with parameters θ. These parameters are learned from the
+data by optimizing a variational lower bound:
+log q (x0) ≥Eq(x0)
+
+log pθ (x0|x1)
+|
+{z
+}
+L0
+−KL (q (xT |x0) |q (xT ))
+|
+{z
+}
+LT
+−
+−
+T
+X
+t=2
+KL (q (xt−1|xt, x0) |pθ (xt−1|xt))
+|
+{z
+}
+Lt
+
+(1)
+Gaussian diffusion models operate in continuous spaces
+(xt ∈Rn) where forward and reverse processes are charac-
+terized by Gaussian distributions:
+q (xt|xt−1) := N
+
+xt;
+p
+1 −βtxt−1, βtI
+
+q (xT ) := N (xT ; 0, I)
+pθ (xt−1|xt) := N (xt−1; µθ (xt, t) , Σθ (xt, t))
+Ho et al. (2020) suggest using diagonal Σθ (xt, t) with a
+constant σt and computing µθ (xt, t) as a function of xt and
+ϵθ(xt, t):
+µθ (xt, t) =
+1
+√αt
+
+xt −
+βt
+√1 −¯αt
+ϵθ (xt, t)
+
+where αt := 1−βt, ¯αt := Q
+i≤t αi and ϵθ(xt, t) predicts a
+“groundtruth” noise component ϵ for the noisy data sample
+xt. In practice, the objective Equation 1 can be simplified
+to the sum of mean-squared errors between ϵθ(xt, t) and ϵ
+over all timesteps t:
+Lsimple
+t
+= Ex0,ϵ,t∥ϵ −ϵθ(xt, t)∥2
+2
+(2)
+Multinomial diffusion models (Hoogeboom et al., 2021)
+are designed to generate categorical data where xt ∈
+{0, 1}K is a one-hot encoded categorical variable with K
+values. The multinomial forward diffusion process defines
+q (xt|xt−1) as a categorical distribution that corrupts the
+data by uniform noise over K classes:
+q(xt|xt−1) := Cat (xt; (1 −βt) xt−1 + βt/K)
+q (xT ) := Cat (xT ; 1/K)
+q (xt|x0) = Cat (xt; ¯αtx0 + (1 −¯αt) /K)
+2
+
+=== END OF {name} ===
+TabDDPM: Modelling Tabular Data with Diffusion Models
+Table 18. CTABGAN and CTABGAN+ hyperparameters search space. See an official implementation2
+Parameter
+Distribution
+# claassif. layers
+UniformInt[1, 4]
+Classif. layer size
+Int{64, 128, 256}
+Training iterations
+Cat{1000, 5000, 10000}
+Batch Size
+Int{512, 1024, 2048}
+random dim
+Int{16, 32, 64, 128}
+num channels
+Int{16, 32, 64}
+Proportion of samples
+Float{0.25, 0.5, 1, 2, 4, 8}
+Number of tuning trials
+35
+Table 19. TVAE hyperparameters search space. See an official implementation4
+Parameter
+Distribution
+# claassif. layers
+UniformInt[1, 6]
+Classif. layer size
+Int{64, 128, 256, 512}
+Training iterations
+Cat{5000, 20000, 30000}
+Batch Size
+Cat{456, 4096}
+embedding dim
+Int{16, 32, 64, 128, 256, 512, 1024}
+loss factor
+LogUniform[0.01, 10]
+Proportion of samples
+Float{0.25, 0.5, 1, 2, 4, 8}
+Number of tuning trials
+50
+F. Datasets
+We used the following datasets:
+• Abalone (OpenML)
+• Adult (income estimation, (Kohavi, 1996))
+• Buddy (Kaggle)
+• California Housing (real estate data, (Kelley Pace & Barry, 1997))
+• Cardiovascular Disease dataset (Kaggle)
+• Churn Modeling (Kaggle)
+• Diabetes (OpenML)
+• Facebook Comments Volume (Singh et al., 2015)
+• Gesture Phase Prediction (Madeo et al., 2013)
+• Higgs (simulated physical particles, (Baldi et al., 2014); we use the version with 98K samples available at the OpenML
+repository (Vanschoren et al., 2014))
+• House 16H (OpenML)
+• Insurance (Kaggle)
+• King (Kaggle)
+• MiniBooNE (OpenML)
+• Wilt (OpenML)
+15
+TabDDPM: Modelling Tabular Data with Diffusion Models
+G. Environment and Runtime
+Experiments were conducted under Ubuntu 20.04 on a machine equipped with GeForce RTX 2080 Ti GPU and Intel(R)
+Core(TM) i7-7800X CPU @ 3.50GHz. We used Pytorch 10.1, CUDA 11.3, scikit-learn 1.1.2 and imbalanced-learn 0.9.1
+(for SMOTE).
+As for runtime of the proposed method, it depends on the dataset and hyperparameters. We provide 3 examples below. All
+three examples use T = 1000 and batch size = 4096. Note that hyperparameters tuning contains 50 runs and takes usually
+8-10 hours. ”Sample time” is for the all n to sample number of samples.
+Table 20. Training and sampling time for TabDDPM.
+Dataset
+input dim
+model layers
+train steps
+n to sample
+train time
+sample time
+CH
+16
+[256,1024,1024, 1024,1024,512]
+30k
+26k
+670s
+6s
+HI
+28
+[512,1024,1024, 1024,1024,512]
+30k
+502k
+502s
+430s
+FB
+146
+[512,1024]
+30k
+1264k
+783s
+470s
+16

@@ -1,0 +1,324 @@
+=== START OF TimeGAN ===
+Noname manuscript No.
+(will be inserted by the editor)
+Cognitive swarming in complex environments with attractor
+dynamics and oscillatory computing
+Joseph D. Monaco1 · Grace M. Hwang2 · Kevin M. Schultz2 ·
+Kechen Zhang1
+Received: date / Accepted: date
+Abstract Neurobiological theories of spatial cogni-
+tion developed with respect to recording data from
+relatively small and/or simplistic environments com-
+pared to animals’ natural habitats. It has been unclear
+how to extend theoretical models to large or complex
+spaces. Complementarily, in autonomous systems tech-
+nology, applications have been growing for distributed
+control methods that scale to large numbers of low-
+footprint mobile platforms. Animals and many-robot
+groups must solve common problems of navigating
+complex and uncertain environments. Here, we intro-
+duce the ‘NeuroSwarms’ control framework to inves-
+tigate whether adaptive, autonomous swarm control
+of minimal artiﬁcial agents can be achieved by direct
+analogy to neural circuits of rodent spatial cognition.
+NeuroSwarms analogizes agents to neurons and swarm-
+ing groups to recurrent networks. We implemented
+neuron-like agent interactions in which mutually visible
+agents operate as if they were reciprocally-connected
+place cells in an attractor network. We attributed a
+phase state to agents to enable patterns of oscilla-
+tory synchronization similar to hippocampal models
+of theta-rhythmic (5–12 Hz) sequence generation. We
+demonstrate that multi-agent swarming and reward-
+approach dynamics can be expressed as a mobile form
+of Hebbian learning and that NeuroSwarms supports
+a single-entity paradigm that directly informs theoret-
+ical models of animal cognition. We present emergent
+This work was supported by NSF award NCS/FO 1835279,
+JHU/APL internal research and development awards, and the
+JHU/Kavli Neuroscience Discovery Institute.
+1 Biomedical Engineering Department, Johns Hopkins Uni-
+versity School of Medicine, Baltimore, MD, 21205, USA.
+E-mail: jmonaco@jhu.edu
+2 The Johns Hopkins University/Applied Physics Laboratory,
+Laurel, MD, 20723, USA.
+behaviors including phase-organized rings and trajec-
+tory sequences that interact with environmental cues
+and geometry in large, fragmented mazes. Thus, Neu-
+roSwarms is a model artiﬁcial spatial system that inte-
+grates autonomous control and theoretical neuroscience
+to potentially uncover common principles to advance
+both domains.
+Keywords swarming · multi-robot groups · place
+cells · oscillations · spatial navigation · emergence
+1 Introduction
+Spatial cognition in rodents has been extensively stud-
+ied in non-naturalistic environments such as linear or
+circular tracks, radial arm mazes, and T-mazes, or small
+open-ﬁeld arenas such as squares or cylinders of approx-
+imately 1–2 m2 area. Such experimental conditions have
+allowed individual place ﬁelds of hippocampal pyrami-
+dal neurons (O’Keefe and Dostrovsky, 1971) and the
+activity of other spatial cells (Knierim, 2006; Moser
+et al., 2008; Savelli et al., 2008; Poulter et al., 2018;
+Wang et al., 2018) to be exquisitely controlled and an-
+alyzed, leading to a detailed neural coding account of
+distributed representations that subserve spatial learn-
+ing, memory, and planning in mammals (O’Keefe and
+Nadel, 1978; Moser and Paulsen, 2001; Knierim and
+Hamilton, 2011; Monaco and Abbott, 2011; Pfeiﬀer and
+Foster, 2013; Hartley et al., 2014; Burgess, 2014; Schiller
+et al., 2015; Foster, 2017), potentially extending to gen-
+eral cognitive computations in humans (Bellmund et al.,
+2018; Kunz et al., 2019). However, the multiplicity of
+Poisson-distributed hippocampal place ﬁelds exposed
+in larger environments (Fenton et al., 2008; Rich et al.,
+2014) and species diﬀerences in mapping 3-dimensional
+contexts (Yartsev and Ulanovsky, 2013; Casali et al.,
+arXiv:1909.06711v1  [cs.MA]  15 Sep 2019
+2
+Monaco et al.
+2019) suggest large and/or complex environments as
+the next frontier in understanding spatial navigation.
+Computational models of rodent spatial networks
+have typically emulated the restricted environments
+of experimental studies (for computational eﬃciency,
+ease of analysis, and compatibility with published
+data). Despite these limitations, recent theoretical re-
+sults have demonstrated the importance of sensory
+and cortical feedback in stabilizing and shaping hip-
+pocampal and entorhinal cortical spatial representa-
+tions (Monaco et al., 2011; Poll et al., 2016; Renn´o-
+Costa and Tort, 2017; Ocko et al., 2018); this relation-
+ship has been supported by experimental approaches
+to the animals’ own active sensing behaviors such as
+lateral head scanning (Monaco et al., 2014; Yadav and
+Doreswamy, 2017) and closed-loop control of orient-
+ing distal cues (Jayakumar et al., 2019). Addition-
+ally, extending prior theoretical frameworks such as
+the attractor map formalism (Zhang, 1996; Tsodyks,
+1999; Samsonovich and McNaughton, 1997; Knierim
+and Zhang, 2012) to large spatial contexts has re-
+vealed substantial increases in the computational and
+mnemonic capacities of these network models (Hedrick
+and Zhang, 2016). Thus, a theoretical approach to
+naturalistic and dynamical spatial coding in large or
+complex environments may require closed-loop systems
+that integrate sensory information with internal spatial
+maps in continuously adapting loops. Complementary
+to the animal studies, investigating the behaviors and
+performance of completely speciﬁed but artiﬁcial spa-
+tial systems including virtual agents and/or mobile
+robotics platforms may help to elucidate the compu-
+tational principles of spatial cognition in naturalistic
+contexts (Hasselmo, 2018; Tomov et al., 2018; Savelli
+and Knierim, 2019; Gaussier et al., 2019).
+Hippocampal phenomena that have been theo-
+rized to support biological spatial cognition include
+(1) self-stabilizing activity patterns in attractor map
+networks and (2) temporal-phase organization relative
+to global oscillations. On the basis of these phenomena,
+we introduce a brain-inspired dynamical controller for
+self-organized swarms of autonomous agents. Our key
+realization was that each virtual or robotic agent can
+be represented as a spatial neuron (e.g., a place cell)
+whose place preference follows the location of the agent
+in its local environment. The analogy of a multi-agent
+group (or swarm) to a space-coding neural network
+follows immediately. If we further suppose that inter-
+agent distances map to ‘synaptic weights’ and, conse-
+quently, that relative agent movements map to changes
+in those weights, then spatial conﬁgurations of the
+swarm constitute an attractor map network (Zhang,
+1996; Tsodyks, 1999; Samsonovich and McNaughton,
+1997) and the swarm’s internal motion dynamics con-
+stitute learning based on synaptic modiﬁcation (Hebb,
+1949; Oja, 1982).
+Additionally, spatial activity in the rodent hip-
+pocampus is strongly modulated by continuous theta
+oscillations (5–12 Hz) during locomotion (Vanderwolf,
+1969; Buzs´aki, 2005). The resulting ‘phase precession,’
+a monotonic advance in timing from late to early within
+each theta cycle, may enhance the precision and tempo-
+ral organization of spatial codes (O’Keefe and Recce,
+1993; Jensen and Lisman, 2000; Foster and Wilson,
+2007; Drieu et al., 2018) in ways that support decision-
+making and/or deliberative planning during subsequent
+sleep or quiescent states (Buzs´aki, 1989; Johnson and
+Redish, 2007; Buzs´aki and Moser, 2013; Wikenheiser
+and Redish, 2015; Papale et al., 2016; Muessig et al.,
+2019). Recently, in contrast to phase precession, we dis-
+covered a novel class of spatial phase-coding neurons
+in open ﬁeld environments termed ‘phaser cells’ that
+were located predominantly in the rat lateral septum
+and characterized by a strong coupling of theta-phase
+timing to ﬁring rates (Monaco et al., 2019a). This
+coupling supports an intrinsic neuronal mechanism of
+phase-coding that may theoretically transform spatial
+information to synchronize downstream targets using
+the global theta oscillation (Monaco et al., 2019a).
+Accordingly, to examine the eﬀects of temporal phase
+organization, our dynamical swarm controller considers
+each agent to have an internal phase variable (anal-
+ogous to the theta-phase of a place cell or phaser
+cell) that may interact via oscillatory coupling with
+its neighbors’ phases. Such oscillator-based swarm-
+ing has been previously generalized as the ‘swarmala-
+tors’ framework (O’Keeﬀe et al., 2017). Thus, together
+with attractor dynamics, these phenomena may pro-
+vide brain-like solutions to problems of decentralized
+self-organization and distributed communication in au-
+tonomous swarming.
+We refer to our conception of this swarm controller
+as NeuroSwarms (Monaco et al., 2019b; Fig. 1A). In
+this paper, we derive an operational NeuroSwarms im-
+plementation (Section 2), present emergent swarming
+behaviors in simulations of a fragmented and het-
+erogeneous environment (Section 3.1), demonstrate
+NeuroSwarms as a dual system which can be ex-
+pressed through single-entity simulations that help
+inform biological theory (Section 3.2), evaluate adap-
+tations of reward-approach behaviors in a large hairpin
+maze (Section 3.3), and discuss implications for au-
+tonomous systems design and biological spatial cogni-
+tion in large, complex environments (Section 4).
+
+=== END OF {name} ===
+Cognitive swarms with attractors and oscillators
+15
+pal remapping. J Neurosci 31(25):9414–25
+Monaco JD, Knierim JJ, Zhang K (2011) Sensory feed-
+back, error correction, and remapping in a multiple
+oscillator model of place-cell activity. Front Comput
+Neurosci 5:39
+Monaco JD, Rao G, Roth ED, Knierim JJ (2014) Atten-
+tive scanning behavior drives one-trial potentiation
+of hippocampal place ﬁelds. Nat Neurosci 17(5):725–
+731
+Monaco JD, De Guzman RM, Blair HT, Zhang
+K
+(2019a)
+Spatial
+synchronization
+codes
+from
+coupled rate-phase neurons. PLoS Comput Biol
+15(1):e1006741
+Monaco JD, Hwang GM, Schultz KM, Zhang K (2019b)
+Cognitive swarming: an approach from the theoreti-
+cal neuroscience of hippocampal function. In: Micro-
+and Nanotechnology Sensors, Systems, and Applica-
+tions XI, International Society for Optics and Pho-
+tonics, vol 10982, p 109822D
+Moser EI, Paulsen O (2001) New excitement in cogni-
+tive space: between place cells and spatial memory.
+Curr Opin Neurobiol 11(6):745–751
+Moser EI, KropﬀE, Moser MB (2008) Place cells, grid
+cells, and the brain’s spatial representation system.
+Annu Rev Neurosci 31(1):69–89
+Muessig L, Lasek M, Varsavsky I, Cacucci F, Wills TJ
+(2019) Coordinated emergence of hippocampal re-
+play and theta sequences during post-natal develop-
+ment. Current Biology 29(5):834–840.e4
+Murray RM (2007) Recent research in cooperative con-
+trol of multivehicle systems. Journal of Dynamic Sys-
+tems, Measurement, and Control 129(5):571–583
+Ocko SA, Hardcastle K, Giocomo LM, Ganguli S (2018)
+Emergent elasticity in the neural code for space. Proc
+Natl Acad Sci U S A 115(50):E11798–E11806
+Oja E (1982) Simpliﬁed neuron model as a principal
+component analyzer. Journal of Mathematical Biol-
+ogy 15(3):267–273
+O’Keefe J, Dostrovsky J (1971) The hippocampus as a
+spatial map: preliminary evidence from unit activity
+in the freely-moving rat. Brain Res 34(1):171–175
+O’Keefe J, Nadel L (1978) The Hippocampus as a Cog-
+nitive Map. Clarendon Press, Oxford, UK
+O’Keefe J, Recce ML (1993) Phase relationship between
+hippocampal place units and the EEG theta rhythm.
+Hippocampus 3(3):317–30
+O’Keeﬀe KP, Hong H, Strogatz SH (2017) Oscilla-
+tors that sync and swarm. Nature communications
+8(1):1504
+´Olafsd´ottir HF, Bush D, Barry C (2018) The role of
+hippocampal replay in memory and planning. Curr
+Biol 28(1):R37–R50
+Papale AE, Zielinski MC, Frank LM, Jadhav SP, Redish
+AD (2016) Interplay between hippocampal sharp-
+wave-ripple events and vicarious trial and error be-
+haviors in decision making. Neuron 92(5):975–982
+Pfeiﬀer BE, Foster DJ (2013) Hippocampal place-cell
+sequences depict future paths to remembered goals.
+Nature 497(7447):74–9
+Poll DB, Nguyen K, Kilpatrick ZP (2016) Sensory feed-
+back in a bump attractor model of path integration.
+J Comput Neurosci 40(2):137–55
+Poulter S, Hartley T, Lever C (2018) The neurobi-
+ology of mammalian navigation. Current Biology
+28(17):R1023–R1042
+Renn´o-Costa C, Tort ABL (2017) Place and grid cells in
+a loop: implications for memory function and spatial
+coding. J Neurosci 37(34):8062–8076
+Rich PD, Liaw HP, Lee AK (2014) Large environments
+reveal the statistical structure governing hippocam-
+pal representations. Science 345(6198):814–817
+Salahshour M, Rouhani S, Roudi Y (2019) Phase tran-
+sitions and asymmetry between signal comprehension
+and production in biological communication. Scien-
+tiﬁc Reports 9(1):3428
+Samsonovich A, McNaughton BL (1997) Path integra-
+tion and cognitive mapping in a continuous attractor
+neural network model. J Neurosci 17(15):5900–5920
+Savelli F, Knierim JJ (2010) Hebbian analysis of
+the transformation of medial entorhinal grid-cell in-
+puts to hippocampal place ﬁelds. J Neurophysiol
+103(6):3167–83
+Savelli F, Knierim JJ (2019) Origin and role of path
+integration in the cognitive representations of the
+hippocampus: computational insights into open ques-
+tions. J Exp Biol 222(Pt Suppl 1)
+Savelli F, Yoganarasimha D, Knierim JJ (2008) Inﬂu-
+ence of boundary removal on the spatial representa-
+tions of the medial entorhinal cortex. Hippocampus
+18(12):1270–1282
+Schiller D, Eichenbaum H, Buﬀalo EA, Davachi L, Fos-
+ter DJ, Leutgeb S, Ranganath C (2015) Memory and
+space: Towards an understanding of the cognitive
+map. J Neurosci 35(41):13904–13911
+Tomov M, Yagati S, Kumar A, Yang W, Gershman S
+(2018) Discovery of hierarchical representations for
+eﬃcient planning. bioRxiv 499418
+Tsodyks M (1999) Attractor neural network mod-
+els of spatial maps in hippocampus. Hippocampus
+9(4):481–9
+Vanderwolf CH (1969) Hippocampal electrical activ-
+ity and voluntary movement in the rat. Electroen-
+cephalogr Clin Neurophysiol 26(4):407–18
+Wang C, Chen X, Lee H, Deshmukh SS, Yoganarasimha
+D, Savelli F, Knierim JJ (2018) Egocentric coding of
+16
+Monaco et al.
+external items in the lateral entorhinal cortex. Sci-
+ence 362(6417):945–9
+Wang Y, Roth Z, Pastalkova E (2016) Synchronized ex-
+citability in a network enables generation of internal
+neuronal sequences. Elife 5
+Wikenheiser AM, Redish AD (2015) Hippocampal
+theta sequences reﬂect current goals. Nat Neurosci
+18:289–294
+Yadav CK, Doreswamy Y (2017) Scale invariance in lat-
+eral head scans during spatial exploration. Physical
+Review Letters 118(15):158104
+Yang GZ, Bellingham J, Dupont PE, Fischer P, Floridi
+L, Full R, Jacobstein N, Kumar V, McNutt M, Merri-
+ﬁeld R, et al. (2018) The grand challenges of Science
+Robotics. Science Robotics 3(14):eaar7650
+Yartsev MM, Ulanovsky N (2013) Representation of
+three-dimensional space in the hippocampus of ﬂy-
+ing bats. Science 340(6130):367–72
+Zhang K (1996) Representation of spatial orientation
+by the intrinsic dynamics of the head-direction cell
+ensemble: a theory. J Neurosci 16(6):2112–26
+Zilli EA, Hasselmo ME (2010) Coupled noisy spiking
+neurons as velocity-controlled oscillators in a model
+of grid cell spatial ﬁring. J Neurosci 30(41):13850–60

@@ -234,7 +234,7 @@ class StreamingLedger:
             else:
                 billing_shipping_match = 1 if (self.rng.random() < 0.93 if is_fraud == 0 else self.rng.random() < 0.60) else 0
 
-            # 5-way Geolocation mismatch score from spec/03
+            # 5-way Geolocation mismatch score from spec/03 (independent of target label)
             geo_risk_score = 0
             if is_cross_border:
                 geo_risk_score += 35
@@ -242,8 +242,9 @@ class StreamingLedger:
                 geo_risk_score += 25
             if avs_match_code == "N":
                 geo_risk_score += 20
-            if is_fraud == 1 and asn_type == "datacenter":
-                geo_risk_score = 100
+            if asn_type == "datacenter":
+                geo_risk_score += int(self.rng.choice([25, 30, 35]))
+            geo_risk_score = min(100, geo_risk_score)
 
             # Generate synthetic client IP
             if override_client_ip:
@@ -261,7 +262,7 @@ class StreamingLedger:
             canvas_hash = hashlib.md5(device_fingerprint_id.encode("utf-8")).hexdigest()[:16]
         else:
             device_seed = f"{card.card_id}_{card.home_lat:.3f}"
-            if is_fraud == 1 and asn_type == "datacenter":
+            if is_fraud == 1 or (self.rng.random() < 0.05):
                 device_seed += f"_{tx_time}"
             canvas_hash = hashlib.md5(device_seed.encode("utf-8")).hexdigest()[:16]
 
