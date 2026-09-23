@@ -7,6 +7,7 @@ Loads, validates, and caches canonical banking specifications from spec/:
 - 04_adversarial_playbooks.yaml
 - 05_india_payment_rails.yaml
 - 07_export_leakage_gate.yaml
+- 08_india_calibration_targets.yaml
 """
 
 from __future__ import annotations
@@ -322,6 +323,36 @@ class TelemetryCalibrationSpec:
         return self.reference_rate_inr_per_usd if currency == "INR" else 1.0
 
 
+# ----------------------------------------------------------------------
+# 8. Calibration Targets (spec/08)
+# ----------------------------------------------------------------------
+@dataclass(frozen=True)
+class CalibrationTargetSpec:
+    """One public figure the generated stream is compared with."""
+    id: str
+    statistic: str
+    target: float
+    source: str
+    gate: bool = False
+    tolerance_relative: Optional[float] = None
+    tolerance_absolute: Optional[float] = None
+    reason_not_gated: str = ""
+
+
+@dataclass(frozen=True)
+class CalibrationProfileSpec:
+    """A dated set of calibration targets for one region."""
+    id: str
+    region: str
+    as_of: str
+    scope: str
+    fraud_prevalence: float
+    fraud_prevalence_range: Tuple[float, float]
+    demo_rate_policy: str
+    targets: Tuple[CalibrationTargetSpec, ...]
+    out_of_scope: Tuple[Dict[str, str], ...]
+
+
 class SpecRegistry:
     """Immutable, thread-safe memory container holding validated specifications."""
 
@@ -340,6 +371,7 @@ class SpecRegistry:
         circadian: Optional[CircadianDiurnalSpec] = None,
         hard_negatives: Optional[Dict[str, AuthenticHardNegativeSpec]] = None,
         telemetry: Optional[TelemetryCalibrationSpec] = None,
+        calibration_profiles: Optional[Dict[str, CalibrationProfileSpec]] = None,
     ):
         self.products = products
         self.cohorts = cohorts
@@ -354,6 +386,7 @@ class SpecRegistry:
         self.circadian = circadian
         self.hard_negatives = hard_negatives or {}
         self.telemetry = telemetry
+        self.calibration_profiles = calibration_profiles or {}
 
     def get_cohort(self, cohort_id: str) -> CohortPersonaSpec:
         """Looks up a cohort specification, handling legacy alias names."""
@@ -399,6 +432,7 @@ def load_all_specs(spec_dir: Optional[str] = None) -> SpecRegistry:
     raw_04 = _read_yaml("04_adversarial_playbooks.yaml")
     raw_05 = _read_yaml("05_india_payment_rails.yaml")
     raw_07 = _read_yaml("07_export_leakage_gate.yaml")
+    raw_08 = _read_yaml("08_india_calibration_targets.yaml")
 
     # 1. Parse 01_financial_instruments.yaml
     products: Dict[str, CardProductSpec] = {}
@@ -672,6 +706,35 @@ def load_all_specs(spec_dir: Optional[str] = None) -> SpecRegistry:
         otp_theft_cashout_mccs={int(m): float(w) for m, w in cashout.items() if isinstance(w, (int, float)) and not isinstance(w, bool)},
     )
 
+    # 8. Parse 08_india_calibration_targets.yaml
+    calibration_profiles: Dict[str, CalibrationProfileSpec] = {}
+    for prof in raw_08.get("profiles", []):
+        targets = tuple(
+            CalibrationTargetSpec(
+                id=str(t["id"]),
+                statistic=str(t.get("statistic", "")),
+                target=float(t["target"]),
+                source=str(t.get("source", "")),
+                gate=bool(t.get("gate", False)),
+                tolerance_relative=float(t["tolerance_relative"]) if "tolerance_relative" in t else None,
+                tolerance_absolute=float(t["tolerance_absolute"]) if "tolerance_absolute" in t else None,
+                reason_not_gated=str(t.get("reason_not_gated", "")),
+            )
+            for t in prof.get("targets", [])
+        )
+        rng_lo, rng_hi = prof.get("fraud_prevalence_range_2025_26", [0.0, 0.0])
+        calibration_profiles[str(prof["id"])] = CalibrationProfileSpec(
+            id=str(prof["id"]),
+            region=str(prof.get("region", "IN")).upper(),
+            as_of=str(prof.get("as_of", "")),
+            scope=str(prof.get("scope", "")).strip(),
+            fraud_prevalence=float(prof["fraud_prevalence_per_transaction"]),
+            fraud_prevalence_range=(float(rng_lo), float(rng_hi)),
+            demo_rate_policy=str(prof.get("demo_rate_policy", "")).strip(),
+            targets=targets,
+            out_of_scope=tuple({str(k): str(v) for k, v in item.items()} for item in prof.get("out_of_scope", [])),
+        )
+
     return SpecRegistry(
         products=products,
         cohorts=cohorts,
@@ -689,8 +752,10 @@ def load_all_specs(spec_dir: Optional[str] = None) -> SpecRegistry:
             "04": raw_04,
             "05": raw_05,
             "07": raw_07,
+            "08": raw_08,
         },
         circadian=circadian_spec,
         hard_negatives=hard_negatives,
         telemetry=telemetry_spec,
+        calibration_profiles=calibration_profiles,
     )
