@@ -1,0 +1,322 @@
+# spec/07_export_leakage_gate.yaml
+# Canonical Specification for the Export-Level Label Leakage Gate and Point-in-Time Telemetry Calibration
+# Grounded in: the exported institutional views (fraudx_synthesizer/cli.py AUTH_STREAM_COLUMNS and
+# GATEWAY_TELEMETRY_COLUMNS), spec/03 AVS response matrix, spec/04 ADV_MICRO_AUTH_PROBE and the Visa VAAI
+# countermeasure, spec/05 RBI AFA and card-control defaults (RBI/2019-20/142).
+#
+# Every number below is one of three things: (a) copied from another spec file or from the code it
+# replaces, (b) a gate tolerance chosen by the maintainers, or (c) a hypothesis. Hypotheses carry
+# "hypothesis: true" and name the observation that would replace them. None is presented as a fact.
+
+schema_version: "1.0.0"
+unit_definitions:
+  currency: "card currency, major units, unless the key says USD"
+  probability: "[0.0, 1.0]"
+  score: "network risk score, integer 0 to 99"
+  time: "seconds"
+
+# ----------------------------------------------------------------------------------------------
+# 1. Why the gate scores the export and not the engine records
+# ----------------------------------------------------------------------------------------------
+# A bank's detector sees the authorisation feed and the gateway telemetry joined on transaction_id and
+# nothing else. The earlier tripwires in tests/test_synthesizer/test_zero_leakage.py scored hand-picked
+# feature lists on generate_batch() records. They stayed green while the exported views of commit 2a9bbfb
+# reached PR-AUC 1.000 on a time-ordered holdout in both regions and both adversary modes: the tells lived
+# in columns the hand-picked lists never touched (vaai_score, amount, eci, response_code, is_cross_border,
+# avs_match_code) and in a fixed fallback probe amount of 3.50.
+export_leakage_gate:
+  evaluated_views: ["auth_stream", "gateway_telemetry"]
+  join_key: "transaction_id"
+  identifier_columns_excluded:
+    - "transaction_id"
+    - "card_id"
+    - "pan_masked"
+    - "stan"
+    - "rrn"
+    - "auth_code"
+    - "timestamp_utc"
+    - "tx_time_seconds"
+    - "merchant_id"
+    - "mid"
+    - "tid"
+    - "client_ip"
+    - "device_canvas_hash"
+    - "mti"
+    - "currency"
+  code_columns_treated_as_categorical:
+    - "mcc"
+    - "acquirer_bin"
+    - "response_code"
+    - "auth_response_code"
+    - "pos_entry_mode"
+    - "pos_condition_code"
+    - "eci"
+    - "trans_status_3ds"
+  derived_features:
+    hour_of_day: "floor((tx_time_seconds mod 86400) / 3600); a detector always has the clock"
+  generation:
+    n_transactions: 5000
+    n_cards: 300
+    n_merchants: 80
+    fraud_prevalence: 0.03
+    time_span_days: 30
+    seed: 42
+    regions: ["US", "IN"]
+    adversary_modes: ["intent", "playbook"]
+  evaluation:
+    split: "time ordered by tx_time_seconds"
+    train_fraction: 0.60
+    learner: "sklearn.ensemble.HistGradientBoostingClassifier"
+    learner_params: { max_iter: 200, learning_rate: 0.1, random_state: 42 }
+    categorical_encoding: "ordinal codes fitted on the training window; values unseen in training are missing"
+    single_column_score: >
+      ROC-AUC on the test window of the raw numeric column, or of the training-window fraud rate of the
+      categorical value; the larger of the score and its complement, so direction does not matter.
+  thresholds:
+    max_single_column_roc_auc: 0.95
+    model_pr_auc_ceiling: 0.97
+    model_pr_auc_floor: 0.20
+    fraud_only_value_min_support: 25
+    hypothesis: true
+    rationale: >
+      Gate tolerances, not measurements. Detectors on real card data sit well below 0.95 average precision
+      (gradient boosting on the public ULB benchmark reaches about 0.82 to 0.85; issuer figures are not
+      published). A generic learner clearing the ceiling on a synthetic export has found a shortcut. The floor
+      keeps the generator learnable: below 0.20 at 3 percent prevalence the fraud carries no usable signal. A
+      categorical value seen at least 25 times and always fraudulent is a rule, not a signal.
+    measured_2026_09_23: >
+      After sections 2 to 15, seeds 42, 7 and 99 over the four configurations gave PR-AUC 0.79 to 0.97,
+      no single column above 0.94 and no fraud-only value; commit 2a9bbfb gave 1.000 in every configuration.
+      The gate runs at seed 42, where the four configurations sit between 0.88 and 0.96. What remains is the
+      attack signature itself (card-not-present, network score, ticket size, category concentration); the
+      legitimate e-commerce mix planned for the Federal Reserve calibration slice is what would bring it down.
+
+# ----------------------------------------------------------------------------------------------
+# 2. Network risk score (the Visa Advanced Authorization style score spec/04 calls FIELD_44_VAAI)
+# ----------------------------------------------------------------------------------------------
+# spec/04 sets the network decline threshold at 75. Commit 2a9bbfb drew legitimate scores uniformly on
+# [10, 44] and card-testing probes on [55, 77]: two disjoint ranges, so the column alone identified every
+# intent-mode fraud. No issuer publishes its score distribution, so the shapes below are hypotheses. They are
+# chosen so that legitimate traffic crosses the decline threshold rarely but not never (false declines exist),
+# so that the spec/03 multi-merchant velocity rule in rails.py (three merchants in 30 minutes plus a score of 60)
+# keeps ISO 65 under 15 percent of declines (tests/test_authorization_calibration.py), and so that automated
+# card testing scores mostly, not always, above legitimate traffic.
+network_risk_score:
+  scale: [0, 99]
+  decline_threshold: 75   # spec/04 network_countermeasures.visa_vaai.threshold_decline
+  distributions:          # Beta(alpha, beta) scaled to [0, 99] and floored to an integer
+    legitimate:         { alpha: 1.5, beta: 6.0 }   # median 17, 95th percentile 46, share at or above 60 about 1 percent, at or above 75 about 0.07 percent
+    card_testing_probe: { alpha: 3.5, beta: 3.0 }   # median 53, share at or above 75 about 13 percent; ROC-AUC against legitimate about 0.92
+    balance_bisection:  { alpha: 3.5, beta: 3.5 }   # median 50
+    cash_out_harvest:   { alpha: 3.0, beta: 4.0 }   # median 42
+    bin_enumeration:    { alpha: 6.0, beta: 2.0 }   # median 77; the spec/04 PEA countermeasure fires on most attempts
+  hypothesis: true
+  replace_with: "an issuer's own score histogram by outcome, should one ever be obtained"
+
+# ----------------------------------------------------------------------------------------------
+# 3. Probe and attack amounts
+# ----------------------------------------------------------------------------------------------
+# The intent optimiser (fraudx_synthesizer/intent.py) reasons in US dollars: acquisition cost, proxy cost and
+# its amount ladder are all USD. Commit 2a9bbfb fed it INR balances unconverted and, when no action survived
+# pruning, fell back to a fixed 3.50 in whatever currency the card carried. Every Indian intent-mode fraud was
+# a 3.50 INR probe.
+attack_amounts:
+  optimizer_unit: "USD"
+  reference_rate_inr_per_usd: 83.5     # the constant fraudx_synthesizer/agents.py already uses for IN_ADV_INTL_NON_3DS_BYPASS
+  reference_rate_hypothesis: true      # replace with the RBI reference rate of the simulated date
+  micro_probe_ticket_range_usd: [0.50, 1.99]   # spec/04 ADV_MICRO_AUTH_PROBE ticket_size_range_cents
+  mimicry_probe_ticket_range_usd: [3.50, 18.50]   # the band the playbook adversary already uses when mimicking a real purchase (agents.py); drawn with probability adversary_mimicry
+  ladder_jitter_fraction: 0.15         # a ladder point is the optimiser's target; the merchant's price is not round
+  jitter_hypothesis: true
+  probe_for_indian_cards:
+    # spec/05 IN_ADV_INTL_NON_3DS_BYPASS: domestic CNP requires AFA, so card testing on Indian cards happens at
+    # foreign non-3DS merchants when the card has international usage enabled (RBI/2019-20/142 leaves it disabled
+    # by default). Cards without it are probed domestically and fail AFA, as they do in practice.
+    route_cross_border_when_international_enabled: true
+
+# ----------------------------------------------------------------------------------------------
+# 4. Authentication outcomes on legitimate traffic
+# ----------------------------------------------------------------------------------------------
+# Commit 2a9bbfb had every legitimate cardholder submit the OTP and pass every 3DS challenge. ISO 63 with
+# ECI 07 was therefore fraud-only in both regions. Cardholders mistype and abandon; the issuer sees a share of
+# those as failed AFA.
+legitimate_authentication_failure:
+  # India: every domestic CNP authorisation is an OTP challenge (spec/05 STRICT_100_PERCENT), so the failure
+  # share applies to all of them. US: the ACS challenges a share of frictionless-eligible traffic on top of the
+  # risk-based step-up in rails.py, and the cardholder fails a share of those challenges.
+  challenge_share_of_frictionless_eligible:
+    IN: 0.0
+    US: 0.12
+  failure_share_when_challenged:
+    IN: 0.05
+    US: 0.20
+  hypothesis: true
+  note: >
+    Indian payment processors publish card-OTP success rates in the 80 to 90 percent band; most of the gap is
+    customer drop-off before the OTP reaches the issuer, and the issuer-side failure share is not published.
+    EMVCo 3DS 2 challenge rates and challenge abandonment for US issuers are likewise unpublished.
+
+# ----------------------------------------------------------------------------------------------
+# 5. Cross-border card-not-present purchases by legitimate cardholders
+# ----------------------------------------------------------------------------------------------
+# Legitimate cross-border rows existed only inside travel episodes, all card-present. Every cross-border CNP row
+# was IN_ADV_INTL_NON_3DS_BYPASS. Cardholders with international usage enabled also buy from foreign merchants
+# online from home (app stores, subscriptions, foreign retail).
+legitimate_cross_border_cnp:
+  share_of_cnp_on_international_enabled_cards:
+    IN: 0.10
+    US: 0.06
+  hypothesis: true
+  note: >
+    RBI's monthly card statistics split credit-card e-commerce value into domestic and international; the shares
+    above should be replaced by that split once read from the table.
+
+# ----------------------------------------------------------------------------------------------
+# 6. AVS 'U' is a property of the merchant, not of the label
+# ----------------------------------------------------------------------------------------------
+# spec/03 defines U as UNAVAILABLE_INTERNATIONAL. Commit 2a9bbfb drew U for 8 percent of fraud and never for
+# legitimate traffic. It is now emitted for cross-border CNP traffic of either class.
+avs_unavailable_international:
+  probability_when_cross_border_cnp: 0.85
+  hypothesis: true
+  fraud_avs_draw_without_u: { Y: 0.38, Z: 0.38, N: 0.24 }   # the 2a9bbfb weights renormalised after removing U
+  legitimate_avs_draw: { Y: 0.86, Z: 0.06, A: 0.05, N: 0.03 }
+  # 2a9bbfb drew Z for 1 percent of legitimate traffic, which made the spec/04 AVS Z bypass a near-rule.
+  # Partial matches on legitimate orders come from apartment numbers, PO boxes and address formatting;
+  # the weights are a hypothesis to be replaced by a gateway's AVS response mix.
+  note: "AVS is not offered domestically in India; modelling that fully is an open item outside this slice."
+
+# ----------------------------------------------------------------------------------------------
+# 7. Stolen-OTP capability of intent-mode dossiers on Indian cards
+# ----------------------------------------------------------------------------------------------
+# The Indian playbook mix in fraudx_synthesizer/agents.py gives the OTP-stealing playbooks (reverse-proxy vishing,
+# APK SMS stealer, rent-portal cash-out; all three submit the OTP) a combined weight of 0.70. Intent-mode dossiers
+# on Indian cards carry a live OTP with that probability, so intent-mode fraud on Indian cards is not reduced to
+# AFA failures.
+indian_intent_dossier:
+  probability_live_otp: 0.70
+  source: "fraudx_synthesizer/agents.py select_attack_playbook, region IN playbook_weights 0.30 + 0.25 + 0.15"
+
+# ----------------------------------------------------------------------------------------------
+# 8. Legitimate quasi-cash purchases
+# ----------------------------------------------------------------------------------------------
+# The merchant pool (fraudx_synthesizer/world.py) carries MCC 6051 at 1 percent of merchants, but only
+# IN_ADV_REVERSE_PROXY_VISHING ever routed a transaction there, so the value was fraud-only in the export.
+# ISO 18245 MCC 6051 covers foreign-currency purchases, money orders and non-fiat currency; cardholders buy
+# foreign currency and reload forex cards before travel.
+legitimate_uncovered_mccs:
+  # share of routine legitimate transactions redirected to each MCC, by region
+  6051: { IN: 0.01, US: 0.01 }    # foreign currency, money orders, non-fiat currency
+  6513: { IN: 0.02, US: 0.01 }    # rent portals: card-funded rent is a mainstream Indian product, which is why the cash-out playbook uses it
+  8398: { IN: 0.005, US: 0.005 }  # charitable giving by card, which is why card testers probe there
+  hypothesis: true
+  note: "replace with the share of card spend at each MCC in an issuer's MCC mix; RBI publishes no MCC split"
+
+# ----------------------------------------------------------------------------------------------
+# 9. Legitimate micro-tickets
+# ----------------------------------------------------------------------------------------------
+# The cohort spend distributions (spec/02) are lognormal and clipped at 1.50 USD or 10 INR, so they put almost
+# no mass where card-testing probes live. Real card portfolios do: transit fares, vending, parking meters,
+# canteens and, in India, small UPI-sized tickets on cards. Card-present only: the spec/03 multi-merchant
+# velocity rule in rails.py reads small tickets across several online merchants as card testing, and the
+# legitimate rate of that online pattern is unknown, so it is not synthesised.
+legitimate_micro_tickets:
+  channels: "card-present only"
+  share_of_routine_transactions:
+    IN: 0.03
+    US: 0.03
+  ticket_range_by_currency:
+    USD: [0.50, 4.99]
+    INR: [10.0, 199.0]
+  hypothesis: true
+  note: >
+    replace with the share of card payments under 5 USD in the Federal Reserve Diary of Consumer Payment Choice,
+    and with the small-ticket share of Indian card spend, neither of which this slice has read.
+
+# ----------------------------------------------------------------------------------------------
+# 10. Validated cards are followed up
+# ----------------------------------------------------------------------------------------------
+# 2a9bbfb picked the next attacked card uniformly at random, so with hundreds of cards and tens of attacks a
+# validated card was almost never revisited: 93 of 95 intent-mode frauds were first-contact probes and the
+# cash-out the probe exists for never happened. spec/04 ADV_MICRO_AUTH_PROBE response_handling says what
+# follows an approval: PROMOTE_TO_HIGH_TICKET_CASHOUT.
+validated_card_follow_up:
+  probability_next_attack_targets_validated_card: 0.40
+  hypothesis: true
+  note: >
+    The share of an operator's attempts spent cashing out validated cards versus probing new ones is not
+    published. Every approved playbook attack promotes its card, so a higher value pushes the playbook mix
+    towards account-takeover cash-outs; at 0.70 and 0.50 that failed the syndicate-diversity falsification
+    test (tests/test_syndicate_ecology_graph.py, 1.6 bits at seed 42), at 0.40 it gives 1.74 bits against
+    1.73 on 2a9bbfb.
+
+# ----------------------------------------------------------------------------------------------
+# 11. Credential completeness drives verification telemetry
+# ----------------------------------------------------------------------------------------------
+# spec/06 credential_dossier_tiers: a TIER_CNP_FULLZ record carries cvv2, cardholder_name and billing_zip, so
+# an attack driven by one passes AVS and CVV like the cardholder would. 2a9bbfb drew AVS, CVV and billing
+# outcomes from a mismatch-heavy distribution for every fraud row regardless of what the attacker held.
+# Attacks that hold the full record, or the account itself, now draw those three fields from the legitimate
+# distribution; attacks that hold only a PAN keep the mismatch-heavy draw.
+credential_completeness:
+  full_record_dossier_tiers: ["TIER_CNP_FULLZ", "TIER_SESSION_COOKIE_BUNDLE", "TIER_PHISHED_OTP_STREAM", "TIER_APP_DEVICE_TOKEN"]
+  full_record_playbooks:
+    - "ADV_ATO_SILENT_BAKING"          # account takeover: the account itself
+    - "ADV_SLEEPER_BUST_OUT"           # synthetic identity: the attacker is the cardholder of record
+    - "ADV_APPLE_PAY_YELLOW_PATH"      # provisioned token, card-present
+    - "ADV_TRIANGULATION_FRAUD"        # the real customer's order details
+    - "IN_ADV_REVERSE_PROXY_VISHING"   # victim supplies everything, including the OTP
+    - "IN_ADV_APK_SMS_STEALER"         # device-resident malware with the OTP stream
+    - "IN_ADV_RENT_PORTAL_CASHOUT"     # cardholder details plus OTP
+    - "IN_ADV_INTL_NON_3DS_BYPASS"     # fullz at a foreign non-3DS merchant
+  partial_record_playbooks: ["ADV_MICRO_AUTH_PROBE", "ADV_DISTRIBUTED_BIN_ENUMERATION", "ADV_NOCTURNAL_BURST"]
+
+# ----------------------------------------------------------------------------------------------
+# 12. Distance between a legitimate cardholder's IP geolocation and home
+# ----------------------------------------------------------------------------------------------
+# 2a9bbfb drew it uniformly on [1.8, 22] km for web and [8, 75] km for mobile. IP geolocation is city-level and
+# noisy (a home broadband address often resolves to the provider's hub tens of kilometres away), so the
+# distance has a long right tail; the hard edge at 22 km made everything beyond it a fraud rule for web traffic.
+legitimate_ip_distance_km:
+  model: "LogNormal"
+  by_channel:
+    CNP_WEB:    { median_km: 12.0, sigma_log: 0.9 }   # 95th percentile about 52 km
+    CNP_MOBILE: { median_km: 20.0, sigma_log: 1.0 }   # 95th percentile about 100 km
+  hypothesis: true
+  note: "replace with a geolocation provider's published accuracy distribution for the market"
+
+# ----------------------------------------------------------------------------------------------
+# 13. Cash-out merchant mix for OTP-theft fraud on Indian cards
+# ----------------------------------------------------------------------------------------------
+# 2a9bbfb sent every vishing cash-out to MCC 6051 and every APK-stealer cash-out to MCC 6513, so those two
+# values carried most of the Indian fraud. An attacker holding a live OTP buys whatever converts to cash:
+# quasi-cash, electronics, gold, department-store goods.
+otp_theft_cashout_mccs:
+  6051: 0.35   # quasi-cash, foreign currency, non-fiat currency
+  5732: 0.30   # consumer electronics
+  5944: 0.20   # jewellery and gold
+  5311: 0.15   # department stores
+  hypothesis: true
+  note: "replace with the MCC mix of confirmed OTP-fraud chargebacks, which no Indian issuer publishes"
+
+# ----------------------------------------------------------------------------------------------
+# 14. Mimicry extends to the merchant
+# ----------------------------------------------------------------------------------------------
+# The adversary already mimics on amount, proxy placement and ASN with probability adversary_mimicry (0.55 in
+# fraudx_synthesizer/engine.py). It never mimicked on merchant category: every intent-mode cash-out went to
+# consumer electronics (the optimiser's best haircut) and every vishing cash-out to one MCC, so category alone
+# carried the label. A mimicking attacker holding full credentials now buys in the categories the cardholder
+# normally uses (CohortPersonaSpec.dominant_mccs); a non-mimicking one keeps the cash-out mix.
+merchant_mimicry:
+  applies_to: ["INTENT_OMEGA_HARVEST", "INTENT_OMEGA_BISECT_DRAIN", "ADV_ATO_SILENT_BAKING", "IN_ADV_REVERSE_PROXY_VISHING", "IN_ADV_APK_SMS_STEALER"]
+  probability: "adversary_mimicry, the existing engine parameter"
+
+# ----------------------------------------------------------------------------------------------
+# 15. Reproducibility
+# ----------------------------------------------------------------------------------------------
+# generate_batch() staggered payroll and statement dates with Python's hash() of the card id, which is salted
+# per process (PYTHONHASHSEED), so two runs with the same seed differed across processes and the gate's numbers
+# moved by several points between runs. Card ids are now hashed with CRC-32.
+reproducibility:
+  card_id_hash: "zlib.crc32"
+

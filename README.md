@@ -298,6 +298,7 @@ Certifies:
 * Closed-loop multi-agent feedback (ISO 51 amount decay, 3DS gateway hopping, card freezes).
 * Strict global temporal monotonicity under concurrent microsecond arrivals.
 * Zero deterministic target label leakage in AVS and billing/shipping fields.
+* Export-level leakage gate: the authorisation feed joined to the gateway telemetry, written and read back as the CLI exports them, is scored by a gradient-boosted learner on a time-ordered split in both regions and both adversary modes. No single column above 0.95 ROC-AUC, no categorical value that is fraud-only, PR-AUC between 0.20 and 0.97 (`spec/07_export_leakage_gate.yaml`).
 * Dual-region institutional schema conformance (USD cents vs. INR paisa, ISO 8583 syntax, MTI 0200 clearing presentment, Visa CE 3.0 deflection, RBI limited liability tiers).
 * Diurnal Poisson arrival thinning (< 4.5% nocturnal trough, > 70% diurnal peak).
 * Multi-stop shopping trip clustering with short inter-arrival delays ($c_v > 1.40$).

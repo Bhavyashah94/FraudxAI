@@ -16,6 +16,10 @@ current_slice:
     - anti_leak_tripwires_and_full_test_suite_remain_100_percent_green: false
 
 previous_slices:
+  - id: "slice-15-export-level-leakage-gate"
+    title: "Export-Level Label Leakage Gate & Point-in-Time Telemetry Calibration (spec/07)"
+    status: "in_review"
+    verdict: "PR open: exported views scored by a generic learner on a time-ordered split, PR-AUC 0.82 to 0.965 across seeds, regions and adversary modes (2a9bbfb: 1.000); no fraud-only value; no single column above 0.90"
   - id: "slice-13-payment-rail-authorization-calibration"
     title: "Payment Rail Authorization Calibration, Channel-Differentiated Velocity & Single Switch Unification"
     status: "verified"

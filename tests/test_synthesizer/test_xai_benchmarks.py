@@ -109,3 +109,15 @@ def test_xai_benchmark_harness_execution():
     assert -1.0 <= summary.mean_cosine_similarity <= 1.0
     assert 0.0 <= summary.mean_precision_at_3 <= 1.0
     assert 0.0 <= summary.auc_roc <= 1.0
+
+
+def test_random_forest_benchmark_runs():
+    """The RandomForest path must survive SHAP returning one array of shape (n, d, 2) for a binary forest."""
+    pytest.importorskip("shap")
+    from fraudx_synthesizer import XAIBenchmarkHarness
+
+    harness = XAIBenchmarkHarness(n_transactions=300, fraud_prevalence=0.08, region="US", seed=11)
+    summary = harness.run_benchmark(model_type="rf")
+    assert summary.model_name == "rf"
+    assert summary.n_evaluated_samples > 0
+    assert 0.0 <= summary.pr_auc <= 1.0

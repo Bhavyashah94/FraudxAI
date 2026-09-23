@@ -22,6 +22,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 
 from .agents import CardholderProfile, ISO8583Response
+from .spec_loader import load_all_specs
 
 
 @dataclass
@@ -87,6 +88,7 @@ class RailVerifierSwitch:
     def __init__(self, region: str = "US", seed: int = 42):
         self.region = region.upper()
         self.rng = np.random.default_rng(seed)
+        self.telemetry = load_all_specs().telemetry
 
     def verify_intent(
         self,
@@ -323,8 +325,9 @@ class RailVerifierSwitch:
                 hop_origin="ISSUER_HOST",
             )
 
-        # 9. VAAI Network Intelligence Check
-        if intent.vaai_score >= 75:
+        # 9. VAAI Network Intelligence Check. A verified EMV cryptogram keeps hardware primacy (step 3):
+        # the network score does not override an ARQC the issuer's HSM has validated.
+        if intent.vaai_score >= self.telemetry.network_decline_threshold and not is_verified_hardware_crypto:
             return RailVerificationResult(
                 approved=False,
                 iso_response_code=ISO8583Response.SUSPECTED_FRAUD_59.value,
@@ -367,6 +370,23 @@ class RailVerifierSwitch:
                 elif intent.risk_score < 0.08 and intent.amount < 100.0:
                     trans_status_3ds = "Y"
                     eci = "05"  # TRA Exemption
+                elif self.rng.random() < self.telemetry.legit_challenge_share.get(self.region, 0.0):
+                    # spec/07 section 4: the ACS challenges a share of frictionless-eligible traffic
+                    if not intent.otp_submitted:
+                        return RailVerificationResult(
+                            approved=False,
+                            iso_response_code=ISO8583Response.SECURITY_VIOLATION_63.value,
+                            approved_amount=0.0,
+                            trans_status_3ds="N",
+                            eci="07",
+                            auth_code="",
+                            decline_reason="3DS_CHALLENGE_FAILED_OR_BYPASSED",
+                            pos_entry_mode=pos_entry,
+                            pos_condition_code=pos_condition,
+                            hop_origin="ACS_3DS",
+                        )
+                    trans_status_3ds = "C"
+                    eci = "05"
                 elif intent.risk_score < 0.45:
                     trans_status_3ds = "Y"
                     eci = "05"  # Frictionless
