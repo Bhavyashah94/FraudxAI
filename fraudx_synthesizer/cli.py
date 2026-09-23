@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 
 from .engine import SimulationEngine
+from .spec_loader import load_all_specs
 
 
 AUTH_STREAM_COLUMNS = [
@@ -142,6 +143,18 @@ def cmd_generate(args: argparse.Namespace) -> None:
         )
         return
 
+    profile = None
+    if getattr(args, "calibration", None):
+        profile = load_all_specs().calibration_profiles[args.calibration]
+        if profile.region != args.region.upper():
+            print(
+                f"Calibration profile {args.calibration} is for region {profile.region}; run with --region {profile.region}.",
+                file=sys.stderr,
+            )
+            sys.exit(2)
+    # The registry rate when calibrated, the historical default otherwise; an explicit --fraud-rate wins and is reported as a boost.
+    fraud_rate = args.fraud_rate if args.fraud_rate is not None else (profile.fraud_prevalence if profile else 0.02)
+
     engine = SimulationEngine(
         n_cards=args.cards,
         n_merchants=args.merchants,
@@ -150,12 +163,12 @@ def cmd_generate(args: argparse.Namespace) -> None:
         seed=args.seed,
     )
     print(
-        f"Synthesizing {args.n} transactions ({args.region}, adversary_mode={args.adversary_mode})...",
+        f"Synthesizing {args.n} transactions ({args.region}, adversary_mode={args.adversary_mode}, fraud_rate={fraud_rate:.3g})...",
         file=sys.stderr,
     )
     records = engine.generate_batch(
         n_transactions=args.n,
-        fraud_prevalence=args.fraud_rate,
+        fraud_prevalence=fraud_rate,
         time_span_days=args.days,
     )
 
@@ -203,6 +216,16 @@ def cmd_generate(args: argparse.Namespace) -> None:
         for path, cols, label in views:
             _export_csv_view(path, records, cols)
             print(f"Exported {label} -> {path}", file=sys.stderr)
+
+    if profile is not None and records:
+        from .calibration import calibration_report, format_report
+
+        report = calibration_report(records, profile_id=profile.id, requested_fraud_prevalence=fraud_rate)
+        report_path = out_path.parent / f"{out_path.stem}_calibration.json"
+        with open(report_path, "w", encoding="utf-8") as f:
+            json.dump(report, f, indent=2)
+        print(format_report(report), file=sys.stderr)
+        print(f"Calibration report -> {report_path}", file=sys.stderr)
 
 
 def cmd_benchmark(args: argparse.Namespace) -> None:
@@ -315,7 +338,7 @@ def main() -> None:
     p_gen.add_argument("-c", "--cards", type=int, default=1000, help="Number of simulated cardholders")
     p_gen.add_argument("-m", "--merchants", type=int, default=150, help="Number of simulated merchants")
     p_gen.add_argument("--region", type=str, choices=["US", "IN"], default="US", help="Geographic banking ecosystem: US (USD dual-message) or IN (INR RBI AFA/RuPay/CoFT)")
-    p_gen.add_argument("--fraud-rate", type=float, default=0.02, help="Fraud prevalence ratio")
+    p_gen.add_argument("--fraud-rate", type=float, default=None, help="Fraud prevalence ratio (default 0.02; with --calibration, the registry rate of the profile, and an explicit value is reported as a demo boost)")
     p_gen.add_argument("--days", type=int, default=30, help="Simulation duration in days")
     p_gen.add_argument("--seed", type=int, default=42, help="Deterministic random seed")
     p_gen.add_argument("-o", "--output", type=str, default="synthetic_transactions.csv", help="Output file (.csv, .json, .jsonl) or directory for parallel runs")
@@ -325,6 +348,7 @@ def main() -> None:
     p_gen.add_argument("--include-disputes", action="store_true", default=False, help="Include post-authorization dispute and chargeback lifecycle columns in master output")
     p_gen.add_argument("--adversary-mode", type=str, choices=["intent", "playbook"], default="intent", help="Adversary decision architecture: 'intent' (first-principles POMDP/IDS) or 'playbook' (legacy static rules)")
     p_gen.add_argument("--export-institutional-views", action="store_true", default=False, help="Export partitioned institutional banking warehouse feeds")
+    p_gen.add_argument("--calibration", type=str, choices=sorted(load_all_specs().calibration_profiles), default=None, help="Run at the fraud prevalence of a published calibration profile and write <output>_calibration.json comparing the batch with its targets (spec/08)")
     p_gen.set_defaults(func=cmd_generate)
 
     # Benchmark subcommand
