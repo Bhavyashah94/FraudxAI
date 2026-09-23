@@ -6,6 +6,7 @@ Loads, validates, and caches canonical banking specifications from spec/:
 - 03_payment_rail_gaps.yaml
 - 04_adversarial_playbooks.yaml
 - 05_india_payment_rails.yaml
+- 07_export_leakage_gate.yaml
 """
 
 from __future__ import annotations
@@ -287,6 +288,40 @@ class AuthenticHardNegativeSpec:
 # ----------------------------------------------------------------------
 # Master Unified Specification Registry
 # ----------------------------------------------------------------------
+# ----------------------------------------------------------------------
+# 7. Point-in-Time Telemetry Calibration (spec/07)
+# ----------------------------------------------------------------------
+@dataclass(frozen=True)
+class TelemetryCalibrationSpec:
+    """Class-conditional telemetry parameters that keep the exported views free of label shortcuts."""
+    network_risk_score_shapes: Dict[str, Tuple[float, float]]
+    network_decline_threshold: int
+    reference_rate_inr_per_usd: float
+    micro_probe_ticket_range_usd: Tuple[float, float]
+    mimicry_probe_ticket_range_usd: Tuple[float, float]
+    ladder_jitter_fraction: float
+    route_indian_probes_cross_border: bool
+    legit_afa_failure_share: Dict[str, float]
+    legit_challenge_share: Dict[str, float]
+    legit_cross_border_cnp_share: Dict[str, float]
+    avs_unavailable_probability_cross_border: float
+    fraud_avs_weights: Dict[str, float]
+    legit_avs_weights: Dict[str, float]
+    validated_card_follow_up_probability: float
+    full_record_dossier_tiers: Tuple[str, ...]
+    full_record_playbooks: Tuple[str, ...]
+    indian_intent_live_otp_probability: float
+    legit_uncovered_mcc_share: Dict[int, Dict[str, float]]
+    legit_micro_ticket_share: Dict[str, float]
+    legit_micro_ticket_range: Dict[str, Tuple[float, float]]
+    legit_ip_distance_lognormal: Dict[str, Tuple[float, float]]
+    otp_theft_cashout_mccs: Dict[int, float]
+
+    def usd_rate(self, currency: str) -> float:
+        """Card-currency units per US dollar."""
+        return self.reference_rate_inr_per_usd if currency == "INR" else 1.0
+
+
 class SpecRegistry:
     """Immutable, thread-safe memory container holding validated specifications."""
 
@@ -304,6 +339,7 @@ class SpecRegistry:
         raw_specs: Dict[str, Dict[str, Any]],
         circadian: Optional[CircadianDiurnalSpec] = None,
         hard_negatives: Optional[Dict[str, AuthenticHardNegativeSpec]] = None,
+        telemetry: Optional[TelemetryCalibrationSpec] = None,
     ):
         self.products = products
         self.cohorts = cohorts
@@ -317,6 +353,7 @@ class SpecRegistry:
         self.raw_specs = raw_specs
         self.circadian = circadian
         self.hard_negatives = hard_negatives or {}
+        self.telemetry = telemetry
 
     def get_cohort(self, cohort_id: str) -> CohortPersonaSpec:
         """Looks up a cohort specification, handling legacy alias names."""
@@ -361,6 +398,7 @@ def load_all_specs(spec_dir: Optional[str] = None) -> SpecRegistry:
     raw_03 = _read_yaml("03_payment_rail_gaps.yaml")
     raw_04 = _read_yaml("04_adversarial_playbooks.yaml")
     raw_05 = _read_yaml("05_india_payment_rails.yaml")
+    raw_07 = _read_yaml("07_export_leakage_gate.yaml")
 
     # 1. Parse 01_financial_instruments.yaml
     products: Dict[str, CardProductSpec] = {}
@@ -580,6 +618,60 @@ def load_all_specs(spec_dir: Optional[str] = None) -> SpecRegistry:
             ground_truth_discriminators=dict(hn_raw.get("ground_truth_discriminators", {})),
         )
 
+    # 7. Parse 07_export_leakage_gate.yaml
+    nrs = raw_07.get("network_risk_score", {})
+    amounts = raw_07.get("attack_amounts", {})
+    afa_fail = raw_07.get("legitimate_authentication_failure", {})
+    xb_cnp = raw_07.get("legitimate_cross_border_cnp", {})
+    avs_u = raw_07.get("avs_unavailable_international", {})
+    in_dossier = raw_07.get("indian_intent_dossier", {})
+    uncovered = raw_07.get("legitimate_uncovered_mccs", {})
+    follow_up = raw_07.get("validated_card_follow_up", {})
+    completeness = raw_07.get("credential_completeness", {})
+    micro = raw_07.get("legitimate_micro_tickets", {})
+    ip_dist = raw_07.get("legitimate_ip_distance_km", {})
+    cashout = raw_07.get("otp_theft_cashout_mccs", {})
+    probe_range = amounts.get("micro_probe_ticket_range_usd", [0.50, 1.99])
+    mimicry_range = amounts.get("mimicry_probe_ticket_range_usd", [3.50, 18.50])
+    telemetry_spec = TelemetryCalibrationSpec(
+        network_risk_score_shapes={
+            str(k): (float(v["alpha"]), float(v["beta"])) for k, v in nrs.get("distributions", {}).items()
+        },
+        network_decline_threshold=int(nrs.get("decline_threshold", 75)),
+        reference_rate_inr_per_usd=float(amounts.get("reference_rate_inr_per_usd", 83.5)),
+        micro_probe_ticket_range_usd=(float(probe_range[0]), float(probe_range[1])),
+        mimicry_probe_ticket_range_usd=(float(mimicry_range[0]), float(mimicry_range[1])),
+        ladder_jitter_fraction=float(amounts.get("ladder_jitter_fraction", 0.0)),
+        route_indian_probes_cross_border=bool(
+            amounts.get("probe_for_indian_cards", {}).get("route_cross_border_when_international_enabled", True)
+        ),
+        legit_afa_failure_share={str(k): float(v) for k, v in afa_fail.get("failure_share_when_challenged", {}).items()},
+        legit_challenge_share={str(k): float(v) for k, v in afa_fail.get("challenge_share_of_frictionless_eligible", {}).items()},
+        legit_cross_border_cnp_share={
+            str(k): float(v) for k, v in xb_cnp.get("share_of_cnp_on_international_enabled_cards", {}).items()
+        },
+        avs_unavailable_probability_cross_border=float(avs_u.get("probability_when_cross_border_cnp", 0.0)),
+        fraud_avs_weights={str(k): float(v) for k, v in avs_u.get("fraud_avs_draw_without_u", {}).items()},
+        legit_avs_weights={str(k): float(v) for k, v in avs_u.get("legitimate_avs_draw", {"Y": 0.92, "N": 0.05, "A": 0.02, "Z": 0.01}).items()},
+        validated_card_follow_up_probability=float(follow_up.get("probability_next_attack_targets_validated_card", 0.0)),
+        full_record_dossier_tiers=tuple(str(t) for t in completeness.get("full_record_dossier_tiers", [])),
+        full_record_playbooks=tuple(str(p) for p in completeness.get("full_record_playbooks", [])),
+        indian_intent_live_otp_probability=float(in_dossier.get("probability_live_otp", 0.0)),
+        legit_uncovered_mcc_share={
+            int(mcc): {str(r): float(v) for r, v in shares.items()}
+            for mcc, shares in uncovered.items()
+            if isinstance(shares, dict)
+        },
+        legit_micro_ticket_share={str(k): float(v) for k, v in micro.get("share_of_routine_transactions", {}).items()},
+        legit_micro_ticket_range={
+            str(c): (float(r[0]), float(r[1])) for c, r in micro.get("ticket_range_by_currency", {}).items()
+        },
+        legit_ip_distance_lognormal={
+            str(ch): (float(p["median_km"]), float(p["sigma_log"])) for ch, p in ip_dist.get("by_channel", {}).items()
+        },
+        otp_theft_cashout_mccs={int(m): float(w) for m, w in cashout.items() if isinstance(w, (int, float)) and not isinstance(w, bool)},
+    )
+
     return SpecRegistry(
         products=products,
         cohorts=cohorts,
@@ -596,7 +688,9 @@ def load_all_specs(spec_dir: Optional[str] = None) -> SpecRegistry:
             "03": raw_03,
             "04": raw_04,
             "05": raw_05,
+            "07": raw_07,
         },
         circadian=circadian_spec,
         hard_negatives=hard_negatives,
+        telemetry=telemetry_spec,
     )

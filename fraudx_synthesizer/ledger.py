@@ -21,6 +21,7 @@ import numpy as np
 
 from .agents import CardholderProfile, ChannelType
 from .invariants import haversine_distance_km
+from .spec_loader import load_all_specs
 
 
 class WelfordAccumulator:
@@ -94,6 +95,7 @@ class StreamingLedger:
     def __init__(self, seed: int = 42):
         self.rng = np.random.default_rng(seed)
         self.card_states: Dict[str, CardholderLedgerState] = {}
+        self.telemetry = load_all_specs().telemetry
         self.double_entry = DoubleEntryWorldLedger()
 
     def get_or_create_state(self, card: CardholderProfile) -> CardholderLedgerState:
@@ -161,8 +163,13 @@ class StreamingLedger:
         beneficiary_account_id: str = "",
         ip_subnet_prefix: str = "",
         device_fingerprint_id: str = "",
+        credentials_complete: bool = False,
     ) -> Dict[str, Any]:
-        """Enriches raw transaction parameters into full institutional telemetry record."""
+        """Enriches raw transaction parameters into full institutional telemetry record.
+
+        credentials_complete: the attacker holds the full cardholder record (spec/07 section 11), so
+        AVS, CVV and billing outcomes follow the legitimate distribution.
+        """
         state = self.get_or_create_state(card)
 
         # 1. Prune expired entries from rolling windows prior to computing features
@@ -216,23 +223,30 @@ class StreamingLedger:
             geo_risk_score = 0
             client_ip = "127.0.0.1"
         else:
+            legit_like = (is_fraud == 0) or credentials_complete
             if override_cvv_match is not None:
                 cvv_match_flag = override_cvv_match
             else:
-                cvv_match_flag = 1 if (self.rng.random() < 0.98 if is_fraud == 0 else self.rng.random() < 0.82) else 0
+                cvv_match_flag = 1 if (self.rng.random() < 0.98 if legit_like else self.rng.random() < 0.82) else 0
 
             if override_avs_code is not None:
                 avs_match_code = override_avs_code
+            elif is_cross_border and self.rng.random() < self.telemetry.avs_unavailable_probability_cross_border:
+                # spec/03 U = UNAVAILABLE_INTERNATIONAL: a property of the merchant, not of the label (spec/07 section 6)
+                avs_match_code = "U"
+            elif legit_like:
+                codes = list(self.telemetry.legit_avs_weights.keys())
+                weights = np.array([self.telemetry.legit_avs_weights[c] for c in codes], dtype=float)
+                avs_match_code = str(self.rng.choice(codes, p=weights / weights.sum()))
             else:
-                if is_fraud == 0:
-                    avs_match_code = str(self.rng.choice(["Y", "N", "A", "Z"], p=[0.92, 0.05, 0.02, 0.01]))
-                else:
-                    avs_match_code = str(self.rng.choice(["Y", "Z", "N", "U"], p=[0.35, 0.35, 0.22, 0.08]))
+                codes = list(self.telemetry.fraud_avs_weights.keys())
+                weights = np.array([self.telemetry.fraud_avs_weights[c] for c in codes], dtype=float)
+                avs_match_code = str(self.rng.choice(codes, p=weights / weights.sum()))
 
             if override_billing_match is not None:
                 billing_shipping_match = override_billing_match
             else:
-                billing_shipping_match = 1 if (self.rng.random() < 0.93 if is_fraud == 0 else self.rng.random() < 0.60) else 0
+                billing_shipping_match = 1 if (self.rng.random() < 0.93 if legit_like else self.rng.random() < 0.60) else 0
 
             # 5-way Geolocation mismatch score from spec/03 (independent of target label)
             geo_risk_score = 0
