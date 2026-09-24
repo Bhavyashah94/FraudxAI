@@ -11,6 +11,9 @@ To eliminate the gap between high-level research and executable reality, all dom
 - `02_human_personas.yaml`: Human lifestyle archetypes, circadian rhythms, notification fatigue, discovery latencies, and life quirks.
 - `03_payment_rail_gaps.yaml`: Payment plumbing details (ISO 8583 codes, STIP, AVS, 3DS exemptions, dual-message settlement).
 - `04_adversarial_playbooks.yaml`: Cybercrime playbooks (card testing, ATO baking, bust-out, BIN attacks, amount decay).
+- `05_india_payment_rails.yaml`: RBI AFA and card-control defaults, RuPay on UPI, limited-liability tiers, CFCFRMS 1930 race, Indian playbooks.
+- `07_export_leakage_gate.yaml`: The export-level label leakage gate (what a bank's detector may recover from the auth feed plus gateway telemetry) and the class-conditional telemetry calibration behind it; every number is sourced, a gate tolerance, or a flagged hypothesis.
+- `08_india_calibration_targets.yaml`: Dated calibration profiles for the Indian card stream (RBI PSI fraud prevalence and ticket sizes, RBI discussion-paper value concentration), each target sourced and either gated or reported with the reason; what is out of scope (UPI, IMPS, PPI) is written down.
 
 ## Rules of Engagement
 1. **Never write code without a spec.**

@@ -172,6 +172,20 @@ python -m fraudx_synthesizer.cli generate \
     --export-institutional-views
 ```
 
+### Calibrated India mode
+
+`--calibration rbi-psi-2026-07` runs the Indian card stream at the fraud prevalence the RBI's Central Payments Fraud Information Registry reported for July 2026 (one fraud in every 80,847 transactions) and writes `<output>_calibration.json` next to the export, comparing the batch with the public targets in `spec/08_india_calibration_targets.yaml`: mean credit-card ticket (gated against RBI's payment-modes table), the fraud-value concentration thresholds of the RBI discussion paper of 9 April 2026, and the registry's fraud rate and fraud-to-sales ratio (reported, since they scale with the requested rate).
+
+```bash
+# registry rate: 5,000 rows hold 0.06 expected frauds, and the report says so
+python -m fraudx_synthesizer.cli generate -n 5000 --region IN --calibration rbi-psi-2026-07 -o data/calibrated_in.csv
+
+# demo rate: the report records the requested rate and the boost factor (3 percent is about 2,400 times the registry rate)
+python -m fraudx_synthesizer.cli generate -n 5000 --region IN --calibration rbi-psi-2026-07 --fraud-rate 0.03 -o data/demo_in.csv
+```
+
+Every target in the profile carries its source. Targets that the public figure cannot support for a card-only stream (the CPFIR average covers every payment system; the discussion paper's value concentration is dominated by authorised push payments on UPI) are reported next to their observed value with the reason they are not gated. UPI, IMPS and PPI figures are listed as out of scope so that a card export is never read as the Indian retail payment mix.
+
 ### Python API
 
 ```python
@@ -298,6 +312,7 @@ Certifies:
 * Closed-loop multi-agent feedback (ISO 51 amount decay, 3DS gateway hopping, card freezes).
 * Strict global temporal monotonicity under concurrent microsecond arrivals.
 * Zero deterministic target label leakage in AVS and billing/shipping fields.
+* Export-level leakage gate: the authorisation feed joined to the gateway telemetry, written and read back as the CLI exports them, is scored by a gradient-boosted learner on a time-ordered split in both regions and both adversary modes. No single column above 0.95 ROC-AUC, no categorical value that is fraud-only, PR-AUC between 0.20 and 0.97 (`spec/07_export_leakage_gate.yaml`).
 * Dual-region institutional schema conformance (USD cents vs. INR paisa, ISO 8583 syntax, MTI 0200 clearing presentment, Visa CE 3.0 deflection, RBI limited liability tiers).
 * Diurnal Poisson arrival thinning (< 4.5% nocturnal trough, > 70% diurnal peak).
 * Multi-stop shopping trip clustering with short inter-arrival delays ($c_v > 1.40$).

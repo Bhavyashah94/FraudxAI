@@ -561,6 +561,21 @@ class XAIBenchmarkHarness:
         mean_r = float(np.mean(recalls)) if recalls else 0.0
         return mean_p, mean_r
 
+    @staticmethod
+    def _positive_class_shap(shap_values: Any) -> np.ndarray:
+        """Attributions for the fraud class whatever SHAP's return shape is.
+
+        Older SHAP returns a list [negative, positive] for binary tree ensembles; SHAP 0.45 and later
+        returns one array of shape (n, d, 2) for RandomForest, which used to leave a (d, 2) matrix per
+        instance and a 2d-versus-d dimension mismatch against the causal ground truth.
+        """
+        if isinstance(shap_values, list):
+            return np.asarray(shap_values[1])
+        arr = np.asarray(shap_values)
+        if arr.ndim == 3:
+            return arr[:, :, -1]
+        return arr
+
     def run_benchmark(
         self,
         model_type: str = "lightgbm",
@@ -596,9 +611,7 @@ class XAIBenchmarkHarness:
             model.fit(X_train, y_train)
             test_probs = model.predict_proba(X_test)[:, 1]
             explainer = shap.TreeExplainer(model)
-            shap_values = explainer.shap_values(X_test)
-            if isinstance(shap_values, list):
-                shap_values = shap_values[1]
+            shap_values = self._positive_class_shap(explainer.shap_values(X_test))
             explainer_name = "TreeSHAP (Interventional)"
         else:
             from sklearn.ensemble import RandomForestClassifier
@@ -606,9 +619,7 @@ class XAIBenchmarkHarness:
             model.fit(X_train, y_train)
             test_probs = model.predict_proba(X_test)[:, 1]
             explainer = shap.TreeExplainer(model)
-            shap_values = explainer.shap_values(X_test)
-            if isinstance(shap_values, list):
-                shap_values = shap_values[1]
+            shap_values = self._positive_class_shap(explainer.shap_values(X_test))
             explainer_name = "TreeSHAP (RandomForest)"
 
         auc_roc = float(roc_auc_score(y_test, test_probs)) if len(np.unique(y_test)) > 1 else 0.5

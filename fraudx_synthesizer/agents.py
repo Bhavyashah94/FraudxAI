@@ -26,6 +26,7 @@ from .intent import (
     InformationDirectedOptimizer,
     MacroOptionType,
 )
+from .spec_loader import load_all_specs
 
 
 class ISO8583Response(str, enum.Enum):
@@ -536,6 +537,7 @@ class TargetCardAdversaryState:
     is_burned: bool = False
     is_dormant_until: float = 0.0
     discovered_limits: Dict[str, float] = field(default_factory=dict)
+    usd_rate: float = 1.0  # card-currency units per US dollar; the intent optimiser reasons in USD
 
 
 class AdaptiveFraudsterAgent:
@@ -549,6 +551,7 @@ class AdaptiveFraudsterAgent:
         self.intent_optimizer = InformationDirectedOptimizer(seed=42)
         self.belief_states: Dict[str, AnalyticalBeliefState] = {}
         self.dossiers: Dict[str, CredentialDossier] = {}
+        self.telemetry = load_all_specs().telemetry
         # Global fallback trackers
         self.state = FraudsterState.DUMP_INGESTION
         self.current_amount = 450.0
@@ -569,28 +572,48 @@ class AdaptiveFraudsterAgent:
                 fsm_state=FraudsterState.DUMP_INGESTION,
                 current_probe_amount=initial_amt,
                 target_mcc=5732,
+                usd_rate=self.telemetry.usd_rate(card.currency),
             )
-        # Slice 11: Initialize Analytical Belief State and Dossier
+        # Slice 11: Initialize Analytical Belief State and Dossier (belief amounts in USD, spec/07 section 3)
         if card.card_id not in self.belief_states:
+            rate = self.telemetry.usd_rate(card.currency)
             avail = max(500.0, float(card.credit_limit - card.current_balance))
             self.belief_states[card.card_id] = AnalyticalBeliefState(
                 card_id=card.card_id,
                 p_valid=0.50,
-                mu_balance=avail,
-                sigma_balance=max(100.0, float(card.credit_limit * 0.2)),
+                mu_balance=avail / rate,
+                sigma_balance=max(100.0, float(card.credit_limit * 0.2)) / rate,
                 min_balance=0.0,
-                max_balance=float(card.credit_limit),
+                max_balance=float(card.credit_limit) / rate,
                 acquisition_cost_usd=15.0,
             )
+            # spec/07 section 7: OTP-stealing playbooks dominate the Indian mix, so the dossier often holds one
+            has_live_otp = bool(card.region == "IN" and self.rng.random() < self.telemetry.indian_intent_live_otp_probability)
             self.dossiers[card.card_id] = CredentialDossier(
-                tier=CredentialTier.TIER_CNP_FULLZ,
+                tier=CredentialTier.TIER_PHISHED_OTP_STREAM if has_live_otp else CredentialTier.TIER_CNP_FULLZ,
                 pan=card.card_id,
                 expiry_month=12,
                 expiry_year=2028,
                 cvv2="123",
                 billing_zip=getattr(card, "zip_code", "94105"),
+                live_otp="000000" if has_live_otp else None,
+                has_live_otp=has_live_otp,
             )
         return self.target_states[card.card_id]
+
+    def _otp_theft_cashout_mcc(self) -> int:
+        """spec/07 section 13: where an attacker holding a live OTP converts the card to cash."""
+        mix = self.telemetry.otp_theft_cashout_mccs
+        if not mix:
+            return 6051
+        mccs = list(mix.keys())
+        weights = np.array([mix[m] for m in mccs], dtype=float)
+        return int(self.rng.choice(mccs, p=weights / weights.sum()))
+
+    def _network_risk_score(self, outcome: str) -> int:
+        """Draws a network risk score (0 to 99) from the spec/07 Beta shape for the outcome."""
+        alpha, beta = self.telemetry.network_risk_score_shapes[outcome]
+        return int(min(99, math.floor(self.rng.beta(alpha, beta) * 100.0)))
 
     def is_card_burned(self, card_id: str) -> bool:
         """Returns True if the card is burned and discarded by adversary."""
@@ -649,7 +672,7 @@ class AdaptiveFraudsterAgent:
         # 1. Micro-Auth Probe (Global)
         if scenario_val in (FraudScenario.ADV_MICRO_AUTH_PROBE.value, "VELOCITY_BLITZ", "CARD_TESTING_BURST"):
             target.fsm_state = FraudsterState.MICRO_PROBING
-            amount = round(float(self.rng.uniform(3.50, 18.50)), 2) if is_mimicry else round(float(self.rng.uniform(0.50, 1.99)), 2)
+            amount = round(float(self.rng.uniform(3.50, 18.50) if is_mimicry else self.rng.uniform(0.50, 1.99)) * target.usd_rate, 2)
             target.current_probe_amount = amount
             target.target_mcc = 8398
             ip_dist = stealth_ip if is_mimicry else float(self.rng.uniform(250.0, 1500.0))
@@ -685,14 +708,14 @@ class AdaptiveFraudsterAgent:
                         high_b = max(low_b + 25.0, min(card.credit_limit * 0.85, 8000.0))
                     amount = round(float(self.rng.uniform(low_b, high_b)), 2)
                 target.current_probe_amount = amount
-            target.target_mcc = 5732
+            target.target_mcc = card.sample_preferred_mcc(self.rng) if is_mimicry else 5732  # spec/07 section 14
             return {
                 "amount": amount,
                 "channel_type": "CNP_WEB",
                 "is_fraud": 1,
                 "scenario_tag": FraudScenario.ADV_ATO_SILENT_BAKING.value,
                 "ip_distance_km": float(self.rng.uniform(5.0, 25.0)),
-                "preferred_mcc": 5732,
+                "preferred_mcc": target.target_mcc,
                 "is_cross_border": False,
                 "asn_type": "residential",
             }
@@ -776,7 +799,7 @@ class AdaptiveFraudsterAgent:
 
         # 6. Distributed BIN Enumeration (PEA Additive Probing)
         elif scenario_val == FraudScenario.ADV_DISTRIBUTED_BIN_ENUMERATION.value:
-            amount = round(float(self.rng.uniform(4.50, 24.50)), 2) if is_mimicry else round(float(self.rng.uniform(1.00, 3.50)), 2)
+            amount = round(float(self.rng.uniform(4.50, 24.50) if is_mimicry else self.rng.uniform(1.00, 3.50)) * target.usd_rate, 2)
             target.current_probe_amount = amount
             target.target_mcc = 8398
             ip_dist = stealth_ip if is_mimicry else float(self.rng.uniform(180.0, 2800.0))
@@ -789,7 +812,7 @@ class AdaptiveFraudsterAgent:
                 "preferred_mcc": 8398,
                 "is_cross_border": False,
                 "asn_type": "residential",
-                "vaai_score": int(self.rng.integers(70, 95)),
+                "vaai_score": self._network_risk_score("bin_enumeration"),
             }
 
         # 7. Triangulation Fraud
@@ -821,14 +844,14 @@ class AdaptiveFraudsterAgent:
                 amount = round(float(np.clip(probe_ratio * avail, 1500.0, 65000.0)), 2)
                 ip_dist = float(self.rng.uniform(120.0, 1850.0))
             target.current_probe_amount = amount
-            target.target_mcc = 6051
+            target.target_mcc = card.sample_preferred_mcc(self.rng) if is_mimicry else self._otp_theft_cashout_mcc()
             return {
                 "amount": amount,
                 "channel_type": "CNP_WEB",
                 "is_fraud": 1,
                 "scenario_tag": FraudScenario.IN_ADV_REVERSE_PROXY_VISHING.value,
                 "ip_distance_km": ip_dist,
-                "preferred_mcc": 6051,
+                "preferred_mcc": target.target_mcc,
                 "is_cross_border": False,
                 "otp_submitted": True,
                 "asn_type": "residential",
@@ -847,14 +870,14 @@ class AdaptiveFraudsterAgent:
                 amount = round(float(np.clip(probe_ratio * avail, 1000.0, 45000.0)), 2)
                 ip_dist = float(self.rng.uniform(45.0, 950.0))
             target.current_probe_amount = amount
-            target.target_mcc = 6513
+            target.target_mcc = card.sample_preferred_mcc(self.rng) if is_mimicry else self._otp_theft_cashout_mcc()
             return {
                 "amount": amount,
                 "channel_type": "CNP_MOBILE",
                 "is_fraud": 1,
                 "scenario_tag": FraudScenario.IN_ADV_APK_SMS_STEALER.value,
                 "ip_distance_km": ip_dist,
-                "preferred_mcc": 6513,
+                "preferred_mcc": target.target_mcc,
                 "is_cross_border": False,
                 "otp_submitted": True,
                 "asn_type": "mobile",
@@ -939,7 +962,7 @@ class AdaptiveFraudsterAgent:
             resp_str = response_code.value if hasattr(response_code, "value") else str(response_code)
             self.intent_optimizer.observe_outcome(
                 belief=belief,
-                amount=target.current_probe_amount if target else 100.0,
+                amount=(target.current_probe_amount / target.usd_rate) if target else 100.0,
                 response_code=resp_str,
             )
 
@@ -1019,11 +1042,32 @@ class AdaptiveFraudsterAgent:
             dossier=dossier,
             current_hour_local=current_hour,
         )
-        target.current_probe_amount = action.amount
+        # spec/07 section 3: the optimiser's ladder is in USD; the authorisation carries the card's currency.
+        is_probe = action.macro_option == MacroOptionType.OMEGA_PROBE
+        amount_usd = float(action.amount)
+        if amount_usd > 0.0:
+            if is_probe:
+                if self.rng.random() < self.adversary_mimicry:
+                    low, high = self.telemetry.mimicry_probe_ticket_range_usd
+                else:
+                    low, high = self.telemetry.micro_probe_ticket_range_usd
+                amount_usd = float(self.rng.uniform(low, high))
+            elif self.telemetry.ladder_jitter_fraction > 0.0:
+                jitter = self.telemetry.ladder_jitter_fraction
+                amount_usd *= float(self.rng.uniform(1.0 - jitter, 1.0 + jitter))
+        amount = round(amount_usd * target.usd_rate, 2)
+        target.current_probe_amount = amount
         target.target_mcc = action.mcc
+        is_cross_border = bool(
+            is_probe
+            and card.region == "IN"
+            and self.telemetry.route_indian_probes_cross_border
+            and card.international_enabled
+            and not dossier.has_live_otp
+        )
 
         return {
-            "amount": action.amount,
+            "amount": amount,
             "channel_type": action.channel,
             "is_fraud": 1,
             "scenario_tag": f"INTENT_{action.macro_option.value}",
@@ -1031,6 +1075,7 @@ class AdaptiveFraudsterAgent:
             "preferred_mcc": action.mcc,
             "macro_option": action.macro_option.value,
             "incubation_seconds": action.incubation_seconds,
+            "is_cross_border": is_cross_border,
         }
 
     def inject_attack(

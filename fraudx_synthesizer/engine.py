@@ -15,6 +15,7 @@ from __future__ import annotations
 import heapq
 import itertools
 import math
+import zlib
 from datetime import datetime, timezone
 import time
 from typing import Any, Dict, Iterator, List, Optional, Tuple
@@ -29,6 +30,7 @@ from .agents import (
     ChannelType,
     FraudScenario,
     FraudsterAgent,
+    FraudsterState,
     ISO8583Response,
 )
 from .causal_scm import CausalGroundTruth, StructuralCausalEngine
@@ -388,6 +390,58 @@ class DiscreteEventEngine:
             (time_us, next(self.seq_counter), event_type, card_id, gen, payload or {}),
         )
 
+    def _legit_asn_type(self, channel: str) -> str:
+        """The ASN mix of legitimate traffic on a channel; a mimicking attacker draws from the same mix."""
+        if channel.startswith("CP"):
+            return str(self.rng.choice(["residential", "mobile"], p=[0.75, 0.25]))
+        if channel == "CNP_IN_APP":
+            return str(self.rng.choice(["mobile", "residential", "datacenter"], p=[0.72, 0.24, 0.04]))
+        if self.region == "IN":
+            return str(self.rng.choice(["mobile", "residential", "datacenter"], p=[0.60, 0.35, 0.05]))
+        return str(self.rng.choice(["residential", "mobile", "datacenter"], p=[0.55, 0.39, 0.06]))
+
+    def _validated_cards(self) -> List[Any]:
+        """Cards the adversary has already validated and not burned (spec/07 section 10)."""
+        validated = []
+        for c in self.cards:
+            if c.is_frozen or self.fraudster.is_card_burned(c.card_id):
+                continue
+            belief = self.fraudster.belief_states.get(c.card_id)
+            target = self.fraudster.target_states.get(c.card_id)
+            if (belief is not None and belief.p_valid >= 1.0) or (
+                target is not None and target.fsm_state in (FraudsterState.ACTIVE_CASHOUT, FraudsterState.SUCCESS_HARVEST, FraudsterState.AMOUNT_ADAPTATION)
+            ):
+                validated.append(c)
+        return validated
+
+    def _legit_ip_distance_km(self, channel: str) -> float:
+        """spec/07 section 12: geolocation error of a legitimate cardholder's IP, long right tail."""
+        params = self.specs.telemetry.legit_ip_distance_lognormal.get(channel)
+        if channel.startswith("CP") or params is None:
+            return float(self.rng.uniform(1.8, 22.0))
+        median_km, sigma_log = params
+        return float(self.rng.lognormal(mean=math.log(median_km), sigma=sigma_log))
+
+    def _sample_network_risk_score(self, outcome: str) -> int:
+        """Draws a network risk score (0 to 99) from the spec/07 Beta shape for the outcome."""
+        alpha, beta = self.specs.telemetry.network_risk_score_shapes[outcome]
+        return int(min(99, math.floor(self.rng.beta(alpha, beta) * 100.0)))
+
+    def _micro_probe_amount(self, card: CardholderProfile) -> float:
+        """A card-testing probe in the card's currency, drawn from the spec/04 ticket range (spec/07 section 3)."""
+        low, high = self.specs.telemetry.micro_probe_ticket_range_usd
+        return round(float(self.rng.uniform(low, high)) * self.specs.telemetry.usd_rate(card.currency), 2)
+
+    def _probe_routes_cross_border(self, card: CardholderProfile, has_live_otp: bool) -> bool:
+        """spec/07 section 3: an Indian card without a stolen OTP is probed at a foreign non-3DS merchant
+        when international usage is enabled; domestic probes would meet mandatory AFA."""
+        return bool(
+            card.region == "IN"
+            and self.specs.telemetry.route_indian_probes_cross_border
+            and card.international_enabled
+            and not has_live_otp
+        )
+
     def generate_batch(
         self,
         n_transactions: int = 5000,
@@ -486,7 +540,7 @@ class DiscreteEventEngine:
             if "PREPAID" not in c.product_id and "EBT" not in c.product_id:
                 if "DEBIT" in c.product_id:
                     # Stagger paydays across first 14 days so workers don't all get paid on day 14
-                    stagger_day = (hash(c.card_id) % 14) + 1
+                    stagger_day = (zlib.crc32(c.card_id.encode("utf-8")) % 14) + 1  # process-independent (spec/07 section 15)
                     for p_day in range(stagger_day, time_span_days + 1, 14):
                         p_us = int((start_time_seconds + p_day * day_seconds) * 1_000_000)
                         self._schedule_event(time_us=p_us, event_type=EVT_PAYROLL_DEPOSIT, card_id=c.card_id)
@@ -494,7 +548,7 @@ class DiscreteEventEngine:
                     # Schedule repayment for prior month's statement balance carried into simulation
                     if c.posted_balance > 0.0:
                         c.statement_balance = c.posted_balance
-                        prior_pay_day = float((hash(c.card_id) % 12) + 3)
+                        prior_pay_day = float((zlib.crc32(c.card_id.encode("utf-8")) % 12) + 3)
                         p_us = int((start_time_seconds + prior_pay_day * day_seconds) * 1_000_000)
                         self._schedule_event(time_us=p_us, event_type=EVT_STATEMENT_PAYMENT, card_id=c.card_id)
 
@@ -529,7 +583,11 @@ class DiscreteEventEngine:
                 if not active_cards:
                     active_cards = [c for c in self.cards if not c.is_frozen]
                 if active_cards:
-                    target_card_next = self.rng.choice(active_cards)
+                    validated = self._validated_cards()
+                    if validated and self.rng.random() < self.specs.telemetry.validated_card_follow_up_probability:
+                        target_card_next = self.rng.choice(validated)
+                    else:
+                        target_card_next = self.rng.choice(active_cards)
                     self._schedule_event(
                         time_us=next_f_t_us,
                         event_type=EVT_FRAUD_ATTACK,
@@ -632,7 +690,7 @@ class DiscreteEventEngine:
 
             # Determine transaction parameters
             otp_provided = True
-            vaai_score = int(self.rng.integers(10, 45))
+            vaai_score = self._sample_network_risk_score("legitimate")
             override_avs = None
             override_cvv = None
             asn_type = "residential"
@@ -712,8 +770,9 @@ class DiscreteEventEngine:
                             belief.is_burned = False
                             belief.p_valid = 0.50
                             belief.consecutive_declines = 0
+                        fallback_dossier = self.fraudster.dossiers.get(card.card_id)
                         attack_params = {
-                            "amount": 3.50,
+                            "amount": self._micro_probe_amount(card),
                             "channel_type": "CNP_WEB",
                             "preferred_mcc": 5815,
                             "is_fraud": 1,
@@ -721,23 +780,33 @@ class DiscreteEventEngine:
                             "macro_option": "OMEGA_PROBE",
                             "ip_distance_km": float(self.rng.uniform(15.0, 85.0)),
                             "incubation_seconds": 0.0,
+                            "is_cross_border": self._probe_routes_cross_border(
+                                card, bool(fallback_dossier and fallback_dossier.has_live_otp)
+                            ),
                         }
 
                     # Telemetry attributes for intent-driven attacks
+                    dossier = self.fraudster.dossiers.get(card.card_id)
+                    mimicking = bool(self.rng.random() < self.fraudster.adversary_mimicry)
                     if attack_params.get("macro_option") == "OMEGA_PROBE":
                         attack_params["asn_type"] = str(self.rng.choice(["datacenter", "residential", "mobile"], p=[0.45, 0.35, 0.20]))
-                        attack_params["vaai_score"] = int(self.rng.integers(55, 78))
-                        attack_params["otp_submitted"] = False
+                        attack_params["vaai_score"] = self._sample_network_risk_score("card_testing_probe")
+                        attack_params["otp_submitted"] = bool(dossier and dossier.has_live_otp)
                     elif attack_params.get("macro_option") == "OMEGA_HARVEST":
                         attack_params["asn_type"] = str(self.rng.choice(["residential", "mobile", "datacenter"], p=[0.55, 0.35, 0.10]))
-                        attack_params["vaai_score"] = int(self.rng.integers(20, 50))
-                        dossier = self.fraudster.dossiers.get(card.card_id)
+                        attack_params["vaai_score"] = self._sample_network_risk_score("cash_out_harvest")
                         attack_params["otp_submitted"] = bool(dossier and dossier.has_live_otp)
                     elif attack_params.get("macro_option") == "OMEGA_BISECT_DRAIN":
                         attack_params["asn_type"] = str(self.rng.choice(["residential", "mobile", "datacenter"], p=[0.60, 0.30, 0.10]))
-                        attack_params["vaai_score"] = int(self.rng.integers(30, 60))
-                        dossier = self.fraudster.dossiers.get(card.card_id)
+                        attack_params["vaai_score"] = self._sample_network_risk_score("balance_bisection")
                         attack_params["otp_submitted"] = bool(dossier and dossier.has_live_otp)
+                    if mimicking:
+                        # a geo-matched residential proxy (the playbook adversary's stealth band) on the legitimate ASN mix
+                        attack_params["ip_distance_km"] = float(self.rng.uniform(2.5, 32.0))
+                        attack_params["asn_type"] = self._legit_asn_type(str(attack_params.get("channel_type", "CNP_WEB")))
+                        if attack_params.get("macro_option") in ("OMEGA_HARVEST", "OMEGA_BISECT_DRAIN"):
+                            # spec/07 section 14: a mimicking cash-out buys where the cardholder normally does
+                            attack_params["preferred_mcc"] = card.sample_preferred_mcc(self.rng)
                 else:
                     attack_params = self.fraudster.select_attack_playbook(
                         card=card,
@@ -779,6 +848,12 @@ class DiscreteEventEngine:
                 otp_provided = bool(attack_params.get("otp_submitted", False))
                 if "vaai_score" in attack_params:
                     vaai_score = int(attack_params["vaai_score"])
+                # spec/07 section 11: what the attacker holds decides how AVS, CVV and billing come out
+                if self.adversary_mode == "intent":
+                    intent_dossier = self.fraudster.dossiers.get(card.card_id)
+                    credentials_complete = bool(intent_dossier and intent_dossier.tier.value in self.specs.telemetry.full_record_dossier_tiers)
+                else:
+                    credentials_complete = scenario_tag in self.specs.telemetry.full_record_playbooks
 
                 syndicate_id = syn_telemetry.get("syndicate_id", "")
                 botnet_cluster_id = syn_telemetry.get("botnet_cluster_id", "")
@@ -789,6 +864,7 @@ class DiscreteEventEngine:
                 override_client_ip = syn_telemetry.get("client_ip") or None
             else:
                 is_fraud = 0
+                credentials_complete = False
                 is_cross_border = False
                 override_lat = None
                 override_lon = None
@@ -884,17 +960,34 @@ class DiscreteEventEngine:
                             amount = card.sample_spend_amount(self.rng)
                             channel = card.sample_channel(self.rng)
                             preferred_mcc = card.sample_preferred_mcc(self.rng)
-                        ip_distance = float(self.rng.uniform(1.8, 22.0) if channel.startswith("CP") or "WEB" in channel else self.rng.uniform(8.0, 75.0))
+                            # spec/07 sections 8 and 9: traffic at MCCs no cohort prefers, and micro-tickets
+                            telemetry = self.specs.telemetry
+                            draw = self.rng.random()
+                            cumulative = 0.0
+                            for uncovered_mcc, shares in telemetry.legit_uncovered_mcc_share.items():
+                                cumulative += shares.get(self.region, 0.0)
+                                if draw < cumulative:
+                                    preferred_mcc = int(uncovered_mcc)
+                                    break
+                            if channel.startswith("CP") and self.rng.random() < telemetry.legit_micro_ticket_share.get(self.region, 0.0):
+                                low, high = telemetry.legit_micro_ticket_range.get(card.currency, (0.50, 4.99))
+                                amount = round(float(self.rng.uniform(low, high)), 2)
+                        ip_distance = self._legit_ip_distance_km(channel)
 
-                if channel.startswith("CP"):
-                    asn_type = str(self.rng.choice(["residential", "mobile"], p=[0.75, 0.25]))
-                elif channel == "CNP_IN_APP":
-                    asn_type = str(self.rng.choice(["mobile", "residential", "datacenter"], p=[0.72, 0.24, 0.04]))
-                else:
-                    if self.region == "IN":
-                        asn_type = str(self.rng.choice(["mobile", "residential", "datacenter"], p=[0.60, 0.35, 0.05]))
-                    else:
-                        asn_type = str(self.rng.choice(["residential", "mobile", "datacenter"], p=[0.55, 0.39, 0.06]))
+                asn_type = self._legit_asn_type(channel)
+
+                # spec/07 sections 4 and 5: cardholders fail AFA sometimes, and those with international
+                # usage enabled buy from foreign merchants online from home.
+                if channel.startswith("CNP"):
+                    telemetry = self.specs.telemetry
+                    if self.rng.random() < telemetry.legit_afa_failure_share.get(self.region, 0.0):
+                        otp_provided = False
+                    if (
+                        card.international_enabled
+                        and not is_cross_border
+                        and self.rng.random() < telemetry.legit_cross_border_cnp_share.get(self.region, 0.0)
+                    ):
+                        is_cross_border = True
 
             # Route merchant
             if override_lat is not None and override_lon is not None:
@@ -972,6 +1065,7 @@ class DiscreteEventEngine:
                 override_cvv_match=override_cvv,
                 override_avs_code=override_avs,
                 override_client_ip=override_client_ip,
+                credentials_complete=credentials_complete,
                 syndicate_id=syndicate_id,
                 botnet_cluster_id=botnet_cluster_id,
                 mule_ring_id=mule_ring_id,

@@ -20,6 +20,10 @@ current_slice:
   verdict: "PASS (CERTIFIED: Operational Fraud Investigation Queue & Bifurcated Supervision Engine; K_daily capacity strictly enforced per calendar day; Analyst review latency adheres to Weibull(k=1.35, scale=18h) within [0.5, 72.0]h; Customer dispute latency adheres to LogNormal(mu=3.40, sigma=0.45) within [3, 120]d; Sigmoidal dark fraud non-reporting curve withholds micro-probes at >95% with infinite discovery latency; Point-in-time zero temporal leakage contract verified; Priority triage policies operational; 152/152 tests green across full suite in 144.79s)."
 
 previous_slices:
+  - id: "slice-15-export-level-leakage-gate"
+    title: "Export-Level Label Leakage Gate & Point-in-Time Telemetry Calibration (spec/07)"
+    status: "verified"
+    verdict: "PASS (CERTIFIED: Exported views scored on time-ordered split; PR-AUC bounded in [0.20, 0.97]; zero discrete fraud-only values; single-feature AUC ceiling <= 0.95)."
   - id: "slice-15-india-empirical-calibration-rbi-npci"
     title: "Day 2: India Empirical Payment Rails & Kinematics Calibration (Reserve Bank of India & NPCI Grounding)"
     status: "verified"
