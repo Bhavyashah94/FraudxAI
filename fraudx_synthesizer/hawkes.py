@@ -56,69 +56,204 @@ class HawkesParameters:
 # Default calibrated profiles grounded in spec/02_human_personas.yaml
 PERSONA_HAWKES_PROFILES: Dict[str, HawkesParameters] = {
     "C1_HOURLY_GIG_WORKER": HawkesParameters(
-        mu_0=1.10e-5,  # ~0.95 tx/day
+        mu_0=9.13e-6,  # 1.85 tx/day target, eta = 0.650, E[cluster] ~ 2.857
         alpha=1.95e-3,
-        beta=2.85e-3,  # eta = 0.684, expected cluster ~ 3.16 tx
+        beta=3.00e-3,
         beta_0_floor=0.035, # Higher nocturnal activity (rideshare/night shifts)
         phi_max=3.60,
     ),
     "C2_FIXED_INCOME_SENIOR": HawkesParameters(
-        mu_0=1.24e-5,  # ~1.07 tx/day
-        alpha=1.45e-3,
-        beta=2.60e-3,  # eta = 0.558, expected cluster ~ 2.26 tx
+        mu_0=9.14e-6,  # 1.35 tx/day target, eta = 0.520, E[cluster] ~ 2.083
+        alpha=1.30e-3,
+        beta=2.50e-3,
         beta_0_floor=0.010, # Very low nocturnal activity
         phi_max=4.20,
     ),
     "C3_YOUNG_ADULT_STUDENT": HawkesParameters(
-        mu_0=1.58e-5,  # ~1.36 tx/day
+        mu_0=8.88e-6,  # 2.10 tx/day target, eta = 0.700, E[cluster] ~ 3.333
         alpha=2.10e-3,
-        beta=2.90e-3,  # eta = 0.724, expected cluster ~ 3.62 tx
+        beta=3.00e-3,
         beta_0_floor=0.045, # High nightlife / digital midnight browsing
         phi_max=3.50,
     ),
     "C4_SUBURBAN_FAMILY": HawkesParameters(
-        mu_0=2.08e-5,  # ~1.80 tx/day
+        mu_0=1.03e-5,  # 2.65 tx/day target, eta = 0.725, E[cluster] ~ 3.636
         alpha=2.25e-3,
-        beta=3.10e-3,  # eta = 0.726, expected cluster ~ 3.65 tx (weekend grocery runs)
+        beta=3.10e-3,
         beta_0_floor=0.015,
         phi_max=3.95,
     ),
     "C5_TECH_PROFESSIONAL": HawkesParameters(
-        mu_0=1.85e-5,  # ~1.60 tx/day
-        alpha=1.80e-3,
-        beta=2.70e-3,  # eta = 0.667, expected cluster ~ 3.00 tx
+        mu_0=1.11e-5,  # 2.45 tx/day target, eta = 0.680, E[cluster] ~ 3.125
+        alpha=1.90e-3,
+        beta=2.80e-3,
         beta_0_floor=0.030,
         phi_max=3.75,
     ),
     "C5_URBAN_TECH_PROFESSIONAL": HawkesParameters(
-        mu_0=1.85e-5,  # ~1.60 tx/day
-        alpha=1.80e-3,
-        beta=2.70e-3,  # eta = 0.667, expected cluster ~ 3.00 tx
+        mu_0=1.11e-5,  # 2.45 tx/day target, eta = 0.680, E[cluster] ~ 3.125
+        alpha=1.90e-3,
+        beta=2.80e-3,
         beta_0_floor=0.030,
         phi_max=3.75,
     ),
     "C6_COMMERCIAL_SMALL_BIZ": HawkesParameters(
-        mu_0=2.45e-5,  # ~2.12 tx/day
-        alpha=2.05e-3,
-        beta=2.95e-3,  # eta = 0.695, expected cluster ~ 3.28 tx
+        mu_0=1.14e-5,  # 2.70 tx/day target, eta = 0.700, E[cluster] ~ 3.333
+        alpha=2.10e-3,
+        beta=3.00e-3,
         beta_0_floor=0.020,
         phi_max=4.10,
     ),
     "C6_SMALL_BUSINESS_OWNER": HawkesParameters(
-        mu_0=2.45e-5,  # ~2.12 tx/day
-        alpha=2.05e-3,
-        beta=2.95e-3,  # eta = 0.695, expected cluster ~ 3.28 tx
+        mu_0=1.14e-5,  # 2.70 tx/day target, eta = 0.700, E[cluster] ~ 3.333
+        alpha=2.10e-3,
+        beta=3.00e-3,
         beta_0_floor=0.020,
         phi_max=4.10,
     ),
     "C7_LUXURY_AFFLUENT": HawkesParameters(
-        mu_0=3.25e-5,  # ~2.81 tx/day
-        alpha=2.40e-3,
-        beta=3.20e-3,  # eta = 0.750, expected cluster ~ 4.00 tx
+        mu_0=9.53e-6,  # 2.60 tx/day target, eta = 0.740, E[cluster] ~ 3.846
+        alpha=2.37e-3,
+        beta=3.20e-3,
         beta_0_floor=0.030,
         phi_max=3.80,
     ),
 }
+
+# Calibrated Indian persona Hawkes profiles grounded in RBI Payment System Indicators & spec/05_india_payment_rails.yaml
+# Derived via closed-form MTPP stationary expectation:
+# mu_0 = (E[N(1 day)] * (1 - eta)) / 70917.12
+# where daily frequency band reflects UPI micropayment substitution (cards reserved for high-value/planned purchases).
+INDIAN_PERSONA_HAWKES_PROFILES: Dict[str, HawkesParameters] = {
+    "IN_C1_HOURLY_GIG_WORKER": HawkesParameters(
+        mu_0=2.855e-6,  # 0.45 tx/day target, eta = 0.550, E[cluster] ~ 2.222
+        alpha=1.540e-3,
+        beta=2.80e-3,
+        beta_0_floor=0.035,
+        phi_max=3.60,
+    ),
+    "IN_C2_FIXED_INCOME_SENIOR": HawkesParameters(
+        mu_0=2.820e-6,  # 0.40 tx/day target, eta = 0.500, E[cluster] ~ 2.000
+        alpha=1.250e-3,
+        beta=2.50e-3,
+        beta_0_floor=0.010,
+        phi_max=4.20,
+    ),
+    "IN_C3_YOUNG_ADULT_STUDENT": HawkesParameters(
+        mu_0=3.208e-6,  # 0.65 tx/day target, eta = 0.650, E[cluster] ~ 2.857
+        alpha=1.950e-3,
+        beta=3.00e-3,
+        beta_0_floor=0.045,
+        phi_max=3.50,
+    ),
+    "IN_C4_SUBURBAN_FAMILY": HawkesParameters(
+        mu_0=3.610e-6,  # 0.80 tx/day target, eta = 0.680, E[cluster] ~ 3.125
+        alpha=2.108e-3,
+        beta=3.10e-3,
+        beta_0_floor=0.015,
+        phi_max=3.95,
+    ),
+    "IN_C5_TECH_PROFESSIONAL": HawkesParameters(
+        mu_0=4.865e-6,  # 1.15 tx/day target, eta = 0.700, E[cluster] ~ 3.333
+        alpha=1.960e-3,
+        beta=2.80e-3,
+        beta_0_floor=0.030,
+        phi_max=3.75,
+    ),
+    "IN_C5_URBAN_TECH_PROFESSIONAL": HawkesParameters(
+        mu_0=4.865e-6,  # 1.15 tx/day target, eta = 0.700, E[cluster] ~ 3.333
+        alpha=1.960e-3,
+        beta=2.80e-3,
+        beta_0_floor=0.030,
+        phi_max=3.75,
+    ),
+    "IN_C6_COMMERCIAL_SMALL_BIZ": HawkesParameters(
+        mu_0=4.315e-6,  # 0.90 tx/day target, eta = 0.660, E[cluster] ~ 2.941
+        alpha=1.980e-3,
+        beta=3.00e-3,
+        beta_0_floor=0.020,
+        phi_max=4.10,
+    ),
+    "IN_C6_SMALL_BUSINESS_OWNER": HawkesParameters(
+        mu_0=4.315e-6,  # 0.90 tx/day target, eta = 0.660, E[cluster] ~ 2.941
+        alpha=1.980e-3,
+        beta=3.00e-3,
+        beta_0_floor=0.020,
+        phi_max=4.10,
+    ),
+    "IN_C7_LUXURY_AFFLUENT": HawkesParameters(
+        mu_0=4.738e-6,  # 1.20 tx/day target, eta = 0.720, E[cluster] ~ 3.571
+        alpha=2.304e-3,
+        beta=3.20e-3,
+        beta_0_floor=0.030,
+        phi_max=3.80,
+    ),
+    # Direct persona aliases for Indian simulation context
+    "C1_HOURLY_GIG_WORKER": HawkesParameters(
+        mu_0=2.855e-6,
+        alpha=1.540e-3,
+        beta=2.80e-3,
+        beta_0_floor=0.035,
+        phi_max=3.60,
+    ),
+    "C2_FIXED_INCOME_SENIOR": HawkesParameters(
+        mu_0=2.820e-6,
+        alpha=1.250e-3,
+        beta=2.50e-3,
+        beta_0_floor=0.010,
+        phi_max=4.20,
+    ),
+    "C3_YOUNG_ADULT_STUDENT": HawkesParameters(
+        mu_0=3.208e-6,
+        alpha=1.950e-3,
+        beta=3.00e-3,
+        beta_0_floor=0.045,
+        phi_max=3.50,
+    ),
+    "C4_SUBURBAN_FAMILY": HawkesParameters(
+        mu_0=3.610e-6,
+        alpha=2.108e-3,
+        beta=3.10e-3,
+        beta_0_floor=0.015,
+        phi_max=3.95,
+    ),
+    "C5_TECH_PROFESSIONAL": HawkesParameters(
+        mu_0=4.865e-6,
+        alpha=1.960e-3,
+        beta=2.80e-3,
+        beta_0_floor=0.030,
+        phi_max=3.75,
+    ),
+    "C5_URBAN_TECH_PROFESSIONAL": HawkesParameters(
+        mu_0=4.865e-6,
+        alpha=1.960e-3,
+        beta=2.80e-3,
+        beta_0_floor=0.030,
+        phi_max=3.75,
+    ),
+    "C6_COMMERCIAL_SMALL_BIZ": HawkesParameters(
+        mu_0=4.315e-6,
+        alpha=1.980e-3,
+        beta=3.00e-3,
+        beta_0_floor=0.020,
+        phi_max=4.10,
+    ),
+    "C6_SMALL_BUSINESS_OWNER": HawkesParameters(
+        mu_0=4.315e-6,
+        alpha=1.980e-3,
+        beta=3.00e-3,
+        beta_0_floor=0.020,
+        phi_max=4.10,
+    ),
+    "C7_LUXURY_AFFLUENT": HawkesParameters(
+        mu_0=4.738e-6,
+        alpha=2.304e-3,
+        beta=3.20e-3,
+        beta_0_floor=0.030,
+        phi_max=3.80,
+    ),
+}
+
 
 # Adversarial botnet attack pacing profiles grounded in spec/04_adversarial_playbooks.yaml
 ADVERSARY_HAWKES_PROFILES: Dict[str, HawkesParameters] = {

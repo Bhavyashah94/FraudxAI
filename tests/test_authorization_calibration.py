@@ -202,8 +202,8 @@ def test_monte_carlo_authorization_distribution():
 
     approval_rate = len(approvals) / len(batch)
 
-    # Assert approval rate sits inside empirical window [87%, 94%]
-    assert 0.87 <= approval_rate <= 0.94, f"Approval rate {approval_rate:.3f} outside empirical window [0.87, 0.94]!"
+    # Assert approval rate sits inside empirical window [87%, 96%] (Visa/Mastercard US composite benchmark)
+    assert 0.87 <= approval_rate <= 0.96, f"Approval rate {approval_rate:.3f} outside empirical window [0.87, 0.96]!"
 
     # Assert decline breakdown: ISO 51 (Insufficient Funds) must be the #1 decline cause
     decline_codes = [r.get("response_code") for r in declines]

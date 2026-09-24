@@ -188,10 +188,16 @@ def test_zero_leakage_feed_partitioning():
         assert "mti" in record
 
     # 2. Delayed Labels Feed Verification
+    cb_count = 0
     for lbl in delayed_labels:
         assert "is_fraud" in lbl
         assert "label_maturity_timestamp_utc" in lbl
-        assert 3.0 <= lbl["chargeback_delay_days"] <= 120.0
+        if lbl.get("chargeback_delay_days") is not None:
+            assert 3.0 <= lbl["chargeback_delay_days"] <= 120.0
+            cb_count += 1
+        if lbl.get("investigation_delay_hours") is not None:
+            assert 0.5 <= lbl["investigation_delay_hours"] <= 72.0
+    assert cb_count > 0, "Expected at least one chargeback dispute in delayed labels"
 
     # 3. Threat Intel Graph Enclave Verification
     fraud_graphs = [g for g in graph_enclave if g["is_fraud"] == 1]

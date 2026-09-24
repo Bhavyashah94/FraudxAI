@@ -35,6 +35,7 @@ from .causal_scm import CausalGroundTruth, StructuralCausalEngine
 from .hawkes import (
     ADVERSARY_HAWKES_PROFILES,
     HawkesParameters,
+    INDIAN_PERSONA_HAWKES_PROFILES,
     PERSONA_HAWKES_PROFILES,
     RecursiveCircadianHawkesEngine,
 )
@@ -58,6 +59,16 @@ EVT_CLEARING = 5
 EVT_BILLING_CYCLE_CLOSE = 6
 EVT_STATEMENT_PAYMENT = 7
 EVT_PAYROLL_DEPOSIT = 8
+
+# Calibrated Indian card product spend marginals (LogNormal parameters in INR nominal)
+# Grounded in RBI Payment System Indicators & spec/05_india_payment_rails.yaml
+INDIAN_PRODUCT_SPEND_MARGINALS: Dict[str, Tuple[float, float]] = {
+    "IN_PROD_PMJDY_RUPAY_DEBIT": (6.50, 0.65),       # Median ₹665, Mean ₹822
+    "IN_PROD_ENTRY_FD_BACKED": (6.95, 0.70),         # Median ₹1,043, Mean ₹1,333
+    "IN_PROD_SALARIED_PRIME_REWARDS": (7.60, 0.75),  # Median ₹1,998, Mean ₹2,646
+    "IN_PROD_KISAN_CREDIT_CARD": (8.20, 0.80),       # Median ₹3,640, Mean ₹5,014
+    "IN_PROD_SUPER_PREMIUM_HNI": (8.85, 0.85),       # Median ₹6,974, Mean ₹10,008
+}
 
 
 class DiscreteEventEngine:
@@ -118,7 +129,25 @@ class DiscreteEventEngine:
     def _get_card_hawkes_params(self, card: CardholderProfile, mean_inter_arrival_sec: Optional[float] = None) -> HawkesParameters:
         """Constructs calibrated persona HawkesParameters, optionally scaled to simulation time span."""
         cohort_spec = self.specs.cohorts.get(card.cohort_id)
-        if cohort_spec and cohort_spec.hawkes_dynamics:
+        if card.region == "IN":
+            in_key = f"IN_{card.cohort_id}" if not card.cohort_id.startswith("IN_") else card.cohort_id
+            if in_key in INDIAN_PERSONA_HAWKES_PROFILES:
+                profile = INDIAN_PERSONA_HAWKES_PROFILES[in_key]
+            elif card.cohort_id in INDIAN_PERSONA_HAWKES_PROFILES:
+                profile = INDIAN_PERSONA_HAWKES_PROFILES[card.cohort_id]
+            else:
+                profile = INDIAN_PERSONA_HAWKES_PROFILES.get("IN_C4_SUBURBAN_FAMILY", HawkesParameters(
+                    mu_0=3.610e-6,
+                    alpha=2.108e-3,
+                    beta=3.10e-3,
+                    beta_0_floor=0.015,
+                    phi_max=3.95,
+                ))
+            base_mu = profile.mu_0
+            alpha = profile.alpha
+            beta = profile.beta
+            beta_0 = profile.beta_0_floor
+        elif cohort_spec and cohort_spec.hawkes_dynamics:
             hd = cohort_spec.hawkes_dynamics
             base_mu = float(hd.get("mu_0_hz", 1.0e-5))
             alpha = float(hd.get("alpha_excitation_hz", 1.85e-3))
@@ -137,8 +166,12 @@ class DiscreteEventEngine:
             beta_0 = 0.025
 
         if mean_inter_arrival_sec is not None and mean_inter_arrival_sec > 0:
-            vol_mean = cohort_spec.monthly_tx_volume_mean if cohort_spec else 55.0
-            persona_vol_scale = vol_mean / 55.0
+            if card.region == "IN":
+                vol_mean = 20.5  # empirical Indian card monthly mean (~0.684 tx/day * 30)
+                persona_vol_scale = vol_mean / 20.5
+            else:
+                vol_mean = cohort_spec.monthly_tx_volume_mean if cohort_spec else 55.0
+                persona_vol_scale = vol_mean / 55.0
             eta = min(0.95, alpha / beta)
             target_lambda = (1.0 / mean_inter_arrival_sec) * persona_vol_scale
             mu_0 = (target_lambda * (1.0 - eta)) / 0.8208
@@ -209,8 +242,10 @@ class DiscreteEventEngine:
 
             if self.region == "IN":
                 currency = "INR"
-                if cohort_id in ("C7_LUXURY_AFFLUENT", "C6_SMALL_BUSINESS_OWNER"):
+                if cohort_id == "C7_LUXURY_AFFLUENT":
                     product_id = "IN_PROD_SUPER_PREMIUM_HNI"
+                elif cohort_id in ("C6_SMALL_BUSINESS_OWNER", "C6_COMMERCIAL_SMALL_BIZ"):
+                    product_id = str(self.rng.choice(["IN_PROD_KISAN_CREDIT_CARD", "IN_PROD_SALARIED_PRIME_REWARDS"], p=[0.70, 0.30]))
                 elif cohort_id == "C1_HOURLY_GIG_WORKER":
                     product_id = str(self.rng.choice(["IN_PROD_PMJDY_RUPAY_DEBIT", "IN_PROD_ENTRY_FD_BACKED"], p=[0.60, 0.40]))
                 elif cohort_id == "C2_FIXED_INCOME_SENIOR":
@@ -232,6 +267,21 @@ class DiscreteEventEngine:
                 intl_enabled = bool(self.rng.random() < 0.12)
                 contactless_enabled = bool(self.rng.random() < 0.80)
                 pan_masked = f"607152******{self.rng.integers(1000, 9999)}"
+
+                prod_marginal = INDIAN_PRODUCT_SPEND_MARGINALS.get(product_id, (7.60, 0.75))
+                spend_mu_log = prod_marginal[0]
+                spend_sigma_log = prod_marginal[1]
+                is_spliced = False
+                u_val = 500.0
+                xi_val = 0.20
+                beta_val = 150.0
+                tail_p = 0.02
+                if product_id == "IN_PROD_PMJDY_RUPAY_DEBIT":
+                    overdraft_limit = 10000.0
+                elif "DEBIT" in product_id:
+                    overdraft_limit = 5000.0
+                else:
+                    overdraft_limit = 0.0
             else:
                 currency = "USD"
                 product_id = str(self.rng.choice(cohort_spec.default_assigned_products))
@@ -250,12 +300,15 @@ class DiscreteEventEngine:
                 contactless_enabled = True
                 pan_masked = f"414720******{self.rng.integers(1000, 9999)}"
 
-            sp_spec = cohort_spec.spend_distribution
-            is_spliced = (sp_spec.model == "Spliced_LogNormal_GPD")
-            u_val = (sp_spec.threshold_u_cents / 100.0) if sp_spec.threshold_u_cents else 250.0
-            xi_val = sp_spec.gpd_xi if sp_spec.gpd_xi is not None else 0.22
-            beta_val = (sp_spec.gpd_beta / 100.0) if (sp_spec.gpd_beta is not None and sp_spec.gpd_beta > 500.0) else (sp_spec.gpd_beta or 95.0)
-            tail_p = sp_spec.tail_prob if sp_spec.tail_prob is not None else 0.03
+                sp_spec = cohort_spec.spend_distribution
+                spend_mu_log = sp_spec.mu_log
+                spend_sigma_log = sp_spec.sigma_log
+                is_spliced = (sp_spec.model == "Spliced_LogNormal_GPD")
+                u_val = (sp_spec.threshold_u_cents / 100.0) if sp_spec.threshold_u_cents else 250.0
+                xi_val = sp_spec.gpd_xi if sp_spec.gpd_xi is not None else 0.22
+                beta_val = (sp_spec.gpd_beta / 100.0) if (sp_spec.gpd_beta is not None and sp_spec.gpd_beta > 500.0) else (sp_spec.gpd_beta or 95.0)
+                tail_p = sp_spec.tail_prob if sp_spec.tail_prob is not None else 0.03
+                overdraft_limit = 350.0 if "DEBIT" in product_id else 0.0
 
             ch_raw = cohort_spec.primary_channels
             ch_probs = {
@@ -291,9 +344,9 @@ class DiscreteEventEngine:
                 current_balance=initial_balance,
                 posted_balance=initial_balance,
                 pending_holds=0.0,
-                overdraft_limit=350.0 if "DEBIT" in product_id else 0.0,
-                spend_mean_log=sp_spec.mu_log,
-                spend_sigma_log=sp_spec.sigma_log,
+                overdraft_limit=overdraft_limit,
+                spend_mean_log=spend_mu_log,
+                spend_sigma_log=spend_sigma_log,
                 preferred_channels=list(ch_probs.keys()),
                 circadian_peak_hour=float(self.rng.uniform(11.5, 15.5)),
                 last_physical_lat=float(home_lats[i]),
@@ -345,6 +398,7 @@ class DiscreteEventEngine:
         active_macro_regime: Optional[str] = None,
         chunk_callback: Optional[Any] = None,
         chunk_size: int = 10000,
+        pace_to_sample_budget: bool = True,
     ) -> List[Dict[str, Any]]:
         """Generates transactions via discrete-event priority queue with strict monotonicity."""
         records: List[Dict[str, Any]] = []
@@ -376,10 +430,17 @@ class DiscreteEventEngine:
 
         # 1. Compute aggregate arrival rates and pacing
         n_cards = len(self.cards)
-        mean_tx_per_card = n_transactions / max(n_cards, 1)
-        mean_inter_arrival_sec = (time_span_days * day_seconds) / max(mean_tx_per_card, 1.0)
+        if pace_to_sample_budget:
+            mean_tx_per_card = n_transactions / max(n_cards, 1)
+            mean_inter_arrival_sec = (time_span_days * day_seconds) / max(mean_tx_per_card, 1.0)
+            agg_routine_rate = n_cards / mean_inter_arrival_sec
+        else:
+            mean_inter_arrival_sec = None
+            agg_routine_rate = sum(
+                self._get_card_hawkes_params(c).mu_0 * 0.8208 / max(0.05, (1.0 - min(0.95, self._get_card_hawkes_params(c).branching_ratio)))
+                for c in self.cards
+            )
 
-        agg_routine_rate = n_cards / mean_inter_arrival_sec
         if fraud_prevalence > 0.0:
             agg_fraud_rate = agg_routine_rate * (fraud_prevalence / (1.0 - fraud_prevalence))
             t_fraud_mean = 1.0 / agg_fraud_rate
@@ -1208,16 +1269,17 @@ class DiscreteEventEngine:
                     else:
                         # Draw next routine event using Recursive Circadian Hawkes MTPP
                         macro_mult = self._compute_macro_rate_multiplier(tx_time_sec, active_macro_regime)
+                        card_hawkes = self._get_card_hawkes_params(card, mean_inter_arrival_sec=mean_inter_arrival_sec)
                         if macro_mult != 1.0:
                             card_p = HawkesParameters(
-                                mu_0=hawkes_p.mu_0 * macro_mult,
-                                alpha=hawkes_p.alpha,
-                                beta=hawkes_p.beta,
-                                beta_0_floor=hawkes_p.beta_0_floor,
-                                phi_max=hawkes_p.phi_max,
+                                mu_0=card_hawkes.mu_0 * macro_mult,
+                                alpha=card_hawkes.alpha,
+                                beta=card_hawkes.beta,
+                                beta_0_floor=card_hawkes.beta_0_floor,
+                                phi_max=card_hawkes.phi_max,
                             )
                         else:
-                            card_p = hawkes_p
+                            card_p = card_hawkes
 
                         next_arrival_sec, _ = self.hawkes_engine.sample_next_arrival(
                             current_time_sec=tx_time_sec,

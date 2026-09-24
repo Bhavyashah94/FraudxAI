@@ -11,26 +11,126 @@ unit_definitions:
   velocity: "km_per_hour"
   probability: "[0.0, 1.0]"
 
+fed_empirical_benchmark_marginals:
+  schema_version: "1.1.0"
+  calibration_date: "2026-09-24"
+  baseline_currency: "USD_cents"
+  macro_volume_totals:
+    us_adult_population_mean_monthly_card_tx: 31.4
+    us_adult_payment_day_card_frequency_range: [1.80, 2.74]
+    general_purpose_card_annual_volume_billions: 153.3
+
+  channel_volume_distribution_frps:
+    macro_splits:
+      card_present_in_person_ratio: 0.638
+      card_not_present_remote_ratio: 0.362
+    card_present_subchannels:
+      cp_pos_emv_chip_contact_ratio: 0.678      # 43.26% of total card volume
+      cp_pos_contactless_nfc_ratio: 0.197       # 12.57% of total card volume
+      cp_pos_magstripe_fallback_ratio: 0.125    # 7.98% of total card volume
+    card_not_present_subchannels:
+      cnp_web_ecommerce_browser_ratio: 0.545    # 19.73% of total card volume
+      cnp_app_stored_credential_ratio: 0.455    # 16.47% of total card volume
+    normalized_aggregate_shares:
+      CP_POS_CHIP: 0.4326
+      CP_POS_CONTACTLESS: 0.1257
+      CP_POS_MAGSTRIPE: 0.0798
+      CNP_WEB: 0.1973
+      CNP_APP: 0.1647
+
+  mcc_spend_ticket_marginals:
+    MCC_5411_GROCERY_SUPERMARKET:
+      mcc: 5411
+      category: "Grocery Stores & Supermarkets"
+      distribution_model: "LogNormal"
+      params: { mu_log: 3.550, sigma_log: 0.820 }
+      mean_usd: 48.73
+      mean_cents: 4873
+      median_usd: 34.81
+      median_cents: 3481
+      percentiles_cents: { p25: 2002, p50: 3481, p75: 6053, p95: 13413, p99: 23453 }
+    MCC_5814_FAST_FOOD_QSR:
+      mcc: 5814
+      category: "Fast Food & Quick-Service Restaurants"
+      distribution_model: "LogNormal"
+      params: { mu_log: 2.380, sigma_log: 0.520 }
+      mean_usd: 12.37
+      mean_cents: 1237
+      median_usd: 10.81
+      median_cents: 1081
+      percentiles_cents: { p25: 761, p50: 1081, p75: 1534, p95: 2541, p99: 3622 }
+    MCC_5812_RESTAURANTS_DINING:
+      mcc: 5812
+      category: "Full-Service Restaurants & Dining"
+      distribution_model: "LogNormal"
+      params: { mu_log: 3.470, sigma_log: 0.750 }
+      mean_usd: 42.57
+      mean_cents: 4257
+      median_usd: 32.14
+      median_cents: 3214
+      percentiles_cents: { p25: 1938, p50: 3214, p75: 5330, p95: 11035, p99: 18397 }
+    MCC_5541_GAS_PETROLEUM:
+      mcc: 5541
+      category: "Service Stations & Fuel Dispensers"
+      distribution_model: "LogNormal"
+      params: { mu_log: 3.600, sigma_log: 0.500 }
+      mean_usd: 41.47
+      mean_cents: 4147
+      median_usd: 36.60
+      median_cents: 3660
+      percentiles_cents: { p25: 2612, p50: 3660, p75: 5128, p95: 8330, p99: 11711 }
+    MCC_5311_5999_GENERAL_MERCHANDISE:
+      mcc_list: [5311, 5999, 5300]
+      category: "Department Stores & General Retail Merchandise"
+      distribution_model: "LogNormal"
+      params: { mu_log: 3.810, sigma_log: 0.980 }
+      mean_usd: 72.98
+      mean_cents: 7298
+      median_usd: 45.15
+      median_cents: 4515
+      percentiles_cents: { p25: 2331, p50: 4515, p75: 8744, p95: 22632, p99: 44134 }
+    MCC_5912_8011_MEDICAL_PHARMACY:
+      mcc_list: [5912, 8011, 8021, 8099]
+      category: "Pharmacies & Outpatient Medical Services"
+      distribution_model: "LogNormal"
+      params: { mu_log: 3.350, sigma_log: 1.120 }
+      mean_usd: 53.37
+      mean_cents: 5337
+      median_usd: 28.50
+      median_cents: 2850
+      percentiles_cents: { p25: 1339, p50: 2850, p75: 6067, p95: 17986, p99: 38587 }
+    MCC_4900_4814_UTILITIES_TELECOM:
+      mcc_list: [4900, 4814, 4899]
+      category: "Utilities, Telecommunication & Cable Bills"
+      distribution_model: "LogNormal"
+      params: { mu_log: 4.480, sigma_log: 0.700 }
+      mean_usd: 112.73
+      mean_cents: 11273
+      median_usd: 88.23
+      median_cents: 8823
+      percentiles_cents: { p25: 5503, p50: 8823, p75: 14147, p95: 27905, p99: 44964 }
+
 consumer_clusters:
   - id: "C1_HOURLY_GIG_WORKER"
     name: "Hourly / Gig Economy Worker"
     population_weight: 0.16
     annual_income_usd: [18000, 35000]
+    target_daily_tx_frequency: 1.85
     monthly_card_tx_volume:
       distribution: "NegativeBinomial"
-      params: { r: 8.4, p: 0.228 }
-      mean: 28.4
-      std: 9.8
+      params: { r: 16.5, p: 0.231 }
+      mean: 55.0
+      std: 15.4
     spend_ticket_distribution:
       model: "LogNormal"
       params: { mu_log: 2.75, sigma_log: 0.55 }
       mean_cents: 1820
       percentiles_cents: { p25: 950, p50: 1565, p75: 2480, p95: 5200, p99: 9500 }
     primary_channels:
-      cp_chip_ratio: 0.58
-      cp_nfc_ratio: 0.22
-      cnp_web_ratio: 0.12
-      cnp_app_ratio: 0.08
+      cp_chip_ratio: 0.45
+      cp_nfc_ratio: 0.25
+      cnp_web_ratio: 0.16
+      cnp_app_ratio: 0.14
     dominant_mccs: [5411, 5814, 5541, 5912, 7299]
     default_assigned_products: ["PROD_SUBPRIME_SECURED", "PROD_CHECKING_DEBIT", "PROD_GPR_PREPAID"]
     vigilance_tier_weights:
@@ -39,32 +139,33 @@ consumer_clusters:
       tier_3_statement: 0.12
       tier_4_passive: 0.08
     hawkes_dynamics:
-      mu_0_hz: 0.0000110
+      mu_0_hz: 0.00000913
       alpha_excitation_hz: 0.00195
-      beta_decay_hz: 0.00285
-      branching_ratio_eta: 0.684
-      expected_cluster_size: 3.16
+      beta_decay_hz: 0.00300
+      branching_ratio_eta: 0.650
+      expected_cluster_size: 2.857
       nocturnal_floor_beta_0: 0.035
 
   - id: "C2_FIXED_INCOME_SENIOR"
     name: "Fixed-Income Senior / Retiree"
     population_weight: 0.18
     annual_income_usd: [22000, 48000]
+    target_daily_tx_frequency: 1.35
     monthly_card_tx_volume:
       distribution: "NegativeBinomial"
-      params: { r: 18.3, p: 0.363 }
-      mean: 32.1
-      std: 7.5
+      params: { r: 24.2, p: 0.375 }
+      mean: 40.3
+      std: 10.4
     spend_ticket_distribution:
       model: "LogNormal"
       params: { mu_log: 3.32, sigma_log: 0.62 }
       mean_cents: 3350
       percentiles_cents: { p25: 1420, p50: 2760, p75: 4830, p95: 11500, p99: 24500 }
     primary_channels:
-      cp_chip_ratio: 0.64
-      cp_nfc_ratio: 0.18
-      cnp_web_ratio: 0.14
-      cnp_app_ratio: 0.04
+      cp_chip_ratio: 0.60
+      cp_nfc_ratio: 0.15
+      cnp_web_ratio: 0.18
+      cnp_app_ratio: 0.07
     dominant_mccs: [5411, 5912, 8011, 8062, 5311, 5812]
     default_assigned_products: ["PROD_CLASSIC_REVOLVING", "PROD_CHECKING_DEBIT"]
     vigilance_tier_weights:
@@ -73,30 +174,31 @@ consumer_clusters:
       tier_3_statement: 0.52
       tier_4_passive: 0.08
     hawkes_dynamics:
-      mu_0_hz: 0.0000124
-      alpha_excitation_hz: 0.00145
-      beta_decay_hz: 0.00260
-      branching_ratio_eta: 0.558
-      expected_cluster_size: 2.26
+      mu_0_hz: 0.00000914
+      alpha_excitation_hz: 0.00130
+      beta_decay_hz: 0.00250
+      branching_ratio_eta: 0.520
+      expected_cluster_size: 2.083
       nocturnal_floor_beta_0: 0.010
 
   - id: "C3_YOUNG_ADULT_STUDENT"
     name: "Young Adult / College Student"
     population_weight: 0.14
     annual_income_usd: [12000, 32000]
+    target_daily_tx_frequency: 2.10
     monthly_card_tx_volume:
       distribution: "NegativeBinomial"
-      params: { r: 11.7, p: 0.194 }
-      mean: 48.6
-      std: 14.2
+      params: { r: 18.2, p: 0.225 }
+      mean: 62.7
+      std: 16.7
     spend_ticket_distribution:
       model: "LogNormal"
       params: { mu_log: 2.65, sigma_log: 0.58 }
       mean_cents: 1670
       percentiles_cents: { p25: 720, p50: 1410, p75: 2350, p95: 4800, p99: 11000 }
     primary_channels:
-      cp_nfc_ratio: 0.42
-      cnp_app_ratio: 0.26
+      cp_nfc_ratio: 0.44
+      cnp_app_ratio: 0.24
       cp_chip_ratio: 0.18
       cnp_web_ratio: 0.14
     dominant_mccs: [5814, 5812, 5499, 4899, 5815, 7993, 5651]
@@ -107,38 +209,39 @@ consumer_clusters:
       tier_3_statement: 0.05
       tier_4_passive: 0.03
     hawkes_dynamics:
-      mu_0_hz: 0.0000158
+      mu_0_hz: 0.00000888
       alpha_excitation_hz: 0.00210
-      beta_decay_hz: 0.00290
-      branching_ratio_eta: 0.724
-      expected_cluster_size: 3.62
+      beta_decay_hz: 0.00300
+      branching_ratio_eta: 0.700
+      expected_cluster_size: 3.333
       nocturnal_floor_beta_0: 0.045
 
   - id: "C4_SUBURBAN_FAMILY"
     name: "Suburban Family Household"
     population_weight: 0.28
     annual_income_usd: [75000, 160000]
+    target_daily_tx_frequency: 2.65
     monthly_card_tx_volume:
       distribution: "NegativeBinomial"
-      params: { r: 17.4, p: 0.185 }
-      mean: 76.4
-      std: 18.3
+      params: { r: 28.5, p: 0.264 }
+      mean: 79.4
+      std: 17.3
     spend_ticket_distribution:
       model: "Spliced_LogNormal_GPD"
       params:
-        mu_log: 3.85
-        sigma_log: 0.72
+        mu_log: 3.55
+        sigma_log: 0.65
         threshold_u_cents: 25000  # $250.00 EVT splicing threshold
         gpd_xi: 0.22
         gpd_beta: 9500
         tail_prob: 0.03
-      mean_cents: 6120
-      percentiles_cents: { p25: 2250, p50: 4700, p75: 8900, p95: 21500, p99: 48000 }
+      mean_cents: 4290
+      percentiles_cents: { p25: 1840, p50: 3480, p75: 6420, p95: 14800, p99: 29500 }
     primary_channels:
-      cp_nfc_ratio: 0.38
-      cnp_web_ratio: 0.25
-      cp_chip_ratio: 0.24
-      cnp_app_ratio: 0.13
+      cp_chip_ratio: 0.44
+      cp_nfc_ratio: 0.24
+      cnp_web_ratio: 0.18
+      cnp_app_ratio: 0.14
     dominant_mccs: [5411, 5541, 5542, 5200, 8211, 8299, 5651, 4900, 5812]
     default_assigned_products: ["PROD_REWARDS_SIGNATURE", "PROD_CLASSIC_REVOLVING", "PROD_TOKENIZED_DPAN"]
     vigilance_tier_weights:
@@ -147,32 +250,33 @@ consumer_clusters:
       tier_3_statement: 0.08
       tier_4_passive: 0.02
     hawkes_dynamics:
-      mu_0_hz: 0.0000208
+      mu_0_hz: 0.00001030
       alpha_excitation_hz: 0.00225
       beta_decay_hz: 0.00310
-      branching_ratio_eta: 0.726
-      expected_cluster_size: 3.65
+      branching_ratio_eta: 0.725
+      expected_cluster_size: 3.636
       nocturnal_floor_beta_0: 0.015
 
   - id: "C5_URBAN_TECH_PROFESSIONAL"
     name: "Urban Tech-Forward Professional"
     population_weight: 0.12
     annual_income_usd: [85000, 180000]
+    target_daily_tx_frequency: 2.45
     monthly_card_tx_volume:
       distribution: "NegativeBinomial"
-      params: { r: 17.0, p: 0.214 }
-      mean: 62.3
-      std: 15.1
+      params: { r: 25.1, p: 0.253 }
+      mean: 74.0
+      std: 17.1
     spend_ticket_distribution:
       model: "LogNormal"
       params: { mu_log: 3.65, sigma_log: 0.68 }
-      mean_cents: 5280
-      percentiles_cents: { p25: 1800, p50: 3850, p75: 7200, p95: 18500, p99: 42000 }
+      mean_cents: 4830
+      percentiles_cents: { p25: 2010, p50: 3850, p75: 7280, p95: 17500, p99: 38000 }
     primary_channels:
-      cnp_app_ratio: 0.34
-      cp_nfc_ratio: 0.32
-      cnp_web_ratio: 0.28
-      cp_chip_ratio: 0.06
+      cp_nfc_ratio: 0.36
+      cnp_app_ratio: 0.24
+      cnp_web_ratio: 0.22
+      cp_chip_ratio: 0.18
     dominant_mccs: [5812, 5814, 4121, 5411, 4816, 5815, 7011, 3000]
     default_assigned_products: ["PROD_REWARDS_SIGNATURE", "PROD_ULTRA_PREMIUM_INFINITE", "PROD_TOKENIZED_DPAN"]
     vigilance_tier_weights:
@@ -181,38 +285,39 @@ consumer_clusters:
       tier_3_statement: 0.04
       tier_4_passive: 0.02
     hawkes_dynamics:
-      mu_0_hz: 0.0000185
-      alpha_excitation_hz: 0.00180
-      beta_decay_hz: 0.00270
-      branching_ratio_eta: 0.667
-      expected_cluster_size: 3.00
+      mu_0_hz: 0.00001110
+      alpha_excitation_hz: 0.00190
+      beta_decay_hz: 0.00280
+      branching_ratio_eta: 0.680
+      expected_cluster_size: 3.125
       nocturnal_floor_beta_0: 0.030
 
   - id: "C6_SMALL_BUSINESS_OWNER"
     name: "Small Business Owner-Operator"
     population_weight: 0.07
     annual_income_usd: [60000, 250000]
+    target_daily_tx_frequency: 2.70
     monthly_card_tx_volume:
       distribution: "NegativeBinomial"
-      params: { r: 12.0, p: 0.109 }
-      mean: 98.5
-      std: 28.4
+      params: { r: 26.4, p: 0.245 }
+      mean: 81.3
+      std: 18.2
     spend_ticket_distribution:
       model: "Spliced_LogNormal_GPD"
       params:
-        mu_log: 4.10
-        sigma_log: 0.88
+        mu_log: 4.15
+        sigma_log: 0.72
         threshold_u_cents: 45000
         gpd_xi: 0.28
         gpd_beta: 18000
         tail_prob: 0.05
-      mean_cents: 12850
-      percentiles_cents: { p25: 2800, p50: 6800, p75: 16500, p95: 52000, p99: 185000 }
+      mean_cents: 8210
+      percentiles_cents: { p25: 3250, p50: 6340, p75: 12200, p95: 31000, p99: 68000 }
     primary_channels:
-      cnp_web_ratio: 0.44
-      cp_chip_ratio: 0.26
-      cp_nfc_ratio: 0.16
-      cnp_api_ratio: 0.14
+      cp_chip_ratio: 0.42
+      cnp_web_ratio: 0.26
+      cp_nfc_ratio: 0.22
+      cnp_app_ratio: 0.10
     dominant_mccs: [5085, 5099, 5200, 5943, 7311, 7372, 5541, 5542, 5812, 9311]
     default_assigned_products: ["PROD_COMMERCIAL_FLEET", "PROD_REWARDS_SIGNATURE"]
     vigilance_tier_weights:
@@ -221,38 +326,39 @@ consumer_clusters:
       tier_3_statement: 0.16
       tier_4_passive: 0.04
     hawkes_dynamics:
-      mu_0_hz: 0.0000245
-      alpha_excitation_hz: 0.00205
-      beta_decay_hz: 0.00295
-      branching_ratio_eta: 0.695
-      expected_cluster_size: 3.28
+      mu_0_hz: 0.00001140
+      alpha_excitation_hz: 0.00210
+      beta_decay_hz: 0.00300
+      branching_ratio_eta: 0.700
+      expected_cluster_size: 3.333
       nocturnal_floor_beta_0: 0.020
 
   - id: "C7_LUXURY_AFFLUENT"
     name: "High-Net-Worth Luxury Spender"
     population_weight: 0.05
     annual_income_usd: [225000, 1500000]
+    target_daily_tx_frequency: 2.60
     monthly_card_tx_volume:
       distribution: "NegativeBinomial"
-      params: { r: 14.6, p: 0.148 }
-      mean: 84.2
-      std: 22.0
+      params: { r: 25.5, p: 0.248 }
+      mean: 77.3
+      std: 17.6
     spend_ticket_distribution:
       model: "Spliced_LogNormal_GPD"
       params:
-        mu_log: 4.45
-        sigma_log: 0.95
+        mu_log: 4.55
+        sigma_log: 0.78
         threshold_u_cents: 80000
         gpd_xi: 0.35
         gpd_beta: 32000
         tail_prob: 0.06
-      mean_cents: 21800
-      percentiles_cents: { p25: 4500, p50: 11500, p75: 28000, p95: 95000, p99: 380000 }
+      mean_cents: 12820
+      percentiles_cents: { p25: 4720, p50: 9460, p75: 19100, p95: 52000, p99: 135000 }
     primary_channels:
-      cp_nfc_ratio: 0.36
-      cnp_web_ratio: 0.32
-      cp_chip_ratio: 0.24
-      cnp_app_ratio: 0.08
+      cp_nfc_ratio: 0.35
+      cp_chip_ratio: 0.30
+      cnp_web_ratio: 0.22
+      cnp_app_ratio: 0.13
     dominant_mccs: [3000, 3500, 5812, 5311, 5651, 5944, 7997, 7011]
     default_assigned_products: ["PROD_ULTRA_PREMIUM_INFINITE"]
     vigilance_tier_weights:
@@ -261,11 +367,11 @@ consumer_clusters:
       tier_3_statement: 0.24
       tier_4_passive: 0.04
     hawkes_dynamics:
-      mu_0_hz: 0.0000325
-      alpha_excitation_hz: 0.00240
+      mu_0_hz: 0.00000953
+      alpha_excitation_hz: 0.00237
       beta_decay_hz: 0.00320
-      branching_ratio_eta: 0.750
-      expected_cluster_size: 4.00
+      branching_ratio_eta: 0.740
+      expected_cluster_size: 3.846
       nocturnal_floor_beta_0: 0.030
 
 circadian_diurnal_model:

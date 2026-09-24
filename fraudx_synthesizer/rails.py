@@ -306,6 +306,21 @@ class RailVerifierSwitch:
                         pos_condition_code=pos_condition,
                         hop_origin="ISSUER_HOST",
                     )
+                # Cumulative ₹15,000 PINless transaction ceiling
+                if (card.cumulative_pinless_contactless_amount + intent.amount > 15000.0) and not intent.pin_entered:
+                    return RailVerificationResult(
+                        approved=False,
+                        iso_response_code=ISO8583Response.ACTIVITY_LIMIT_EXCEEDED_65.value,
+                        approved_amount=0.0,
+                        trans_status_3ds="",
+                        eci="",
+                        auth_code="",
+                        decline_reason="RBI_NFC_CUMULATIVE_LIMIT_EXCEEDED_15000_INR",
+                        regulatory_rule_triggered="RBI_NFC_CUMULATIVE_CAP",
+                        pos_entry_mode=pos_entry,
+                        pos_condition_code=pos_condition,
+                        hop_origin="ISSUER_HOST",
+                    )
 
         # 8. Monetary Bounds Validation
         max_cap = 20_000_000.0 if (self.region == "IN" or card.currency == "INR") else 250_000.0
@@ -353,6 +368,7 @@ class RailVerifierSwitch:
                         eci="07",
                         auth_code="",
                         decline_reason="RBI_MANDATORY_AFA_OTP_REQUIRED",
+                        regulatory_rule_triggered="RBI_MANDATORY_AFA_2FA",
                         pos_entry_mode=pos_entry,
                         pos_condition_code=pos_condition,
                         hop_origin="ACS_3DS",

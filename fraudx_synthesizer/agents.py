@@ -373,8 +373,6 @@ class CardholderProfile:
                 val = self.gpd_threshold_u + gpd_excess
 
         if self.currency == "INR":
-            if self.spend_mean_log < 5.0:
-                val *= 40.0
             return float(np.clip(val, 10.0, max_spend))
         else:
             return float(np.clip(val, 1.50, max_spend))

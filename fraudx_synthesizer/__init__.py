@@ -65,6 +65,11 @@ from .storage import (
 )
 from .stream import (
     INFERENCE_ALLOWLIST,
+    InvestigationStatus,
+    LabelSource,
+    PriorityStrategy,
+    SupervisionEngine,
+    SupervisionRecord,
     ZeroLeakageDataPartitioner,
 )
 from .syndicates import (
@@ -76,6 +81,7 @@ from .syndicates import (
 from .graph_transformer import ForensicGraphTransformer
 from .hawkes import (
     ADVERSARY_HAWKES_PROFILES,
+    INDIAN_PERSONA_HAWKES_PROFILES,
     PERSONA_HAWKES_PROFILES,
     HawkesParameters,
     RecursiveCircadianHawkesEngine,
@@ -156,6 +162,7 @@ __all__ = [
     "HawkesParameters",
     "RecursiveCircadianHawkesEngine",
     "PERSONA_HAWKES_PROFILES",
+    "INDIAN_PERSONA_HAWKES_PROFILES",
     "ADVERSARY_HAWKES_PROFILES",
     "ConditionalRealNVPFlow",
     "AffineCouplingLayer",
@@ -167,6 +174,11 @@ __all__ = [
     "RailVerifierSwitch",
     "ZeroLeakageDataPartitioner",
     "INFERENCE_ALLOWLIST",
+    "SupervisionEngine",
+    "SupervisionRecord",
+    "LabelSource",
+    "InvestigationStatus",
+    "PriorityStrategy",
     "AnalyticalBeliefState",
     "CandidateAction",
     "ConstraintPruner",
