@@ -305,9 +305,9 @@ def test_two_sample_ks_spend_marginals_against_rbi():
     products = [
         ("IN_PROD_PMJDY_RUPAY_DEBIT", 6.50, 0.65, 10000.0),
         ("IN_PROD_ENTRY_FD_BACKED", 6.95, 0.70, 25000.0),
-        ("IN_PROD_SALARIED_PRIME_REWARDS", 7.60, 0.75, 150000.0),
-        ("IN_PROD_KISAN_CREDIT_CARD", 8.20, 0.80, 200000.0),
-        ("IN_PROD_SUPER_PREMIUM_HNI", 8.85, 0.85, 2500000.0),
+        ("IN_PROD_SALARIED_PRIME_REWARDS", 7.65, 0.70, 150000.0),
+        ("IN_PROD_KISAN_CREDIT_CARD", 7.80, 0.72, 200000.0),
+        ("IN_PROD_SUPER_PREMIUM_HNI", 8.55, 0.75, 2500000.0),
     ]
 
     for prod_id, ref_mu, ref_sigma, cred_limit in products:

@@ -67,9 +67,9 @@ EVT_PAYROLL_DEPOSIT = 8
 INDIAN_PRODUCT_SPEND_MARGINALS: Dict[str, Tuple[float, float]] = {
     "IN_PROD_PMJDY_RUPAY_DEBIT": (6.50, 0.65),       # Median ₹665, Mean ₹822
     "IN_PROD_ENTRY_FD_BACKED": (6.95, 0.70),         # Median ₹1,043, Mean ₹1,333
-    "IN_PROD_SALARIED_PRIME_REWARDS": (7.60, 0.75),  # Median ₹1,998, Mean ₹2,646
-    "IN_PROD_KISAN_CREDIT_CARD": (8.20, 0.80),       # Median ₹3,640, Mean ₹5,014
-    "IN_PROD_SUPER_PREMIUM_HNI": (8.85, 0.85),       # Median ₹6,974, Mean ₹10,008
+    "IN_PROD_SALARIED_PRIME_REWARDS": (7.65, 0.70),  # Median ₹2,100, Mean ₹2,683
+    "IN_PROD_KISAN_CREDIT_CARD": (7.80, 0.72),       # Median ₹2,440, Mean ₹3,162
+    "IN_PROD_SUPER_PREMIUM_HNI": (8.55, 0.75),       # Median ₹5,166, Mean ₹6,844
 }
 
 
