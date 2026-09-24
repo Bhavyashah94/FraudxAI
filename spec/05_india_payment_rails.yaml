@@ -19,8 +19,8 @@ unit_definitions:
 # =============================================================================
 
 indian_card_macro_aggregates:
-  reporting_period_baseline: "FY_2023_2024_ANNUAL_AND_MARCH_2024_PEAK"
-  latest_census_date: "2025-06-30"
+  reporting_period_baseline: "FY_2023_2024_ANNUAL_AND_JULY_2026_PSI_ACTIVE"
+  latest_census_date: "2026-07-31"
   cards_in_circulation:
     total_cards_outstanding_millions: 1116.4
     debit_cards:
@@ -461,6 +461,12 @@ indian_card_products:
       min: 2500000       # ₹25,000.00
       median: 15000000   # ₹1,50,000.00
       max: 100000000     # ₹10,00,000.00
+    spend_distribution:
+      model: "LogNormal"
+      mu_log: 7.80
+      sigma_log: 0.72
+      median_inr: 2440.0
+      mean_inr: 3162.0
     effective_net_apr_percentage: 4.0   # 7% nominal with 3% prompt repayment incentive
     crop_season_cycles: ["KHARIF", "RABI"]
     primary_adversarial_vulnerabilities:
@@ -475,6 +481,12 @@ indian_card_products:
       min: 0
       median: 250000     # ₹2,500.00
       max: 1000000      # ₹10,000.00
+    spend_distribution:
+      model: "LogNormal"
+      mu_log: 6.50
+      sigma_log: 0.65
+      median_inr: 665.0
+      mean_inr: 822.0
     overdraft_facility_paisa: 1000000   # ₹10,000.00 OD
     inbuilt_accidental_insurance_paisa: 20000000 # ₹2 Lakhs
     primary_adversarial_vulnerabilities:
@@ -490,6 +502,12 @@ indian_card_products:
       min: 500000        # ₹5,000.00
       median: 2500000    # ₹25,000.00
       max: 5000000       # ₹50,000.00
+    spend_distribution:
+      model: "LogNormal"
+      mu_log: 6.95
+      sigma_log: 0.70
+      median_inr: 1043.0
+      mean_inr: 1333.0
     revolving_apr_percentage_range: [24.0, 42.0]
     primary_adversarial_vulnerabilities:
       - "MICRO_AUTH_PROBING"
@@ -503,6 +521,12 @@ indian_card_products:
       min: 5000000       # ₹50,000.00
       median: 15000000   # ₹1,50,000.00
       max: 50000000      # ₹5,00,000.00
+    spend_distribution:
+      model: "LogNormal"
+      mu_log: 7.65
+      sigma_log: 0.70
+      median_inr: 2100.0
+      mean_inr: 2683.0
     interest_free_grace_period_days: 50
     revolving_apr_percentage_range: [42.0, 45.0]
     primary_adversarial_vulnerabilities:
@@ -518,6 +542,12 @@ indian_card_products:
       min: 100000000     # ₹10,00,000.00
       median: 250000000   # ₹25,00,000.00
       max: 500000000     # ₹50,00,000.00
+    spend_distribution:
+      model: "LogNormal"
+      mu_log: 8.55
+      sigma_log: 0.75
+      median_inr: 5166.0
+      mean_inr: 6844.0
     forex_markup_percentage: 2.0
     primary_adversarial_vulnerabilities:
       - "INTERNATIONAL_NON_3DS_ROUTE_AROUND"

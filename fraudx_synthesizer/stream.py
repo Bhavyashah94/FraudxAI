@@ -222,38 +222,46 @@ class SupervisionEngine:
 
     def __init__(
         self,
-        k_daily: int = 50,
-        alert_threshold: float = 0.70,
-        priority_strategy: PriorityStrategy = PriorityStrategy.RISK_SCORE,
-        weibull_k: float = 1.35,
-        weibull_scale_hours: float = 18.0,
-        min_investigation_hours: float = 0.5,
-        max_investigation_hours: float = 72.0,
-        lognormal_mu_days: float = 3.40,
-        lognormal_sigma: float = 0.45,
-        min_chargeback_days: float = 3.0,
-        max_chargeback_days: float = 120.0,
-        v0_usd: float = 15.0,
-        v0_inr: float = 1250.0,
-        dark_smoothness: float = 0.40,
-        clean_maturity_days: Optional[float] = 90.0,
+        k_daily: Optional[int] = None,
+        alert_threshold: Optional[float] = None,
+        priority_strategy: Optional[Union[str, PriorityStrategy]] = None,
+        weibull_k: Optional[float] = None,
+        weibull_scale_hours: Optional[float] = None,
+        min_investigation_hours: Optional[float] = None,
+        max_investigation_hours: Optional[float] = None,
+        lognormal_mu_days: Optional[float] = None,
+        lognormal_sigma: Optional[float] = None,
+        min_chargeback_days: Optional[float] = None,
+        max_chargeback_days: Optional[float] = None,
+        v0_usd: Optional[float] = None,
+        v0_inr: Optional[float] = None,
+        dark_smoothness: Optional[float] = None,
+        clean_maturity_days: Optional[float] = None,
         seed: int = 42,
     ):
-        self.k_daily = max(0, int(k_daily))
-        self.alert_threshold = float(alert_threshold)
-        self.priority_strategy = PriorityStrategy(priority_strategy)
-        self.weibull_k = float(weibull_k)
-        self.weibull_scale_hours = float(weibull_scale_hours)
-        self.min_investigation_hours = float(min_investigation_hours)
-        self.max_investigation_hours = float(max_investigation_hours)
-        self.lognormal_mu_days = float(lognormal_mu_days)
-        self.lognormal_sigma = float(lognormal_sigma)
-        self.min_chargeback_days = float(min_chargeback_days)
-        self.max_chargeback_days = float(max_chargeback_days)
-        self.v0_usd = float(v0_usd)
-        self.v0_inr = float(v0_inr)
-        self.dark_smoothness = float(dark_smoothness)
-        self.clean_maturity_days = float(clean_maturity_days) if clean_maturity_days is not None else None
+        try:
+            from .spec_loader import load_all_specs
+            spec = load_all_specs().supervision
+        except Exception:
+            spec = None
+
+        self.k_daily = max(0, int(k_daily if k_daily is not None else (spec.default_k_daily if spec else 50)))
+        self.alert_threshold = float(alert_threshold if alert_threshold is not None else (spec.alert_threshold if spec else 0.70))
+        strat = priority_strategy if priority_strategy is not None else (spec.default_priority_strategy if spec else PriorityStrategy.RISK_SCORE)
+        self.priority_strategy = PriorityStrategy(strat)
+        self.weibull_k = float(weibull_k if weibull_k is not None else (spec.weibull_k if spec else 1.35))
+        self.weibull_scale_hours = float(weibull_scale_hours if weibull_scale_hours is not None else (spec.weibull_scale_hours if spec else 18.0))
+        self.min_investigation_hours = float(min_investigation_hours if min_investigation_hours is not None else (spec.min_investigation_hours if spec else 0.5))
+        self.max_investigation_hours = float(max_investigation_hours if max_investigation_hours is not None else (spec.max_investigation_hours if spec else 72.0))
+        self.lognormal_mu_days = float(lognormal_mu_days if lognormal_mu_days is not None else (spec.lognormal_mu_days if spec else 3.40))
+        self.lognormal_sigma = float(lognormal_sigma if lognormal_sigma is not None else (spec.lognormal_sigma if spec else 0.45))
+        self.min_chargeback_days = float(min_chargeback_days if min_chargeback_days is not None else (spec.min_chargeback_days if spec else 3.0))
+        self.max_chargeback_days = float(max_chargeback_days if max_chargeback_days is not None else (spec.max_chargeback_days if spec else 120.0))
+        self.v0_usd = float(v0_usd if v0_usd is not None else (spec.v0_usd if spec else 15.0))
+        self.v0_inr = float(v0_inr if v0_inr is not None else (spec.v0_inr if spec else 1250.0))
+        self.dark_smoothness = float(dark_smoothness if dark_smoothness is not None else (spec.dark_smoothness if spec else 0.40))
+        clean_mat = clean_maturity_days if clean_maturity_days is not None else (spec.clean_maturity_days if spec else 90.0)
+        self.clean_maturity_days = float(clean_mat) if clean_mat is not None else None
         self.seed = seed
         self.rng = np.random.default_rng(seed)
 

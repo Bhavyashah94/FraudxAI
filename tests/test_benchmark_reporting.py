@@ -352,3 +352,52 @@ def test_cli_generate_routing_without_arbitrary_threshold(tmp_path: Path, monkey
     assert (tmp_path / "large_run_auth_stream.csv").exists()
     assert (tmp_path / "large_run_gateway_telemetry.csv").exists()
 
+
+def test_benchmark_measurements_are_empirical_not_constants():
+    """Verify that Frobenius error, MIA ROC-AUC, Causal Faithfulness, etc. are empirical measurements, not constants."""
+    runner1 = UnifiedBenchmarkRunner(region="US", n_transactions=500, time_span_days=8.0, k_daily=10, seed=42)
+    report1 = runner1.run_benchmark()
+
+    runner2 = UnifiedBenchmarkRunner(region="US", n_transactions=500, time_span_days=8.0, k_daily=10, seed=99)
+    report2 = runner2.run_benchmark()
+
+    # 1. Frobenius error must be empirical, non-zero, and not a hardcoded 0.42
+    assert report1.fidelity.spearman_frobenius_error != 0.42
+    assert 0.0 <= report1.fidelity.spearman_frobenius_error <= 1.0
+
+    # 2. MIA ROC-AUC must be empirical, computed from distance-based logistic attack, not a literal 0.518
+    assert report1.privacy.mia_attack_roc_auc != 0.518
+    assert 0.40 <= report1.privacy.mia_attack_roc_auc <= 0.65
+
+    # 3. Causal faithfulness must be empirical, not a literal 0.88
+    assert report1.xai.mean_causal_faithfulness != 0.88
+    assert 0.0 <= report1.xai.mean_causal_faithfulness <= 1.0
+
+    # 4. Multi-seed variation proves genuine data-dependent execution
+    assert report1.fidelity.wasserstein_amount_log != report2.fidelity.wasserstein_amount_log
+    assert report1.privacy.dcr_5th_percentile != report2.privacy.dcr_5th_percentile
+
+    # 5. Triage curves and daily drift metrics must be populated from test stream
+    assert "k_values" in report1.triage_curves and len(report1.triage_curves["k_values"]) == 5
+    assert len(report1.triage_curves["p_at_k"]) == 5
+    assert all("ks_drift_p_value" in d for d in report1.daily_trajectory)
+    assert all("psi_score" in d for d in report1.daily_trajectory)
+
+
+def test_html_report_dynamic_fail_pills(tmp_path: Path, sample_report_data: UnifiedBenchmarkReportData):
+    """Verify HTML report renders pill-fail when metrics violate benchmark thresholds."""
+    # Create failing report data
+    failing_report = sample_report_data
+    failing_report.fidelity.wasserstein_amount_log = 0.8888  # Violates <= 0.350
+    failing_report.privacy.dcr_5th_percentile = 0.00001     # Violates >= 0.0001
+    failing_report.all_pillars_passed = False
+    failing_report.certification_grade = "NON_CERTIFIED_FAIL"
+
+    html_path = tmp_path / "failing_report.html"
+    BenchmarkReportCompiler.compile_html(failing_report, {}, html_path)
+
+    assert html_path.exists()
+    content = html_path.read_text(encoding="utf-8")
+    assert '<span class="pill pill-fail">FAIL</span>' in content, "Failing metrics must render pill-fail!"
+    assert 'badge-danger' in content
+

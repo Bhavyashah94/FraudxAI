@@ -316,6 +316,7 @@ class PrequentialBenchmarkReport:
     overall_savings_ratio: float
     daily_metrics: List[DailyStreamingMetrics]
     drift_alert_days: List[int] = field(default_factory=list)
+    triage_k_summary: Dict[int, Dict[str, float]] = field(default_factory=dict)
 
 
 class StreamingMetricTracker:
@@ -595,9 +596,9 @@ class PrequentialStreamingEvaluator:
             "amount",
             "haversine_velocity_kph",
             "ip_distance_from_home_km",
-            "user_tx_count_1h",
-            "user_tx_count_24h",
-            "user_tx_amount_sum_24h",
+            "tx_count_1h",
+            "tx_count_24h",
+            "tx_amount_sum_24h",
             "user_avg_tx_amount_30d",
             "cvv_match_flag",
             "billing_shipping_match",
@@ -605,18 +606,32 @@ class PrequentialStreamingEvaluator:
         self.last_training_pools: List[Tuple[float, List[Dict[str, Any]]]] = []
 
     def _extract_feature_matrix(self, records: List[Dict[str, Any]]) -> np.ndarray:
-        """Extracts numerical features with deterministic nan-handling."""
+        """Extracts numerical features with deterministic nan-handling and canonical alias resolution."""
         n = len(records)
         d = len(self.feature_columns)
         X = np.zeros((n, d), dtype=np.float64)
 
+        aliases = {
+            "user_tx_count_1h": "tx_count_1h",
+            "user_tx_count_24h": "tx_count_24h",
+            "user_tx_amount_sum_24h": "tx_amount_sum_24h",
+            "tx_count_1h": "user_tx_count_1h",
+            "tx_count_24h": "user_tx_count_24h",
+            "tx_amount_sum_24h": "user_tx_amount_sum_24h",
+        }
+
         for i, r in enumerate(records):
             for j, col in enumerate(self.feature_columns):
-                val = r.get(col, 0.0)
-                try:
-                    X[i, j] = float(val) if val is not None and val != "" else 0.0
-                except (ValueError, TypeError):
+                val = r.get(col)
+                if val is None and col in aliases:
+                    val = r.get(aliases[col])
+                if val is None or val == "":
                     X[i, j] = 0.0
+                else:
+                    try:
+                        X[i, j] = float(val)
+                    except (ValueError, TypeError):
+                        X[i, j] = 0.0
         return X
 
     def evaluate_stream(
@@ -652,7 +667,7 @@ class PrequentialStreamingEvaluator:
 
         # Initial training warmup requires at least w_train_sec + delta_delay_sec
         current_epoch = t_min + w_train_sec + delta_delay_sec
-        if current_epoch + w_test_sec > t_max:
+        if current_epoch + 2.0 * w_test_sec > t_max:
             # Scale down windows dynamically for short demonstration or unit test streams
             span_days = (t_max - t_min) / day_sec
             w_train_sec = max(0.5 * day_sec, span_days * 0.35 * day_sec)
@@ -668,6 +683,7 @@ class PrequentialStreamingEvaluator:
         reference_scores = np.array([])
         daily_metrics_list: List[DailyStreamingMetrics] = []
         drift_alert_days: List[int] = []
+        all_days_triage: List[Dict[int, Dict[str, float]]] = []
         day_counter = 0
 
         # Step 3: Rolling prequential loop
@@ -789,6 +805,28 @@ class PrequentialStreamingEvaluator:
                 )
                 daily_metrics_list.append(daily_m)
 
+                # Multi-k triage curves for operational trade-off evaluation
+                daily_triage: Dict[int, Dict[str, float]] = {}
+                for k_val in (10, 25, 50, 100, 200):
+                    p_k = StreamingMetricTracker.compute_p_at_k(y_true, test_scores, k_val)
+                    cp_k = StreamingMetricTracker.compute_card_precision_at_k(y_true, test_scores, card_ids, k_val)
+                    dr_k = StreamingMetricTracker.compute_dollar_recall_at_k(y_true, test_scores, amounts, k_val)
+                    c_base_k, c_model_k, s_ratio_k = StreamingMetricTracker.compute_financial_savings(
+                        y_true=y_true,
+                        y_score=test_scores,
+                        amounts=amounts,
+                        k=k_val,
+                        cost_matrix=self.cost_matrix,
+                    )
+                    daily_triage[k_val] = {
+                        "p_at_k": p_k,
+                        "cp_at_k": cp_k,
+                        "dollar_recall_at_k": dr_k,
+                        "savings_ratio": s_ratio_k,
+                        "net_savings_nominal": max(0.0, c_base_k - c_model_k),
+                    }
+                all_days_triage.append(daily_triage)
+
             day_counter += 1
             current_epoch += retrain_step_sec
 
@@ -808,6 +846,17 @@ class PrequentialStreamingEvaluator:
         total_cost_model = float(sum(m.cost_model for m in daily_metrics_list))
         overall_savings = (total_cost_base - total_cost_model) / max(total_cost_base, 1e-9)
 
+        triage_k_summary: Dict[int, Dict[str, float]] = {}
+        if all_days_triage:
+            for k_val in (10, 25, 50, 100, 200):
+                triage_k_summary[k_val] = {
+                    "p_at_k": float(np.mean([d[k_val]["p_at_k"] for d in all_days_triage])),
+                    "cp_at_k": float(np.mean([d[k_val]["cp_at_k"] for d in all_days_triage])),
+                    "dollar_recall_at_k": float(np.mean([d[k_val]["dollar_recall_at_k"] for d in all_days_triage])),
+                    "savings_ratio": float(np.mean([d[k_val]["savings_ratio"] for d in all_days_triage])),
+                    "net_savings_nominal": float(np.mean([d[k_val]["net_savings_nominal"] for d in all_days_triage])),
+                }
+
         return PrequentialBenchmarkReport(
             n_days_evaluated=n_days,
             total_test_transactions=total_test_tx,
@@ -823,4 +872,5 @@ class PrequentialStreamingEvaluator:
             overall_savings_ratio=float(overall_savings),
             daily_metrics=daily_metrics_list,
             drift_alert_days=drift_alert_days,
+            triage_k_summary=triage_k_summary,
         )

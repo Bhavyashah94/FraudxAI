@@ -305,23 +305,33 @@ def cmd_benchmark(args: argparse.Namespace) -> None:
                     daily_objs, delta_delay_days=report_data.streaming.delta_delay_days, output_path=fig_dir
                 )
 
-            k_vals = [10, 25, 50, 100, 200]
-            p_k = [max(0.01, report_data.streaming.mean_p_at_k * (50.0 / (50.0 + k))) for k in k_vals]
-            cp_k = [max(0.01, report_data.streaming.mean_cp_at_k * (60.0 / (60.0 + k))) for k in k_vals]
-            dr_k = [min(1.0, report_data.streaming.mean_dollar_recall_at_k * (k / 30.0)) for k in k_vals]
+            k_vals = (report_data.triage_curves.get("k_values") if report_data.triage_curves else None) or [10, 25, 50, 100, 200]
+            p_k = (report_data.triage_curves.get("p_at_k") if report_data.triage_curves else None) or [
+                report_data.streaming.mean_p_at_k for _ in k_vals
+            ]
+            cp_k = (report_data.triage_curves.get("cp_at_k") if report_data.triage_curves else None) or [
+                report_data.streaming.mean_cp_at_k for _ in k_vals
+            ]
+            dr_k = (report_data.triage_curves.get("dollar_recall_at_k") if report_data.triage_curves else None) or [
+                report_data.streaming.mean_dollar_recall_at_k for _ in k_vals
+            ]
             figure_paths["fig2_operational_triage_tradeoff"] = plotter.plot_operational_triage_tradeoff(
                 k_vals, p_k, cp_k, dr_k, output_path=fig_dir
             )
 
-            s_ratios = [max(0.0, report_data.streaming.overall_savings_ratio * (1.0 - k * 0.001)) for k in k_vals]
-            net_dollars = [s * report_data.streaming.total_cost_base for s in s_ratios]
+            s_ratios = (report_data.triage_curves.get("savings_ratios") if report_data.triage_curves else None) or [
+                report_data.streaming.overall_savings_ratio for _ in k_vals
+            ]
+            net_dollars = (report_data.triage_curves.get("net_savings_nominal") if report_data.triage_curves else None) or [
+                s * report_data.streaming.total_cost_base for s in s_ratios
+            ]
             figure_paths["fig3_financial_savings_utility"] = plotter.plot_financial_savings_utility(
                 k_vals, s_ratios, net_dollars, currency=report_data.metadata["currency"], output_path=fig_dir
             )
 
-            days = list(range(1, len(report_data.daily_trajectory) + 1)) or [1, 2]
-            ks_p = [0.45] * len(days)
-            psi_s = [0.03] * len(days)
+            days = [d["day_index"] + 1 for d in report_data.daily_trajectory] or [1, 2]
+            ks_p = [float(d["ks_drift_p_value"]) if d.get("ks_drift_p_value") is not None else 0.50 for d in report_data.daily_trajectory] or [0.50, 0.50]
+            psi_s = [float(d["psi_score"]) if d.get("psi_score") is not None else 0.02 for d in report_data.daily_trajectory] or [0.02, 0.02]
             figure_paths["fig4_streaming_drift_timeline"] = plotter.plot_streaming_drift_timeline(
                 days, ks_p, psi_s, output_path=fig_dir
             )
@@ -482,6 +492,7 @@ def cmd_report(args: argparse.Namespace) -> None:
         daily_trajectory=d.get("daily_trajectory", []),
         feature_attributions=d.get("feature_attributions", {}),
         ground_truth_phi=d.get("ground_truth_phi", {}),
+        triage_curves=d.get("triage_curves", {}),
     )
 
     out_dir = Path(args.output_dir)
@@ -503,22 +514,33 @@ def cmd_report(args: argparse.Namespace) -> None:
         output_path=fig_dir,
     )
 
-    k_vals = [10, 25, 50, 100, 200]
-    p_k = [max(0.01, report_data.streaming.mean_p_at_k * (50.0 / (50.0 + k))) for k in k_vals]
-    cp_k = [max(0.01, report_data.streaming.mean_cp_at_k * (60.0 / (60.0 + k))) for k in k_vals]
+    k_vals = (report_data.triage_curves.get("k_values") if report_data.triage_curves else None) or [10, 25, 50, 100, 200]
+    p_k = (report_data.triage_curves.get("p_at_k") if report_data.triage_curves else None) or [
+        report_data.streaming.mean_p_at_k for _ in k_vals
+    ]
+    cp_k = (report_data.triage_curves.get("cp_at_k") if report_data.triage_curves else None) or [
+        report_data.streaming.mean_cp_at_k for _ in k_vals
+    ]
+    dr_k = (report_data.triage_curves.get("dollar_recall_at_k") if report_data.triage_curves else None) or [
+        report_data.streaming.mean_dollar_recall_at_k for _ in k_vals
+    ]
     figure_paths["fig2_operational_triage_tradeoff"] = plotter.plot_operational_triage_tradeoff(
-        k_vals, p_k, cp_k, output_path=fig_dir
+        k_vals, p_k, cp_k, dr_k, output_path=fig_dir
     )
 
-    s_ratios = [max(0.0, report_data.streaming.overall_savings_ratio * (1.0 - k * 0.001)) for k in k_vals]
-    net_dollars = [s * report_data.streaming.total_cost_base for s in s_ratios]
+    s_ratios = (report_data.triage_curves.get("savings_ratios") if report_data.triage_curves else None) or [
+        report_data.streaming.overall_savings_ratio for _ in k_vals
+    ]
+    net_dollars = (report_data.triage_curves.get("net_savings_nominal") if report_data.triage_curves else None) or [
+        s * report_data.streaming.total_cost_base for s in s_ratios
+    ]
     figure_paths["fig3_financial_savings_utility"] = plotter.plot_financial_savings_utility(
         k_vals, s_ratios, net_dollars, currency=report_data.metadata.get("currency", "USD"), output_path=fig_dir
     )
 
-    days = list(range(1, len(report_data.daily_trajectory) + 1)) or [1, 2]
-    ks_p = [0.45] * len(days)
-    psi_s = [0.03] * len(days)
+    days = [d["day_index"] + 1 for d in report_data.daily_trajectory] or [1, 2]
+    ks_p = [float(d["ks_drift_p_value"]) if d.get("ks_drift_p_value") is not None else 0.50 for d in report_data.daily_trajectory] or [0.50, 0.50]
+    psi_s = [float(d["psi_score"]) if d.get("psi_score") is not None else 0.02 for d in report_data.daily_trajectory] or [0.02, 0.02]
     figure_paths["fig4_streaming_drift_timeline"] = plotter.plot_streaming_drift_timeline(
         days, ks_p, psi_s, output_path=fig_dir
     )

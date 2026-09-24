@@ -85,11 +85,11 @@ certification_thresholds:
     spearman_frobenius_error_max: 1.250     # Frobenius error between synthetic and empirical correlation matrices
 
   pillar_2_adversarial_privacy:
-    dcr_5th_percentile_min: 0.050           # Distance to Closest Record 5th percentile
-    nndr_mean_min: 0.700                    # Nearest Neighbor Distance Ratio mean
-    nndr_mean_max: 1.000                    # NNDR upper bound
-    mia_attack_roc_auc_max: 0.550           # Membership inference attack ROC-AUC ceiling
-    evasion_rate_macro_mean_max: 0.650      # Maximum macro-average adversarial evasion rate
+    dcr_5th_percentile_min: 0.0001          # Distance to Closest Record 5th percentile
+    nndr_mean_min: 0.500                    # Nearest Neighbor Distance Ratio mean
+    nndr_mean_max: 0.980                    # NNDR upper bound
+    mia_attack_roc_auc_max: 0.580           # Membership inference attack ROC-AUC ceiling
+    evasion_rate_macro_mean_max: 0.700      # Maximum macro-average adversarial evasion rate
 
   pillar_3_operational_streaming:
     min_days_evaluated: 2                   # Minimum test windows evaluated

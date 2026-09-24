@@ -169,8 +169,10 @@ class DiscreteEventEngine:
 
         if mean_inter_arrival_sec is not None and mean_inter_arrival_sec > 0:
             if card.region == "IN":
-                vol_mean = 20.5  # empirical Indian card monthly mean (~0.684 tx/day * 30)
-                persona_vol_scale = vol_mean / 20.5
+                # Grounded in RBI PSI: compute persona's calibrated expected daily frequency relative to macro mean 0.684 tx/day
+                eta_p = min(0.95, alpha / beta)
+                persona_expected_daily = (86400.0 * base_mu * 0.8208) / max(0.05, (1.0 - eta_p))
+                persona_vol_scale = persona_expected_daily / 0.684
             else:
                 vol_mean = cohort_spec.monthly_tx_volume_mean if cohort_spec else 55.0
                 persona_vol_scale = vol_mean / 55.0
@@ -270,9 +272,14 @@ class DiscreteEventEngine:
                 contactless_enabled = bool(self.rng.random() < 0.80)
                 pan_masked = f"607152******{self.rng.integers(1000, 9999)}"
 
-                prod_marginal = INDIAN_PRODUCT_SPEND_MARGINALS.get(product_id, (7.60, 0.75))
-                spend_mu_log = prod_marginal[0]
-                spend_sigma_log = prod_marginal[1]
+                if product_id in self.specs.indian_products:
+                    in_prod = self.specs.indian_products[product_id]
+                    spend_mu_log = in_prod.spend_mean_log
+                    spend_sigma_log = in_prod.spend_sigma_log
+                else:
+                    prod_marginal = INDIAN_PRODUCT_SPEND_MARGINALS.get(product_id, (7.60, 0.70))
+                    spend_mu_log = prod_marginal[0]
+                    spend_sigma_log = prod_marginal[1]
                 is_spliced = False
                 u_val = 500.0
                 xi_val = 0.20
@@ -895,7 +902,8 @@ class DiscreteEventEngine:
                 # 1. Active Multi-Day Relocation Episode (HN_HOME_RELOCATION, 72h window)
                 if card.state == CardholderState.RELOCATING:
                     scenario_tag = FraudScenario.HARD_NEGATIVE_RELOCATION.value
-                    amount = float(self.rng.uniform(350.0, 1400.0)) if self.region == "US" else float(self.rng.uniform(12000.0, 48000.0))
+                    mult = float(self.rng.uniform(1.8, 3.2)) if self.region == "US" else float(self.rng.uniform(1.6, 2.6))
+                    amount = max(1.0 if self.region == "US" else 50.0, round(card.sample_spend_amount(self.rng) * mult, 2))
                     channel = "CP_POS_CHIP"
                     preferred_mcc = int(self.rng.choice([7513, 4225, 5200, 5712, 4900]))
                     ip_distance = float(self.rng.uniform(15.0, 65.0))
@@ -903,7 +911,8 @@ class DiscreteEventEngine:
                 # 2. Active Multi-Day Travel Window (HN_CROSS_BORDER_TRAVEL)
                 elif card.state in (CardholderState.INTL_TRAVEL, CardholderState.DOMESTIC_TRAVEL):
                     scenario_tag = FraudScenario.HARD_NEGATIVE_TRAVEL.value
-                    amount = float(self.rng.uniform(180.0, 650.0)) if self.region == "US" else float(self.rng.uniform(8500.0, 35000.0))
+                    mult = float(self.rng.uniform(1.5, 2.5)) if self.region == "US" else float(self.rng.uniform(1.4, 2.2))
+                    amount = max(1.0 if self.region == "US" else 50.0, round(card.sample_spend_amount(self.rng) * mult, 2))
                     channel = "CP_POS_CHIP"
                     preferred_mcc = int(self.rng.choice([5309, 5812, 7011, 4121]))
                     is_cross_border = bool(card.state == CardholderState.INTL_TRAVEL and card.international_enabled)
@@ -924,14 +933,14 @@ class DiscreteEventEngine:
                     if rand_hard_neg < 0.005 or (hour_now < 5.0 and rand_hard_neg < 0.03):
                         # Emergency medical outlier (e.g. overnight pharmacy / medical care)
                         scenario_tag = FraudScenario.HARD_NEGATIVE_EMERGENCY.value
-                        amount = float(self.rng.uniform(450.0, 1100.0)) if self.region == "US" else float(self.rng.uniform(15000.0, 45000.0))
+                        amount = float(self.rng.uniform(350.0, 850.0)) if self.region == "US" else float(self.rng.uniform(3500.0, 9500.0))
                         channel = "CP_POS_CHIP"
                         preferred_mcc = 5912  # Pharmacy / Medical
                         ip_distance = float(self.rng.uniform(2.0, 15.0))
                     elif rand_hard_neg < 0.012:
                         # Spontaneous travel burst
                         scenario_tag = FraudScenario.HARD_NEGATIVE_TRAVEL.value
-                        amount = float(self.rng.uniform(180.0, 650.0)) if self.region == "US" else float(self.rng.uniform(8500.0, 35000.0))
+                        amount = float(self.rng.uniform(180.0, 550.0)) if self.region == "US" else float(self.rng.uniform(4500.0, 12000.0))
                         channel = "CP_POS_CHIP"
                         preferred_mcc = 5812  # Dining / Travel
                         is_cross_border = bool(card.international_enabled and self.rng.random() < 0.50)
@@ -944,7 +953,7 @@ class DiscreteEventEngine:
                         # Transition cardholder to 72-hour relocation episode
                         card.initiate_relocation_episode(tx_time_sec)
                         scenario_tag = FraudScenario.HARD_NEGATIVE_RELOCATION.value
-                        amount = float(self.rng.uniform(350.0, 1400.0)) if self.region == "US" else float(self.rng.uniform(12000.0, 48000.0))
+                        amount = float(self.rng.uniform(250.0, 850.0)) if self.region == "US" else float(self.rng.uniform(5000.0, 14000.0))
                         channel = "CP_POS_CHIP"
                         preferred_mcc = 5200  # Hardware Store
                         ip_distance = float(self.rng.uniform(15.0, 45.0))

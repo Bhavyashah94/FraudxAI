@@ -184,6 +184,30 @@ class IndianCardProductSpec:
     credit_limit_median_inr: float
     credit_limit_max_inr: float
     primary_adversarial_vulnerabilities: List[str]
+    spend_mean_log: float = 7.60
+    spend_sigma_log: float = 0.70
+
+
+# ----------------------------------------------------------------------
+# 5b. Operational Supervision Queue Models (spec/16)
+# ----------------------------------------------------------------------
+@dataclass(frozen=True)
+class OperationalSupervisionSpec:
+    default_k_daily: int = 50
+    alert_threshold: float = 0.70
+    default_priority_strategy: str = "RISK_SCORE"
+    weibull_k: float = 1.35
+    weibull_scale_hours: float = 18.0
+    min_investigation_hours: float = 0.5
+    max_investigation_hours: float = 72.0
+    lognormal_mu_days: float = 3.40
+    lognormal_sigma: float = 0.45
+    min_chargeback_days: float = 3.0
+    max_chargeback_days: float = 120.0
+    v0_usd: float = 15.0
+    v0_inr: float = 1250.0
+    dark_smoothness: float = 0.40
+    clean_maturity_days: float = 90.0
 
 
 # ----------------------------------------------------------------------
@@ -372,6 +396,7 @@ class SpecRegistry:
         hard_negatives: Optional[Dict[str, AuthenticHardNegativeSpec]] = None,
         telemetry: Optional[TelemetryCalibrationSpec] = None,
         calibration_profiles: Optional[Dict[str, CalibrationProfileSpec]] = None,
+        supervision: Optional[OperationalSupervisionSpec] = None,
     ):
         self.products = products
         self.cohorts = cohorts
@@ -387,6 +412,7 @@ class SpecRegistry:
         self.hard_negatives = hard_negatives or {}
         self.telemetry = telemetry
         self.calibration_profiles = calibration_profiles or {}
+        self.supervision = supervision or OperationalSupervisionSpec()
 
     def get_cohort(self, cohort_id: str) -> CohortPersonaSpec:
         """Looks up a cohort specification, handling legacy alias names."""
@@ -433,6 +459,7 @@ def load_all_specs(spec_dir: Optional[str] = None) -> SpecRegistry:
     raw_05 = _read_yaml("05_india_payment_rails.yaml")
     raw_07 = _read_yaml("07_export_leakage_gate.yaml")
     raw_08 = _read_yaml("08_india_calibration_targets.yaml")
+    raw_16 = _read_yaml("16_operational_supervision.yaml")
 
     # 1. Parse 01_financial_instruments.yaml
     products: Dict[str, CardProductSpec] = {}
@@ -585,6 +612,7 @@ def load_all_specs(spec_dir: Optional[str] = None) -> SpecRegistry:
     for ip_raw in raw_05.get("indian_card_products", []):
         ipid = ip_raw["id"]
         cl_paisa = ip_raw.get("credit_limit_paisa", ip_raw.get("account_balance_paisa", {}))
+        sp_dist = ip_raw.get("spend_distribution", {})
         indian_products[ipid] = IndianCardProductSpec(
             id=ipid,
             name=ip_raw["name"],
@@ -593,6 +621,8 @@ def load_all_specs(spec_dir: Optional[str] = None) -> SpecRegistry:
             credit_limit_median_inr=float(cl_paisa.get("median", 0)) / 100.0,
             credit_limit_max_inr=float(cl_paisa.get("max", 0)) / 100.0,
             primary_adversarial_vulnerabilities=ip_raw.get("primary_adversarial_vulnerabilities", []),
+            spend_mean_log=float(sp_dist.get("mu_log", 7.60)),
+            spend_sigma_log=float(sp_dist.get("sigma_log", 0.70)),
         )
 
     # 6. Parse circadian_diurnal_model (von Mises mixture on S^1)
@@ -735,6 +765,31 @@ def load_all_specs(spec_dir: Optional[str] = None) -> SpecRegistry:
             out_of_scope=tuple({str(k): str(v) for k, v in item.items()} for item in prof.get("out_of_scope", [])),
         )
 
+    # 9. Parse 16_operational_supervision.yaml
+    sup_raw = raw_16.get("operational_supervision", {})
+    queue_raw = sup_raw.get("investigation_queue", {})
+    analyst_raw = sup_raw.get("analyst_review_latency", {})
+    dispute_raw = sup_raw.get("customer_dispute_latency", {})
+    dark_raw = sup_raw.get("dark_fraud_non_reporting", {})
+
+    supervision_spec = OperationalSupervisionSpec(
+        default_k_daily=int(queue_raw.get("default_k_daily", 50)),
+        alert_threshold=float(queue_raw.get("alert_threshold", 0.70)),
+        default_priority_strategy=str(queue_raw.get("default_priority_strategy", "RISK_SCORE")),
+        weibull_k=float(analyst_raw.get("shape_k", 1.35)),
+        weibull_scale_hours=float(analyst_raw.get("scale_hours", 18.0)),
+        min_investigation_hours=float(analyst_raw.get("min_hours", 0.5)),
+        max_investigation_hours=float(analyst_raw.get("max_hours", 72.0)),
+        lognormal_mu_days=float(dispute_raw.get("mu_days", 3.40)),
+        lognormal_sigma=float(dispute_raw.get("sigma_days", 0.45)),
+        min_chargeback_days=float(dispute_raw.get("min_days", 3.0)),
+        max_chargeback_days=float(dispute_raw.get("max_days", 120.0)),
+        v0_usd=float(dark_raw.get("v0_usd", 15.0)),
+        v0_inr=float(dark_raw.get("v0_inr", 1250.0)),
+        dark_smoothness=float(dark_raw.get("smoothness_gamma", 0.40)),
+        clean_maturity_days=float(dark_raw.get("clean_maturity_days", 90.0)),
+    )
+
     return SpecRegistry(
         products=products,
         cohorts=cohorts,
@@ -753,9 +808,11 @@ def load_all_specs(spec_dir: Optional[str] = None) -> SpecRegistry:
             "05": raw_05,
             "07": raw_07,
             "08": raw_08,
+            "16": raw_16,
         },
         circadian=circadian_spec,
         hard_negatives=hard_negatives,
         telemetry=telemetry_spec,
         calibration_profiles=calibration_profiles,
+        supervision=supervision_spec,
     )
