@@ -39,7 +39,14 @@ from .benchmark import (
     generate_tripartite_markdown_report,
 )
 from .evaluation import (
+    CostMatrixConfig,
+    DailyStreamingMetrics,
+    DelayedSupervisionPolicy,
     GroundTruthXAIEvaluator,
+    PrequentialBenchmarkReport,
+    PrequentialStreamingEvaluator,
+    StreamingDriftAuditor,
+    StreamingMetricTracker,
     XAIBenchmarkResult,
 )
 from .invariants import (
@@ -138,6 +145,13 @@ __all__ = [
     "CausalGroundTruth",
     "GroundTruthXAIEvaluator",
     "XAIBenchmarkResult",
+    "CostMatrixConfig",
+    "DailyStreamingMetrics",
+    "DelayedSupervisionPolicy",
+    "PrequentialBenchmarkReport",
+    "PrequentialStreamingEvaluator",
+    "StreamingDriftAuditor",
+    "StreamingMetricTracker",
     "XAIBenchmarkHarness",
     "ModelBenchmarkSummary",
     "StatisticalFidelitySummary",

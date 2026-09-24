@@ -2,24 +2,28 @@
 # Read this file at the start of any new session or task to immediately anchor context.
 
 current_slice:
-  id: "slice-16-operational-supervision-queue-engine"
-  title: "Day 3: Supervision & Verification Latency Layer (Dal Pozzolo et al. 2018 Operational Queue & Bifurcated Latencies)"
+  id: "slice-17-prequential-evaluation-engine"
+  title: "Day 4: Prequential Time-Ordered Evaluation, Rolling Retraining, and Streaming Drift Auditing under Delayed Supervision"
   status: "verified"  # [planning, in_progress, testing, verified]
   target_spec_files:
-    - "fraudx_synthesizer/stream.py"
+    - "spec/17_prequential_evaluation.yaml"
+    - "fraudx_synthesizer/evaluation.py"
     - "fraudx_synthesizer/__init__.py"
-    - "tests/test_supervision_engine.py"
+    - "tests/test_prequential_benchmark.py"
   acceptance_criteria:
-    - investigator_capacity_ceiling_enforced_strictly_k_daily_per_calendar_day: true
-    - analyst_review_latency_matches_weibull_sla_bounds_0_5_to_72_hours: true
-    - customer_chargeback_latency_matches_lognormal_scheme_bounds_3_to_120_days: true
-    - dark_fraud_sigmoidal_non_reporting_curve_withholds_micro_probes_inf_latency: true
-    - prequential_zero_leakage_point_in_time_query_contract_verified: true
-    - priority_triage_strategies_risk_score_value_at_risk_hybrid_operational: true
-    - zero_leakage_partitioner_decouples_inference_feed_from_supervision_metadata: true
-  verdict: "PASS (CERTIFIED: Operational Fraud Investigation Queue & Bifurcated Supervision Engine; K_daily capacity strictly enforced per calendar day; Analyst review latency adheres to Weibull(k=1.35, scale=18h) within [0.5, 72.0]h; Customer dispute latency adheres to LogNormal(mu=3.40, sigma=0.45) within [3, 120]d; Sigmoidal dark fraud non-reporting curve withholds micro-probes at >95% with infinite discovery latency; Point-in-time zero temporal leakage contract verified; Priority triage policies operational; 152/152 tests green across full suite in 144.79s)."
+    - zero_temporal_lookahead_leakage: true
+    - delay_gap_blackout_enforced: true
+    - operational_metrics_exactness_verified: true
+    - cost_savings_bounded_and_monotonic: true
+    - streaming_drift_tripwire_alarm_functional: true
+    - end_to_end_prequential_rolling_benchmark_green: true
+  verdict: "PASS (CERTIFIED: Prequential time-ordered evaluate-then-train streaming benchmark engine; Point-in-time training pool temporal isolation verified with zero future leakage; Strict delay gap blackout verified against chargeback pending window; Vectorized operational metrics exactness certified for PR-AUC, P@K, CP@K, Dollar Recall @ K, and Dollar Precision @ K; Cost matrix savings curve verified monotonic under alert sorting; Streaming Kolmogorov-Smirnov score drift test (alpha=0.01) and Population Stability Index (PSI >= 0.25 alarm) certified; Full test suite 169/169 green across entire repository)."
 
 previous_slices:
+  - id: "slice-16-operational-supervision-queue-engine"
+    title: "Day 3: Supervision & Verification Latency Layer (Dal Pozzolo et al. 2018 Operational Queue & Bifurcated Latencies)"
+    status: "verified"
+    verdict: "PASS (CERTIFIED: Operational Fraud Investigation Queue & Bifurcated Supervision Engine; K_daily capacity strictly enforced per calendar day; Analyst review latency adheres to Weibull(k=1.35, scale=18h) within [0.5, 72.0]h; Customer dispute latency adheres to LogNormal(mu=3.40, sigma=0.45) within [3, 120]d; Sigmoidal dark fraud non-reporting curve withholds micro-probes at >95% with infinite discovery latency; Point-in-time zero temporal leakage contract verified; Priority triage policies operational; 152/152 tests green across full suite in 144.79s)."
   - id: "slice-15-export-level-leakage-gate"
     title: "Export-Level Label Leakage Gate & Point-in-Time Telemetry Calibration (spec/07)"
     status: "verified"
