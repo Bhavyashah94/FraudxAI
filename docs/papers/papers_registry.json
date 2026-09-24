@@ -1,0 +1,776 @@
+[
+  {
+    "arxiv_id": "1010.4781",
+    "clean_slug": "2010_unknown_learning_under_concept_drift_an_ove",
+    "title": "Learning under Concept Drift: An Overview",
+    "author": "unknown",
+    "year": 2010,
+    "pdf_file": "2010_unknown_learning_under_concept_drift_an_ove.pdf",
+    "md_file": "2010_unknown_learning_under_concept_drift_an_ove.md"
+  },
+  {
+    "arxiv_id": "1502.04592",
+    "clean_slug": "2015_umr_hawkes_processes_in_finance",
+    "title": "Hawkes Processes in Finance",
+    "author": "umr",
+    "year": 2015,
+    "pdf_file": "2015_umr_hawkes_processes_in_finance.pdf",
+    "md_file": "2015_umr_hawkes_processes_in_finance.md"
+  },
+  {
+    "arxiv_id": "1506.06980",
+    "clean_slug": "2015_hardt_strategic_classification",
+    "title": "Strategic Classification",
+    "author": "hardt",
+    "year": 2015,
+    "pdf_file": "2015_hardt_strategic_classification.pdf",
+    "md_file": "2015_hardt_strategic_classification.md"
+  },
+  {
+    "arxiv_id": "1602.04938",
+    "clean_slug": "2016_classier_why_should_i_trust_you_explaining_t",
+    "title": "\u201cWhy Should I Trust You?\u201d: Explaining the Predictions of Any Classifier",
+    "author": "classi\ufb01er",
+    "year": 2016,
+    "pdf_file": "2016_classier_why_should_i_trust_you_explaining_t.pdf",
+    "md_file": "2016_classier_why_should_i_trust_you_explaining_t.md"
+  },
+  {
+    "arxiv_id": "1603.01892",
+    "clean_slug": "2016_unknown_anomalous_flocks_in_financial_netwo",
+    "title": "Anomalous Flocks in Financial Networks: Community Detection and Evasion in Banking Rails",
+    "author": "unknown",
+    "year": 2016,
+    "pdf_file": "2016_unknown_anomalous_flocks_in_financial_netwo.pdf",
+    "md_file": "2016_unknown_anomalous_flocks_in_financial_netwo.md"
+  },
+  {
+    "arxiv_id": "1606.03490",
+    "clean_slug": "2016_lipton_the_mythos_of_model_interpretabilit",
+    "title": "The Mythos of Model Interpretability",
+    "author": "lipton",
+    "year": 2016,
+    "pdf_file": "2016_lipton_the_mythos_of_model_interpretabilit.pdf",
+    "md_file": "2016_lipton_the_mythos_of_model_interpretabilit.md"
+  },
+  {
+    "arxiv_id": "1612.09328",
+    "clean_slug": "2016_process_the_neural_hawkes_process_a_neurall",
+    "title": "The Neural Hawkes Process: A Neurally Self-Modulating Multivariate Point Process",
+    "author": "process",
+    "year": 2016,
+    "pdf_file": "2016_process_the_neural_hawkes_process_a_neurall.pdf",
+    "md_file": "2016_process_the_neural_hawkes_process_a_neurall.md"
+  },
+  {
+    "arxiv_id": "1703.01365",
+    "clean_slug": "2017_pre_axiomatic_attribution_for_deep_netw",
+    "title": "Axiomatic Attribution for Deep Networks",
+    "author": "pre-",
+    "year": 2017,
+    "pdf_file": "2017_pre_axiomatic_attribution_for_deep_netw.pdf",
+    "md_file": "2017_pre_axiomatic_attribution_for_deep_netw.md"
+  },
+  {
+    "arxiv_id": "1703.06490",
+    "clean_slug": "2017_networks_generating_multilabel_discrete_pati",
+    "title": "Generating Multi-label Discrete Patient Records using GANs (medGAN)",
+    "author": "networks",
+    "year": 2017,
+    "pdf_file": "2017_networks_generating_multilabel_discrete_pati.pdf",
+    "md_file": "2017_networks_generating_multilabel_discrete_pati.md"
+  },
+  {
+    "arxiv_id": "1704.02685",
+    "clean_slug": "2017_neural_learning_important_features_through",
+    "title": "Learning Important Features Through Propagating Activation Differences",
+    "author": "neural",
+    "year": 2017,
+    "pdf_file": "2017_neural_learning_important_features_through.pdf",
+    "md_file": "2017_neural_learning_important_features_through.md"
+  },
+  {
+    "arxiv_id": "1705.07874",
+    "clean_slug": "2017_unknown_a_unified_approach_to_interpreting",
+    "title": "A Unified Approach to Interpreting Model Predictions",
+    "author": "unknown",
+    "year": 2017,
+    "pdf_file": "2017_unknown_a_unified_approach_to_interpreting.pdf",
+    "md_file": "2017_unknown_a_unified_approach_to_interpreting.md"
+  },
+  {
+    "arxiv_id": "1706.02633",
+    "clean_slug": "2017_unknown_realvalued_time_series_generation_w",
+    "title": "Real-valued Time Series Generation with Recurrent Conditional GANs",
+    "author": "unknown",
+    "year": 2017,
+    "pdf_file": "2017_unknown_realvalued_time_series_generation_w.pdf",
+    "md_file": "2017_unknown_realvalued_time_series_generation_w.md"
+  },
+  {
+    "arxiv_id": "1707.02640",
+    "clean_slug": "2017_unknown_credit_card_fraud_detection_a_reali",
+    "title": "Credit Card Fraud Detection: A Realistic Modeling and a Novel Learning Strategy",
+    "author": "unknown",
+    "year": 2017,
+    "pdf_file": "2017_unknown_credit_card_fraud_detection_a_reali.pdf",
+    "md_file": "2017_unknown_credit_card_fraud_detection_a_reali.md"
+  },
+  {
+    "arxiv_id": "1710.08097",
+    "clean_slug": "2017_unknown_strategic_classification_from_revea",
+    "title": "Strategic Classification from Revealed Preferences",
+    "author": "unknown",
+    "year": 2017,
+    "pdf_file": "2017_unknown_strategic_classification_from_revea.pdf",
+    "md_file": "2017_unknown_strategic_classification_from_revea.md"
+  },
+  {
+    "arxiv_id": "1710.10547",
+    "clean_slug": "2017_ghorbani_interpretation_of_neural_networks_i",
+    "title": "Interpretation of Neural Networks is Fragile",
+    "author": "ghorbani\u2217",
+    "year": 2017,
+    "pdf_file": "2017_ghorbani_interpretation_of_neural_networks_i.pdf",
+    "md_file": "2017_ghorbani_interpretation_of_neural_networks_i.md"
+  },
+  {
+    "arxiv_id": "1711.00399",
+    "clean_slug": "2017_mittelstadt_counterfactual_explanations_without",
+    "title": "Counterfactual Explanations Without Opening the Black Box: Automated Decisions and the GDPR",
+    "author": "mittelstadt",
+    "year": 2017,
+    "pdf_file": "2017_mittelstadt_counterfactual_explanations_without.pdf",
+    "md_file": "2017_mittelstadt_counterfactual_explanations_without.md"
+  },
+  {
+    "arxiv_id": "1802.03888",
+    "clean_slug": "2018_unknown_from_local_explanations_to_global_u",
+    "title": "From local explanations to global understanding with explainable AI for trees",
+    "author": "unknown",
+    "year": 2018,
+    "pdf_file": "2018_unknown_from_local_explanations_to_global_u.pdf",
+    "md_file": "2018_unknown_from_local_explanations_to_global_u.md"
+  },
+  {
+    "arxiv_id": "1806.10758",
+    "clean_slug": "2018_networks_a_benchmark_for_interpretability_me",
+    "title": "A Benchmark for Interpretability Methods",
+    "author": "networks",
+    "year": 2018,
+    "pdf_file": "2018_networks_a_benchmark_for_interpretability_me.pdf",
+    "md_file": "2018_networks_a_benchmark_for_interpretability_me.md"
+  },
+  {
+    "arxiv_id": "1810.03292",
+    "clean_slug": "2018_brain_sanity_checks_for_saliency_maps",
+    "title": "Sanity Checks for Saliency Maps",
+    "author": "brain",
+    "year": 2018,
+    "pdf_file": "2018_brain_sanity_checks_for_saliency_maps.pdf",
+    "md_file": "2018_brain_sanity_checks_for_saliency_maps.md"
+  },
+  {
+    "arxiv_id": "1811.10154",
+    "clean_slug": "2018_instead_stop_explaining_black_box_machine_l",
+    "title": "Stop Explaining Black Box Machine Learning Models for High Stakes Decisions and Use Interpretable Models Instead",
+    "author": "instead",
+    "year": 2018,
+    "pdf_file": "2018_instead_stop_explaining_black_box_machine_l.pdf",
+    "md_file": "2018_instead_stop_explaining_black_box_machine_l.md"
+  },
+  {
+    "arxiv_id": "1904.12066",
+    "clean_slug": "2019_research_abides_towards_highfidelity_market",
+    "title": "ABIDES: Towards High-Fidelity Market Simulation for AI Research",
+    "author": "research",
+    "year": 2019,
+    "pdf_file": "2019_research_abides_towards_highfidelity_market.pdf",
+    "md_file": "2019_research_abides_towards_highfidelity_market.md"
+  },
+  {
+    "arxiv_id": "1906.07983",
+    "clean_slug": "2019_informatics_explanations_can_be_manipulated_and",
+    "title": "Explanations can be manipulated and geometry is to blame",
+    "author": "informatics",
+    "year": 2019,
+    "pdf_file": "2019_informatics_explanations_can_be_manipulated_and.pdf",
+    "md_file": "2019_informatics_explanations_can_be_manipulated_and.md"
+  },
+  {
+    "arxiv_id": "1907.00503",
+    "clean_slug": "2019_xu_modeling_tabular_data_using_conditi",
+    "title": "Modeling Tabular Data using Conditional GAN",
+    "author": "xu",
+    "year": 2019,
+    "pdf_file": "2019_xu_modeling_tabular_data_using_conditi.pdf",
+    "md_file": "2019_xu_modeling_tabular_data_using_conditi.md"
+  },
+  {
+    "arxiv_id": "1907.03036",
+    "clean_slug": "2019_unknown_the_dangers_of_posthoc_interpretabi",
+    "title": "The Dangers of Post-hoc Interpretability: Unjustified Counterfactual Explanations",
+    "author": "unknown",
+    "year": 2019,
+    "pdf_file": "2019_unknown_the_dangers_of_posthoc_interpretabi.pdf",
+    "md_file": "2019_unknown_the_dangers_of_posthoc_interpretabi.md"
+  },
+  {
+    "arxiv_id": "1907.13188",
+    "clean_slug": "2019_unknown_quant_gans_deep_generation_of_finan",
+    "title": "Quant GANs: Deep Generation of Financial Time Series",
+    "author": "unknown",
+    "year": 2019,
+    "pdf_file": "2019_unknown_quant_gans_deep_generation_of_finan.pdf",
+    "md_file": "2019_unknown_quant_gans_deep_generation_of_finan.md"
+  },
+  {
+    "arxiv_id": "1908.02591",
+    "clean_slug": "2019_forensics_antimoney_laundering_in_bitcoin_exp",
+    "title": "Anti-Money Laundering in Bitcoin: Experimenting with Graph Convolutional Networks for Financial Forensics",
+    "author": "forensics",
+    "year": 2019,
+    "pdf_file": "2019_forensics_antimoney_laundering_in_bitcoin_exp.pdf",
+    "md_file": "2019_forensics_antimoney_laundering_in_bitcoin_exp.md"
+  },
+  {
+    "arxiv_id": "1908.07442",
+    "clean_slug": "2019_ark_tabnet_attentive_interpretable_tabu",
+    "title": "TabNet: Attentive Interpretable Tabular Learning",
+    "author": "ar\u0131k",
+    "year": 2019,
+    "pdf_file": "2019_ark_tabnet_attentive_interpretable_tabu.pdf",
+    "md_file": "2019_ark_tabnet_attentive_interpretable_tabu.md"
+  },
+  {
+    "arxiv_id": "1908.08474",
+    "clean_slug": "2019_sundararajan_the_many_shapley_values_for_model_e",
+    "title": "The many Shapley values for model explanation",
+    "author": "sundararajan",
+    "year": 2019,
+    "pdf_file": "2019_sundararajan_the_many_shapley_values_for_model_e.pdf",
+    "md_file": "2019_sundararajan_the_many_shapley_values_for_model_e.md"
+  },
+  {
+    "arxiv_id": "1909.06711",
+    "clean_slug": "2019_unknown_timeseries_generative_adversarial_n",
+    "title": "Time-series Generative Adversarial Networks",
+    "author": "unknown",
+    "year": 2019,
+    "pdf_file": "2019_unknown_timeseries_generative_adversarial_n.pdf",
+    "md_file": "2019_unknown_timeseries_generative_adversarial_n.md"
+  },
+  {
+    "arxiv_id": "1909.08157",
+    "clean_slug": "2019_unknown_the_explanation_game_explaining_mac",
+    "title": "The Explanation Game: Explaining Machine Learning Models Using Shapley Values",
+    "author": "unknown",
+    "year": 2019,
+    "pdf_file": "2019_unknown_the_explanation_game_explaining_mac.pdf",
+    "md_file": "2019_unknown_the_explanation_game_explaining_mac.md"
+  },
+  {
+    "arxiv_id": "1910.06358",
+    "clean_slug": "2019_explainability_asymmetric_shapley_values_incorpora",
+    "title": "Asymmetric Shapley Values: Incorporating Causal Knowledge into Model-Agnostic Explainability",
+    "author": "explainability",
+    "year": 2019,
+    "pdf_file": "2019_explainability_asymmetric_shapley_values_incorpora.pdf",
+    "md_file": "2019_explainability_asymmetric_shapley_values_incorpora.md"
+  },
+  {
+    "arxiv_id": "1910.08260",
+    "clean_slug": "2019_yoon_timeseries_generative_adversarial_n",
+    "title": "Time-series Generative Adversarial Networks",
+    "author": "yoon",
+    "year": 2019,
+    "pdf_file": "2019_yoon_timeseries_generative_adversarial_n.pdf",
+    "md_file": "2019_yoon_timeseries_generative_adversarial_n.md"
+  },
+  {
+    "arxiv_id": "1910.10362",
+    "clean_slug": "2019_miller_strategic_classification_is_causal",
+    "title": "Strategic Classification is Causal Modeling in Disguise",
+    "author": "miller",
+    "year": 2019,
+    "pdf_file": "2019_miller_strategic_classification_is_causal.pdf",
+    "md_file": "2019_miller_strategic_classification_is_causal.md"
+  },
+  {
+    "arxiv_id": "1910.13413",
+    "clean_slug": "2019_problem_feature_relevance_quantification_in",
+    "title": "Feature relevance quantification in explainable AI: A causal problem",
+    "author": "problem",
+    "year": 2019,
+    "pdf_file": "2019_problem_feature_relevance_quantification_in.pdf",
+    "md_file": "2019_problem_feature_relevance_quantification_in.md"
+  },
+  {
+    "arxiv_id": "1911.02508",
+    "clean_slug": "2019_methods_fooling_lime_and_shap_adversarial_a",
+    "title": "Fooling LIME and SHAP: Adversarial Attacks on Post hoc Explanation Methods",
+    "author": "methods",
+    "year": 2019,
+    "pdf_file": "2019_methods_fooling_lime_and_shap_adversarial_a.pdf",
+    "md_file": "2019_methods_fooling_lime_and_shap_adversarial_a.md"
+  },
+  {
+    "arxiv_id": "2002.04333",
+    "clean_slug": "2020_tsirtsis_decisions_counterfactual_explanatio",
+    "title": "Decisions, Counterfactual Explanations and Strategic Behavior",
+    "author": "tsirtsis",
+    "year": 2020,
+    "pdf_file": "2020_tsirtsis_decisions_counterfactual_explanatio.pdf",
+    "md_file": "2020_tsirtsis_decisions_counterfactual_explanatio.md"
+  },
+  {
+    "arxiv_id": "2002.06673",
+    "clean_slug": "2020_perdomo_performative_prediction",
+    "title": "Performative Prediction",
+    "author": "perdomo",
+    "year": 2020,
+    "pdf_file": "2020_perdomo_performative_prediction.pdf",
+    "md_file": "2020_perdomo_performative_prediction.md"
+  },
+  {
+    "arxiv_id": "2002.10273",
+    "clean_slug": "2020_unknown_causal_shapley_values_exploiting_ca",
+    "title": "Causal Shapley Values: Exploiting Causal Knowledge in Feature Attribution",
+    "author": "unknown",
+    "year": 2020,
+    "pdf_file": "2020_unknown_causal_shapley_values_exploiting_ca.pdf",
+    "md_file": "2020_unknown_causal_shapley_values_exploiting_ca.md"
+  },
+  {
+    "arxiv_id": "2002.11097",
+    "clean_slug": "2020_measures_problems_with_shapleyvaluebased_exp",
+    "title": "Problems with Shapley-value-based explanations as feature importance measures",
+    "author": "measures",
+    "year": 2020,
+    "pdf_file": "2020_measures_problems_with_shapleyvaluebased_exp.pdf",
+    "md_file": "2020_measures_problems_with_shapleyvaluebased_exp.md"
+  },
+  {
+    "arxiv_id": "2003.01332",
+    "clean_slug": "2020_hu_heterogeneous_graph_transformer",
+    "title": "Heterogeneous Graph Transformer",
+    "author": "hu\u2217",
+    "year": 2020,
+    "pdf_file": "2020_hu_heterogeneous_graph_transformer.pdf",
+    "md_file": "2020_hu_heterogeneous_graph_transformer.md"
+  },
+  {
+    "arxiv_id": "2004.04018",
+    "clean_slug": "2020_unknown_you_shouldnt_trust_me_learning_to_c",
+    "title": "You Shouldn't Trust Me: Learning to Conceal Biases in Explanation Methods",
+    "author": "unknown",
+    "year": 2020,
+    "pdf_file": "2020_unknown_you_shouldnt_trust_me_learning_to_c.pdf",
+    "md_file": "2020_unknown_you_shouldnt_trust_me_learning_to_c.md"
+  },
+  {
+    "arxiv_id": "2005.00625",
+    "clean_slug": "2020_unknown_graphconsis_alleviating_the_inconsi",
+    "title": "GraphConsis: Alleviating the Inconsistency Problem of Applying Graph Neural Network to Fraud Detection",
+    "author": "unknown",
+    "year": 2020,
+    "pdf_file": "2020_unknown_graphconsis_alleviating_the_inconsi.pdf",
+    "md_file": "2020_unknown_graphconsis_alleviating_the_inconsi.md"
+  },
+  {
+    "arxiv_id": "2006.04683",
+    "clean_slug": "2020_unknown_causal_strategic_classification",
+    "title": "Causal Strategic Classification",
+    "author": "unknown",
+    "year": 2020,
+    "pdf_file": "2020_unknown_causal_strategic_classification.pdf",
+    "md_file": "2020_unknown_causal_strategic_classification.md"
+  },
+  {
+    "arxiv_id": "2006.06822",
+    "clean_slug": "2020_unknown_stochastic_runtime_optimization_in",
+    "title": "Stochastic Run-Time Optimization in Performative Prediction",
+    "author": "unknown",
+    "year": 2020,
+    "pdf_file": "2020_unknown_stochastic_runtime_optimization_in.pdf",
+    "md_file": "2020_unknown_stochastic_runtime_optimization_in.md"
+  },
+  {
+    "arxiv_id": "2006.14384",
+    "clean_slug": "2020_unknown_get_real_realism_metrics_for_robust",
+    "title": "Get Real: Realism Metrics for Robust Limit Order Book Market Simulations",
+    "author": "unknown",
+    "year": 2020,
+    "pdf_file": "2020_unknown_get_real_realism_metrics_for_robust.pdf",
+    "md_file": "2020_unknown_get_real_realism_metrics_for_robust.md"
+  },
+  {
+    "arxiv_id": "2006.16234",
+    "clean_slug": "2020_games_true_to_the_model_or_true_to_the_da",
+    "title": "True to the Model or True to the Data?",
+    "author": "games",
+    "year": 2020,
+    "pdf_file": "2020_games_true_to_the_model_or_true_to_the_da.pdf",
+    "md_file": "2020_games_true_to_the_model_or_true_to_the_da.md"
+  },
+  {
+    "arxiv_id": "2008.08692",
+    "clean_slug": "2020_unknown_caregnn_enhancing_graph_neural_netw",
+    "title": "CARE-GNN: Enhancing Graph Neural Network-based Fraud Detectors against Camouflaged Fraudsters",
+    "author": "unknown",
+    "year": 2020,
+    "pdf_file": "2020_unknown_caregnn_enhancing_graph_neural_netw.pdf",
+    "md_file": "2020_unknown_caregnn_enhancing_graph_neural_netw.md"
+  },
+  {
+    "arxiv_id": "2010.05318",
+    "clean_slug": "2020_unknown_linear_models_for_performative_pred",
+    "title": "Linear Models for Performative Prediction: Convergence and Stability",
+    "author": "unknown",
+    "year": 2020,
+    "pdf_file": "2020_unknown_linear_models_for_performative_pred.pdf",
+    "md_file": "2020_unknown_linear_models_for_performative_pred.md"
+  },
+  {
+    "arxiv_id": "2011.11118",
+    "clean_slug": "2020_unknown_adversarial_training_for_tabular_da",
+    "title": "Adversarial Training for Tabular Data: Robust Fraud Classification",
+    "author": "unknown",
+    "year": 2020,
+    "pdf_file": "2020_unknown_adversarial_training_for_tabular_da.pdf",
+    "md_file": "2020_unknown_adversarial_training_for_tabular_da.md"
+  },
+  {
+    "arxiv_id": "2011.12193",
+    "clean_slug": "2020_zhao_xfraud_explainable_fraud_transactio",
+    "title": "xFraud: Explainable Fraud Transaction Detection on Bi-Relational Graph Neural Networks",
+    "author": "zhao\u2605",
+    "year": 2020,
+    "pdf_file": "2020_zhao_xfraud_explainable_fraud_transactio.pdf",
+    "md_file": "2020_zhao_xfraud_explainable_fraud_transactio.md"
+  },
+  {
+    "arxiv_id": "2101.07738",
+    "clean_slug": "2021__how_can_i_choose_an_explainer_an_ap",
+    "title": "How can I choose an explainer? An Application-grounded Evaluation of Post-hoc Explanations",
+    "author": "\u043e\u043b\u0435\u043a\u0441\u0430\u043d\u0434\u0440\u0430",
+    "year": 2021,
+    "pdf_file": "2021__how_can_i_choose_an_explainer_an_ap.pdf",
+    "md_file": "2021__how_can_i_choose_an_explainer_an_ap.md"
+  },
+  {
+    "arxiv_id": "2101.08030",
+    "clean_slug": "2021_data_adversarial_attacks_for_tabular_dat",
+    "title": "Adversarial Attacks for Tabular Data: Application to Fraud Detection and Imbalanced Data",
+    "author": "data",
+    "year": 2021,
+    "pdf_file": "2021_data_adversarial_attacks_for_tabular_dat.pdf",
+    "md_file": "2021_data_adversarial_attacks_for_tabular_dat.md"
+  },
+  {
+    "arxiv_id": "2102.08369",
+    "clean_slug": "2021_zhao_ctabgan_effective_table_data_synthe",
+    "title": "CTAB-GAN: Effective Table Data Synthesizing",
+    "author": "zhao\u2217",
+    "year": 2021,
+    "pdf_file": "2021_zhao_ctabgan_effective_table_data_synthe.pdf",
+    "md_file": "2021_zhao_ctabgan_effective_table_data_synthe.md"
+  },
+  {
+    "arxiv_id": "2102.08570",
+    "clean_slug": "2021_risk_outside_the_echo_chamber_optimizing",
+    "title": "Outside the Echo Chamber: Optimizing the Performative Risk",
+    "author": "risk",
+    "year": 2021,
+    "pdf_file": "2021_risk_outside_the_echo_chamber_optimizing.pdf",
+    "md_file": "2021_risk_outside_the_echo_chamber_optimizing.md"
+  },
+  {
+    "arxiv_id": "2102.10936",
+    "clean_slug": "2021_good_shapley_values_for_feature_selectio",
+    "title": "Shapley values for feature selection: The good, the bad, and the axioms",
+    "author": "good",
+    "year": 2021,
+    "pdf_file": "2021_good_shapley_values_for_feature_selectio.pdf",
+    "md_file": "2021_good_shapley_values_for_feature_selectio.md"
+  },
+  {
+    "arxiv_id": "2102.11107",
+    "clean_slug": "2021_goyal_towards_causal_representation_learn",
+    "title": "Towards Causal Representation Learning",
+    "author": "goyal",
+    "year": 2021,
+    "pdf_file": "2021_goyal_towards_causal_representation_learn.pdf",
+    "md_file": "2021_goyal_towards_causal_representation_learn.md"
+  },
+  {
+    "arxiv_id": "2102.12560",
+    "clean_slug": "2021_unknown_alternative_microfoundations_for_st",
+    "title": "Alternative Microfoundations for Strategic Classification",
+    "author": "unknown",
+    "year": 2021,
+    "pdf_file": "2021_unknown_alternative_microfoundations_for_st.pdf",
+    "md_file": "2021_unknown_alternative_microfoundations_for_st.md"
+  },
+  {
+    "arxiv_id": "2104.08921",
+    "clean_slug": "2021_unknown_adversarial_attacks_on_graph_neural",
+    "title": "Adversarial Attacks on Graph Neural Networks in Financial Networks: Evasion via Fast Multi-Hop Splitting",
+    "author": "unknown",
+    "year": 2021,
+    "pdf_file": "2021_unknown_adversarial_attacks_on_graph_neural.pdf",
+    "md_file": "2021_unknown_adversarial_attacks_on_graph_neural.md"
+  },
+  {
+    "arxiv_id": "2107.07436",
+    "clean_slug": "2021_estimation_fastshap_realtime_shapley_value_est",
+    "title": "FastSHAP: Real-Time Shapley Value Estimation",
+    "author": "estimation",
+    "year": 2021,
+    "pdf_file": "2021_estimation_fastshap_realtime_shapley_value_est.pdf",
+    "md_file": "2021_estimation_fastshap_realtime_shapley_value_est.md"
+  },
+  {
+    "arxiv_id": "2109.01433",
+    "clean_slug": "2021_process_relating_the_partial_dependence_plo",
+    "title": "Relating the Partial Dependence Plot and Permutation Feature Importance to the Data-Generating Process",
+    "author": "process",
+    "year": 2021,
+    "pdf_file": "2021_process_relating_the_partial_dependence_plo.pdf",
+    "md_file": "2021_process_relating_the_partial_dependence_plo.md"
+  },
+  {
+    "arxiv_id": "2202.06861",
+    "clean_slug": "2022_hedstrm_quantus_an_explainable_ai_toolkit_f",
+    "title": "Quantus: An Explainable AI Toolkit for Responsible Evaluation of Neural Network Explanations",
+    "author": "hedstr\u00f6m",
+    "year": 2022,
+    "pdf_file": "2022_hedstrm_quantus_an_explainable_ai_toolkit_f.pdf",
+    "md_file": "2022_hedstrm_quantus_an_explainable_ai_toolkit_f.md"
+  },
+  {
+    "arxiv_id": "2203.04591",
+    "clean_slug": "2022_unknown_privacypreserving_federated_subgrap",
+    "title": "Privacy-Preserving Federated Subgraph Learning Across Banking Silos",
+    "author": "unknown",
+    "year": 2022,
+    "pdf_file": "2022_unknown_privacypreserving_federated_subgrap.pdf",
+    "md_file": "2022_unknown_privacypreserving_federated_subgrap.md"
+  },
+  {
+    "arxiv_id": "2203.12363",
+    "clean_slug": "2022_networks_ethereum_fraud_detection_with_heter",
+    "title": "Ethereum Fraud Detection with Heterogeneous Graph Neural Networks",
+    "author": "networks",
+    "year": 2022,
+    "pdf_file": "2022_networks_ethereum_fraud_detection_with_heter.pdf",
+    "md_file": "2022_networks_ethereum_fraud_detection_with_heter.md"
+  },
+  {
+    "arxiv_id": "2204.00401",
+    "clean_slug": "2022_unknown_ctabgan_enhancing_tabular_data_synt",
+    "title": "CTAB-GAN+: Enhancing Tabular Data Synthesis",
+    "author": "unknown",
+    "year": 2022,
+    "pdf_file": "2022_unknown_ctabgan_enhancing_tabular_data_synt.pdf",
+    "md_file": "2022_unknown_ctabgan_enhancing_tabular_data_synt.md"
+  },
+  {
+    "arxiv_id": "2205.13084",
+    "clean_slug": "2022_unknown_bright_graph_neural_networks_in_rea",
+    "title": "BRIGHT: Graph Neural Networks in Real-Time Fraud Detection",
+    "author": "unknown",
+    "year": 2022,
+    "pdf_file": "2022_unknown_bright_graph_neural_networks_in_rea.pdf",
+    "md_file": "2022_unknown_bright_graph_neural_networks_in_rea.md"
+  },
+  {
+    "arxiv_id": "2206.11104",
+    "clean_slug": "2022_explanations_openxai_towards_a_transparent_evalu",
+    "title": "OpenXAI: Towards a Transparent Evaluation of Model Explanations",
+    "author": "explanations",
+    "year": 2022,
+    "pdf_file": "2022_explanations_openxai_towards_a_transparent_evalu.pdf",
+    "md_file": "2022_explanations_openxai_towards_a_transparent_evalu.md"
+  },
+  {
+    "arxiv_id": "2209.11370",
+    "clean_slug": "2022_unknown_impossibility_theorems_for_feature",
+    "title": "Impossibility Theorems for Feature Attribution",
+    "author": "unknown",
+    "year": 2022,
+    "pdf_file": "2022_unknown_impossibility_theorems_for_feature.pdf",
+    "md_file": "2022_unknown_impossibility_theorems_for_feature.md"
+  },
+  {
+    "arxiv_id": "2209.15421",
+    "clean_slug": "2022_be_tabddpm_modelling_tabular_data_with",
+    "title": "TabDDPM: Modelling Tabular Data with Diffusion Models",
+    "author": "be-",
+    "year": 2022,
+    "pdf_file": "2022_be_tabddpm_modelling_tabular_data_with.pdf",
+    "md_file": "2022_be_tabddpm_modelling_tabular_data_with.md"
+  },
+  {
+    "arxiv_id": "2210.04018",
+    "clean_slug": "2022_kim_stasy_scorebased_tabular_data_synth",
+    "title": "STaSy: Score-based Tabular Data Synthesis",
+    "author": "kim",
+    "year": 2022,
+    "pdf_file": "2022_kim_stasy_scorebased_tabular_data_synth.pdf",
+    "md_file": "2022_kim_stasy_scorebased_tabular_data_synth.md"
+  },
+  {
+    "arxiv_id": "2210.14360",
+    "clean_slug": "2022_laundering_laundrograph_selfsupervised_graph_r",
+    "title": "LaundroGraph: Self-Supervised Graph Representation Learning for Anti-Money Laundering",
+    "author": "laundering",
+    "year": 2022,
+    "pdf_file": "2022_laundering_laundrograph_selfsupervised_graph_r.pdf",
+    "md_file": "2022_laundering_laundrograph_selfsupervised_graph_r.md"
+  },
+  {
+    "arxiv_id": "2211.06977",
+    "clean_slug": "2022_version_spade_a_realtime_fraud_detection_fr",
+    "title": "Spade: A Real-Time Fraud Detection Framework on Evolving Graphs",
+    "author": "version)",
+    "year": 2022,
+    "pdf_file": "2022_version_spade_a_realtime_fraud_detection_fr.pdf",
+    "md_file": "2022_version_spade_a_realtime_fraud_detection_fr.md"
+  },
+  {
+    "arxiv_id": "2211.13358",
+    "clean_slug": "2022_evaluation_turning_the_tables_biased_imbalance",
+    "title": "Turning the Tables: Biased, Imbalanced, Dynamic Tabular Datasets for ML Evaluation",
+    "author": "evaluation",
+    "year": 2022,
+    "pdf_file": "2022_evaluation_turning_the_tables_biased_imbalance.pdf",
+    "md_file": "2022_evaluation_turning_the_tables_biased_imbalance.md"
+  },
+  {
+    "arxiv_id": "2302.06280",
+    "clean_slug": "2023_horowitz_causal_strategic_classification_a_t",
+    "title": "Causal Strategic Classification: A Tale of Two Shifts",
+    "author": "horowitz",
+    "year": 2023,
+    "pdf_file": "2023_horowitz_causal_strategic_classification_a_t.pdf",
+    "md_file": "2023_horowitz_causal_strategic_classification_a_t.md"
+  },
+  {
+    "arxiv_id": "2307.13499",
+    "clean_slug": "2023_networks_finding_money_launderers_using_hete",
+    "title": "Finding money launderers using heterogeneous graph neural networks",
+    "author": "networks",
+    "year": 2023,
+    "pdf_file": "2023_networks_finding_money_launderers_using_hete.pdf",
+    "md_file": "2023_networks_finding_money_launderers_using_hete.md"
+  },
+  {
+    "arxiv_id": "2309.11201",
+    "clean_slug": "2023_unknown_advances_in_continual_graph_learnin",
+    "title": "Advances in Continual Graph Learning for Anti-Money Laundering Systems: A Comprehensive Review",
+    "author": "unknown",
+    "year": 2023,
+    "pdf_file": "2023_unknown_advances_in_continual_graph_learnin.pdf",
+    "md_file": "2023_unknown_advances_in_continual_graph_learnin.md"
+  },
+  {
+    "arxiv_id": "2402.09563",
+    "clean_slug": "2024_agents_abideseconomist_agentbased_economic",
+    "title": "ABIDES-Economist: Agent-Based Economic Simulation for Policy Evaluation",
+    "author": "agents",
+    "year": 2024,
+    "pdf_file": "2024_agents_abideseconomist_agentbased_economic.pdf",
+    "md_file": "2024_agents_abideseconomist_agentbased_economic.md"
+  },
+  {
+    "arxiv_id": "2402.12876",
+    "clean_slug": "2024_unknown_financial_tabular_data_synthesis_wi",
+    "title": "Financial Tabular Data Synthesis with Large Language Models",
+    "author": "unknown",
+    "year": 2024,
+    "pdf_file": "2024_unknown_financial_tabular_data_synthesis_wi.pdf",
+    "md_file": "2024_unknown_financial_tabular_data_synthesis_wi.md"
+  },
+  {
+    "arxiv_id": "2402.14708",
+    "clean_slug": "2024_networks_catgnn_enhancing_credit_card_fraud",
+    "title": "CaT-GNN: Enhancing Credit Card Fraud Detection via Causal Temporal Graph Neural Networks",
+    "author": "networks",
+    "year": 2024,
+    "pdf_file": "2024_networks_catgnn_enhancing_credit_card_fraud.pdf",
+    "md_file": "2024_networks_catgnn_enhancing_credit_card_fraud.md"
+  },
+  {
+    "arxiv_id": "2410.08121",
+    "clean_slug": "2024_detection_heterogeneous_graph_autoencoder_for",
+    "title": "Heterogeneous Graph Auto-Encoder for Credit Card Fraud Detection",
+    "author": "detection",
+    "year": 2024,
+    "pdf_file": "2024_detection_heterogeneous_graph_autoencoder_for.pdf",
+    "md_file": "2024_detection_heterogeneous_graph_autoencoder_for.md"
+  },
+  {
+    "arxiv_id": "2502.02290",
+    "clean_slug": "2025_unknown_fraudrla_reinforcement_learning_att",
+    "title": "FRAUD-RLA: Reinforcement Learning Attacks on Fraud Detection Systems",
+    "author": "unknown",
+    "year": 2025,
+    "pdf_file": "2025_unknown_fraudrla_reinforcement_learning_att.pdf",
+    "md_file": "2025_unknown_fraudrla_reinforcement_learning_att.md"
+  },
+  {
+    "arxiv_id": "2510.15096",
+    "clean_slug": "2025_unknown_new_money_a_systematic_review_of_sy",
+    "title": "New Money: A Systematic Review of Synthetic Data Generation for Finance",
+    "author": "unknown",
+    "year": 2025,
+    "pdf_file": "2025_unknown_new_money_a_systematic_review_of_sy.pdf",
+    "md_file": "2025_unknown_new_money_a_systematic_review_of_sy.md"
+  },
+  {
+    "arxiv_id": "2510.26076",
+    "clean_slug": "2025_finance_new_money_a_systematic_review_of_sy",
+    "title": "New Money: A Systematic Review of Synthetic Data Generation for Finance",
+    "author": "finance",
+    "year": 2025,
+    "pdf_file": "2025_finance_new_money_a_systematic_review_of_sy.pdf",
+    "md_file": "2025_finance_new_money_a_systematic_review_of_sy.md"
+  },
+  {
+    "arxiv_id": "2601.17935",
+    "clean_slug": "2026_for_fedgraphvasp_privacypreserving_fede",
+    "title": "FedGraph-VASP: Privacy-Preserving Federated Graph Learning for Anti-Money Laundering",
+    "author": "for",
+    "year": 2026,
+    "pdf_file": "2026_for_fedgraphvasp_privacypreserving_fede.pdf",
+    "md_file": "2026_for_fedgraphvasp_privacypreserving_fede.md"
+  },
+  {
+    "arxiv_id": "2603.23584",
+    "clean_slug": "2026_unknown_linemvgnn_antimoney_laundering_with",
+    "title": "LineMVGNN: Anti-Money Laundering with Line-Graph-Assisted Multi-View Graph Neural Networks",
+    "author": "unknown",
+    "year": 2026,
+    "pdf_file": "2026_unknown_linemvgnn_antimoney_laundering_with.pdf",
+    "md_file": "2026_unknown_linemvgnn_antimoney_laundering_with.md"
+  },
+  {
+    "arxiv_id": "2608.15177",
+    "clean_slug": "2026_unknown_finfraudbench_a_heterogeneous_graph",
+    "title": "FinFraudBench: A Heterogeneous Graph Benchmark for Financial Fraud Detection",
+    "author": "unknown",
+    "year": 2026,
+    "pdf_file": "2026_unknown_finfraudbench_a_heterogeneous_graph.pdf",
+    "md_file": "2026_unknown_finfraudbench_a_heterogeneous_graph.md"
+  },
+  {
+    "arxiv_id": "2609.07100",
+    "clean_slug": "2026_yan_temporal_heterogeneous_graph_transf",
+    "title": "Temporal Heterogeneous Graph Transformer for Credit Card Fraud Detection (THGT-FD)",
+    "author": "yan",
+    "year": 2026,
+    "pdf_file": "2026_yan_temporal_heterogeneous_graph_transf.pdf",
+    "md_file": "2026_yan_temporal_heterogeneous_graph_transf.md"
+  }
+]

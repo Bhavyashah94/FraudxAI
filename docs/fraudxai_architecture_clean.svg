@@ -1,0 +1,399 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1520 1000" width="1520" height="1000" style="background:#FFFFFF; font-family:'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+  <defs>
+    <marker id="arrow-slate" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#475569"/>
+    </marker>
+    <marker id="arrow-blue" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#1D4ED8"/>
+    </marker>
+    <marker id="arrow-teal" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#0F766E"/>
+    </marker>
+    <marker id="arrow-purple" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#4338CA"/>
+    </marker>
+    <marker id="arrow-red" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#DC2626"/>
+    </marker>
+  </defs>
+
+  <style>
+    .title-main { font-family: 'DM Serif Text', Georgia, serif; font-size: 20px; fill: #0F172A; font-weight: normal; }
+    .badge-top { font-size: 10px; font-weight: 700; fill: #0F172A; letter-spacing: 0.8px; }
+    .container-title { font-size: 12px; font-weight: 700; fill: #FFFFFF; letter-spacing: 0.4px; }
+    .layer-index { font-size: 11px; font-weight: 700; fill: #FFFFFF; }
+    .card-title { font-size: 13.5px; font-weight: 700; fill: #0F172A; }
+    .card-body { font-size: 11px; fill: #0F172A; font-weight: 500; }
+    .card-badge { font-size: 10px; font-weight: 700; }
+    .line-label { font-size: 10px; font-weight: 700; fill: #1E293B; }
+    .bullet { fill: #64748B; }
+  </style>
+
+  <!-- Solid White Framed Canvas Background (Guarantees zero bleed on peach slides!) -->
+  <rect x="0" y="0" width="1520" height="1000" rx="16" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.5"/>
+
+  <!-- Canvas Header -->
+  <text x="32" y="36" class="title-main">FraudxAI: Multi-Agent Payment Simulation &amp; Causal XAI Benchmark</text>
+  <g transform="translate(815, 20)">
+    <rect x="0" y="0" width="175" height="24" rx="12" fill="#F1F5F9" stroke="#CBD5E1" stroke-width="1.2"/>
+    <circle cx="12" cy="12" r="4" fill="#0F172A"/>
+    <text x="24" y="16" class="badge-top">SYSTEM ARCHITECTURE</text>
+  </g>
+
+  <!-- LAYER 01: Multi-Agent Generation Layer -->
+  <g id="layer-01" transform="translate(30, 60)">
+    <rect x="0" y="0" width="1460" height="180" rx="12" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.5"/>
+    <rect x="18" y="10" width="225" height="26" rx="13" fill="#1E293B"/>
+    <text x="32" y="27" class="container-title">Multi-Agent Generation Layer</text>
+    <circle cx="1436" cy="23" r="14" fill="#1E293B"/>
+    <text x="1436" y="27.5" text-anchor="middle" class="layer-index">01</text>
+
+    <!-- Card 1: Cardholder Profile Agents -->
+    <g transform="translate(25, 45)">
+      <rect width="445" height="122" rx="8" fill="#FFFFFF" stroke="#94A3B8" stroke-width="1.2"/>
+      <rect x="375" y="10" width="55" height="20" rx="5" fill="#F1F5F9" stroke="#CBD5E1" stroke-width="1"/>
+      <text x="402.5" y="24" text-anchor="middle" fill="#0F172A" class="card-badge">NORMAL</text>
+      <text x="16" y="26" class="card-title">Cardholder Profile Agents</text>
+      <circle cx="20" cy="49" r="2.5" class="bullet"/>
+      <text x="30" y="53" class="card-body">7 Federal Reserve DCPC calibrated cohorts</text>
+      <circle cx="20" cy="73" r="2.5" class="bullet"/>
+      <text x="30" y="77" class="card-body">24h diurnal Hawkes arrival process pacing</text>
+      <circle cx="20" cy="97" r="2.5" class="bullet"/>
+      <text x="30" y="101" class="card-body">EMV 4.3 Bit 55 chip cryptograms &amp; CVV</text>
+    </g>
+
+    <!-- Card 2: Adaptive Adversarial Syndicates -->
+    <g transform="translate(490, 45)">
+      <rect width="460" height="122" rx="8" fill="#FFF5F5" stroke="#F87171" stroke-width="1.6"/>
+      <rect x="382" y="10" width="62" height="20" rx="5" fill="#FEE2E2" stroke="#FCA5A5" stroke-width="1"/>
+      <text x="413" y="24" text-anchor="middle" fill="#B91C1C" class="card-badge">FRAUD</text>
+      <text x="16" y="26" class="card-title" fill="#991B1B">Adaptive Adversarial Syndicates</text>
+      <circle cx="20" cy="49" r="2.5" fill="#DC2626"/>
+      <text x="30" y="53" class="card-body" fill="#7F1D1D">6 coordinated syndicates executing 10 playbooks</text>
+      <circle cx="20" cy="73" r="2.5" fill="#DC2626"/>
+      <text x="30" y="77" class="card-body" fill="#7F1D1D">Account Takeover (ATO), 14-day sleeper bust-out</text>
+      <circle cx="20" cy="97" r="2.5" fill="#DC2626"/>
+      <text x="30" y="101" class="card-body" fill="#7F1D1D">Micro-auth card testing &amp; BIN/PAN enumeration</text>
+    </g>
+
+    <!-- Card 3: World Environment -->
+    <g transform="translate(970, 45)">
+      <rect width="465" height="122" rx="8" fill="#FFFFFF" stroke="#94A3B8" stroke-width="1.2"/>
+      <rect x="375" y="10" width="75" height="20" rx="5" fill="#F1F5F9" stroke="#CBD5E1" stroke-width="1"/>
+      <text x="412.5" y="24" text-anchor="middle" fill="#0F172A" class="card-badge">CONTEXT</text>
+      <text x="16" y="26" class="card-title">World Environment</text>
+      <circle cx="20" cy="49" r="2.5" class="bullet"/>
+      <text x="30" y="53" class="card-body">Merchant network &amp; MCC 4-digit taxonomy</text>
+      <circle cx="20" cy="73" r="2.5" class="bullet"/>
+      <text x="30" y="77" class="card-body">Dual-region geolocation (US &amp; India coordinates)</text>
+      <circle cx="20" cy="97" r="2.5" class="bullet"/>
+      <text x="30" y="101" class="card-body">Physical POS vs. e-Commerce 3DS gateway contexts</text>
+    </g>
+  </g>
+
+  <!-- LAYER 02: Core Orchestration & Invariant Engine -->
+  <g id="layer-02" transform="translate(30, 310)">
+    <rect x="0" y="0" width="705" height="240" rx="12" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.5"/>
+    <rect x="18" y="10" width="265" height="26" rx="13" fill="#1E293B"/>
+    <text x="32" y="27" class="container-title">Core Orchestration &amp; Invariant Engine</text>
+    <circle cx="681" cy="23" r="14" fill="#1E293B"/>
+    <text x="681" y="27.5" text-anchor="middle" class="layer-index">02</text>
+
+    <!-- Card 1: DiscreteEventEngine -->
+    <g transform="translate(20, 46)">
+      <rect width="205" height="178" rx="8" fill="#FFFFFF" stroke="#94A3B8" stroke-width="1.2"/>
+      <rect x="150" y="10" width="45" height="18" rx="4" fill="#F1F5F9" stroke="#CBD5E1" stroke-width="1"/>
+      <text x="172.5" y="23" text-anchor="middle" fill="#0F172A" class="card-badge">TIME</text>
+      <text x="12" y="24" class="card-title">DiscreteEventEngine</text>
+      <circle cx="16" cy="48" r="2" class="bullet"/>
+      <text x="24" y="52" class="card-body">64-bit μs monotonic</text>
+      <text x="24" y="67" class="card-body">heap priority queue</text>
+      <circle cx="16" cy="90" r="2" class="bullet"/>
+      <text x="24" y="94" class="card-body">8 event lifecycles: tx,</text>
+      <text x="24" y="109" class="card-body">attacks, clearing, payroll</text>
+      <rect x="12" y="142" width="118" height="24" rx="5" fill="#EFF6FF" stroke="#93C5FD" stroke-width="1.2"/>
+      <text x="18" y="158" font-size="11px" font-weight="700" fill="#1D4ED8">64,850 events/sec</text>
+    </g>
+
+    <!-- Card 2: Streaming Ledger -->
+    <g transform="translate(245, 46)">
+      <rect width="215" height="178" rx="8" fill="#FFFFFF" stroke="#94A3B8" stroke-width="1.2"/>
+      <rect x="135" y="10" width="70" height="18" rx="4" fill="#F1F5F9" stroke="#CBD5E1" stroke-width="1"/>
+      <text x="170" y="23" text-anchor="middle" fill="#0F172A" class="card-badge">LEDGER</text>
+      <text x="12" y="24" class="card-title">Streaming Ledger</text>
+      <circle cx="16" cy="48" r="2" class="bullet"/>
+      <text x="24" y="52" class="card-body">Point-in-time Welford</text>
+      <text x="24" y="67" class="card-body">mean / variance</text>
+      <circle cx="16" cy="90" r="2" class="bullet"/>
+      <text x="24" y="94" class="card-body">Canvas Murmur3 hash</text>
+      <circle cx="16" cy="115" r="2" class="bullet"/>
+      <text x="24" y="119" class="card-body">Strict double-entry</text>
+      <text x="24" y="134" class="card-body">conservation invariant</text>
+      <rect x="12" y="142" width="124" height="24" rx="5" fill="#EFF6FF" stroke="#93C5FD" stroke-width="1.2"/>
+      <text x="18" y="158" font-size="11px" font-weight="700" fill="#1D4ED8">Zero-leakage proof</text>
+    </g>
+
+    <!-- Card 3: Transit Verifier -->
+    <g transform="translate(480, 46)">
+      <rect width="205" height="178" rx="8" fill="#FFFFFF" stroke="#94A3B8" stroke-width="1.2"/>
+      <rect x="156" y="10" width="40" height="18" rx="4" fill="#F1F5F9" stroke="#CBD5E1" stroke-width="1"/>
+      <text x="176" y="23" text-anchor="middle" fill="#0F172A" class="card-badge">GEO</text>
+      <text x="12" y="24" class="card-title">Transit Verifier</text>
+      <circle cx="16" cy="48" r="2" class="bullet"/>
+      <text x="24" y="52" class="card-body">Great-circle Haversine</text>
+      <text x="24" y="67" class="card-body">velocity validation</text>
+      <circle cx="16" cy="90" r="2" class="bullet"/>
+      <text x="24" y="94" class="card-body">&lt;900 km/h threshold</text>
+      <text x="24" y="109" class="card-body">blocks teleportation</text>
+      <circle cx="16" cy="130" r="2" class="bullet"/>
+      <text x="24" y="134" class="card-body">Device fingerprint &amp;</text>
+      <text x="24" y="149" class="card-body">canvas hash binding</text>
+    </g>
+
+    <!-- Internal Connectors in Layer 02 -->
+    <line x1="225" y1="135" x2="245" y2="135" stroke="#1E293B" stroke-width="1.8" marker-end="url(#arrow-slate)"/>
+    <rect x="226" y="120" width="30" height="14" rx="3" fill="#F1F5F9" stroke="#CBD5E1" stroke-width="1"/>
+    <text x="241" y="130" text-anchor="middle" font-size="8.5px" font-weight="700" fill="#0F172A">state</text>
+
+    <line x1="460" y1="135" x2="480" y2="135" stroke="#1E293B" stroke-width="1.8" marker-end="url(#arrow-slate)"/>
+    <rect x="461" y="120" width="36" height="14" rx="3" fill="#F1F5F9" stroke="#CBD5E1" stroke-width="1"/>
+    <text x="479" y="130" text-anchor="middle" font-size="8.5px" font-weight="700" fill="#0F172A">checks</text>
+  </g>
+
+  <!-- LAYER 03: Dual-Region Banking Switch & Rails -->
+  <g id="layer-03" transform="translate(760, 310)">
+    <rect x="0" y="0" width="730" height="240" rx="12" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.5"/>
+    <rect x="18" y="10" width="375" height="26" rx="13" fill="#1E293B"/>
+    <text x="32" y="27" class="container-title">Dual-Region Banking Switch • &lt;50ms ISO 8583 Rails</text>
+    <circle cx="706" cy="23" r="14" fill="#1E293B"/>
+    <text x="706" y="27.5" text-anchor="middle" class="layer-index">03</text>
+
+    <!-- Card 1: Auth Switch -->
+    <g transform="translate(18, 46)">
+      <rect width="220" height="178" rx="8" fill="#FFFFFF" stroke="#94A3B8" stroke-width="1.2"/>
+      <rect x="145" y="10" width="65" height="18" rx="4" fill="#F1F5F9" stroke="#CBD5E1" stroke-width="1"/>
+      <text x="177.5" y="23" text-anchor="middle" fill="#0F172A" class="card-badge">ISO 8583</text>
+      <text x="14" y="24" class="card-title">Auth Switch &amp; Gateway</text>
+      <circle cx="18" cy="48" r="2" class="bullet"/>
+      <text x="26" y="52" class="card-body">MTI 0100 auth request</text>
+      <circle cx="18" cy="71" r="2" class="bullet"/>
+      <text x="26" y="75" class="card-body">MTI 0110 approval / decline</text>
+      <circle cx="18" cy="94" r="2" class="bullet"/>
+      <text x="26" y="98" class="card-body">EMV 3DS 2.x risk engine</text>
+      <circle cx="18" cy="117" r="2" class="bullet"/>
+      <text x="26" y="121" class="card-body">Dual-message pre-auth holds</text>
+      <rect x="14" y="142" width="118" height="24" rx="5" fill="#FFF7ED" stroke="#FDBA74" stroke-width="1.2"/>
+      <text x="18" y="158" font-size="10.5px" font-weight="700" fill="#C2410C">&lt;50ms latency SLA</text>
+    </g>
+
+    <!-- Card 2: US Rails -->
+    <g transform="translate(255, 46)">
+      <rect width="220" height="178" rx="8" fill="#FFFFFF" stroke="#94A3B8" stroke-width="1.2"/>
+      <rect x="156" y="10" width="52" height="18" rx="4" fill="#F0FDF4" stroke="#BBF7D0" stroke-width="1"/>
+      <text x="182" y="23" text-anchor="middle" fill="#15803D" class="card-badge">$ USD</text>
+      <text x="14" y="24" class="card-title">US Banking Rails</text>
+      <circle cx="18" cy="48" r="2" class="bullet"/>
+      <text x="26" y="52" class="card-body">USD cents accounting</text>
+      <circle cx="18" cy="71" r="2" class="bullet"/>
+      <text x="26" y="75" class="card-body">Fedwire &amp; ACH presentment</text>
+      <circle cx="18" cy="94" r="2" class="bullet"/>
+      <text x="26" y="98" class="card-body">AVS street &amp; ZIP checks</text>
+      <circle cx="18" cy="117" r="2" class="bullet"/>
+      <text x="26" y="121" class="card-body">AFD dispenser $175 hold</text>
+      <circle cx="18" cy="140" r="2" class="bullet"/>
+      <text x="26" y="144" class="card-body">Reg B adverse action reason</text>
+    </g>
+
+    <!-- Card 3: India Rails -->
+    <g transform="translate(492, 46)">
+      <rect width="220" height="178" rx="8" fill="#FFFFFF" stroke="#94A3B8" stroke-width="1.2"/>
+      <rect x="156" y="10" width="52" height="18" rx="4" fill="#FFF7ED" stroke="#FED7AA" stroke-width="1"/>
+      <text x="182" y="23" text-anchor="middle" fill="#C2410C" class="card-badge">₹ INR</text>
+      <text x="14" y="24" class="card-title">India Banking Rails</text>
+      <circle cx="18" cy="48" r="2" class="bullet"/>
+      <text x="26" y="52" class="card-body">INR paisa dual currency</text>
+      <circle cx="18" cy="71" r="2" class="bullet"/>
+      <text x="26" y="75" class="card-body">NPCI RuPay &amp; UPI switch</text>
+      <circle cx="18" cy="94" r="2" class="bullet"/>
+      <text x="26" y="98" class="card-body">RBI mandatory AFA / OTP</text>
+      <circle cx="18" cy="117" r="2" class="bullet"/>
+      <text x="26" y="121" class="card-body">3-tier customer liability</text>
+      <circle cx="18" cy="140" r="2" class="bullet"/>
+      <text x="26" y="144" class="card-body">RBI/2017-18/15 circular</text>
+    </g>
+  </g>
+
+  <!-- CLOSED-LOOP ADVERSARIAL FEEDBACK CONTROLLER -->
+  <g id="closed-loop-bridge" transform="translate(685, 260)">
+    <rect width="335" height="38" rx="7" fill="#FEF2F2" stroke="#F87171" stroke-width="1.6"/>
+    <rect x="272" y="8" width="52" height="22" rx="4" fill="#FEE2E2" stroke="#FCA5A5" stroke-width="1"/>
+    <text x="298" y="23" text-anchor="middle" fill="#991B1B" class="card-badge">FEEDBACK</text>
+    <text x="12" y="17" class="card-title" font-size="12px" fill="#991B1B">Closed-Loop Adversarial Feedback</text>
+    <text x="12" y="31" font-size="9.5px" fill="#7F1D1D" font-weight="600">ISO 51 decay • 3DS gateway hop • ISO 59 velocity backoff</text>
+  </g>
+
+  <!-- Response signals UP from Auth Switch into Closed-Loop Bridge -->
+  <path d="M 830 310 L 830 298" stroke="#DC2626" stroke-width="1.8" fill="none" marker-end="url(#arrow-red)"/>
+  
+  <!-- Adaptive Feedback UP from Closed-Loop Bridge into Adaptive Syndicates -->
+  <path d="M 830 260 L 830 240" stroke="#DC2626" stroke-width="1.8" fill="none" marker-end="url(#arrow-red)"/>
+  <rect x="768" y="244" width="124" height="16" rx="4" fill="#FEE2E2" stroke="#FCA5A5" stroke-width="1"/>
+  <text x="830" y="255.5" text-anchor="middle" font-size="8.5px" font-weight="700" fill="#991B1B">adaptive feedback</text>
+
+  <!-- INTER-LAYER CONNECTORS (Layers 01 -> 02, 01 -> 03, 02 -> 03) -->
+  <path d="M 190 240 L 190 310" stroke="#475569" stroke-width="1.8" fill="none" marker-end="url(#arrow-slate)"/>
+  <rect x="130" y="265" width="120" height="20" rx="10" fill="#F1F5F9" stroke="#CBD5E1" stroke-width="1.2"/>
+  <text x="190" y="278.5" text-anchor="middle" class="line-label">cardholder events</text>
+
+  <path d="M 580 240 L 580 310" stroke="#DC2626" stroke-width="1.8" fill="none" marker-end="url(#arrow-red)"/>
+  <rect x="532" y="265" width="96" height="20" rx="10" fill="#FEF2F2" stroke="#FCA5A5" stroke-width="1.2"/>
+  <text x="580" y="278.5" text-anchor="middle" class="line-label" fill="#B91C1C">attack events</text>
+
+  <path d="M 1210 240 L 1210 310" stroke="#475569" stroke-width="1.8" fill="none" marker-end="url(#arrow-slate)"/>
+  <rect x="1150" y="265" width="120" height="20" rx="10" fill="#F1F5F9" stroke="#CBD5E1" stroke-width="1.2"/>
+  <text x="1210" y="278.5" text-anchor="middle" class="line-label">merchant context</text>
+
+  <path d="M 735 420 L 760 420" stroke="#1E293B" stroke-width="2" fill="none" marker-end="url(#arrow-slate)"/>
+  <rect x="718" y="405" width="62" height="18" rx="4" fill="#F1F5F9" stroke="#CBD5E1" stroke-width="1.2"/>
+  <text x="749" y="417.5" text-anchor="middle" font-size="9px" font-weight="700" fill="#0F172A">valid tx</text>
+
+  <!-- LAYER 04: Four Partitioned Banking Feeds -->
+  <g id="layer-04" transform="translate(30, 610)">
+    <rect x="0" y="0" width="1460" height="160" rx="12" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.5"/>
+    <rect x="18" y="10" width="245" height="26" rx="13" fill="#1E293B"/>
+    <text x="32" y="27" class="container-title">Four Partitioned Banking Feeds</text>
+    <circle cx="1436" cy="23" r="14" fill="#1E293B"/>
+    <text x="1436" y="27.5" text-anchor="middle" class="layer-index">04</text>
+
+    <!-- Feed 1 -->
+    <g transform="translate(20, 44)">
+      <rect width="340" height="102" rx="8" fill="#FFFFFF" stroke="#94A3B8" stroke-width="1.2"/>
+      <rect x="270" y="10" width="60" height="18" rx="4" fill="#F1F5F9" stroke="#CBD5E1" stroke-width="1"/>
+      <text x="300" y="23" text-anchor="middle" fill="#0F172A" class="card-badge">FEED 1</text>
+      <text x="14" y="24" class="card-title" font-family="monospace" font-size="12.5px" fill="#0F172A">auth_stream.csv</text>
+      <circle cx="18" cy="45" r="2" class="bullet"/>
+      <text x="26" y="49" class="card-body">Real-time switch authorization stream</text>
+      <circle cx="18" cy="65" r="2" class="bullet"/>
+      <text x="26" y="69" class="card-body">ISO 8583 / ISO 20022 message payload</text>
+      <circle cx="18" cy="85" r="2" class="bullet"/>
+      <text x="26" y="89" class="card-body">Codes: 00 Approved, 05, 51, 59 Suspected Fraud</text>
+    </g>
+
+    <!-- Feed 2 -->
+    <g transform="translate(380, 44)">
+      <rect width="340" height="102" rx="8" fill="#FFFFFF" stroke="#94A3B8" stroke-width="1.2"/>
+      <rect x="270" y="10" width="60" height="18" rx="4" fill="#F1F5F9" stroke="#CBD5E1" stroke-width="1"/>
+      <text x="300" y="23" text-anchor="middle" fill="#0F172A" class="card-badge">FEED 2</text>
+      <text x="14" y="24" class="card-title" font-family="monospace" font-size="12.5px" fill="#0F172A">gateway_telemetry.csv</text>
+      <circle cx="18" cy="45" r="2" class="bullet"/>
+      <text x="26" y="49" class="card-body">Pre-switch merchant gateway telemetry</text>
+      <circle cx="18" cy="65" r="2" class="bullet"/>
+      <text x="26" y="69" class="card-body">Client IP, ASN risk score, proxy flags</text>
+      <circle cx="18" cy="85" r="2" class="bullet"/>
+      <text x="26" y="89" class="card-body">Browser canvas Murmur3 &amp; 3DS risk data</text>
+    </g>
+
+    <!-- Feed 3 -->
+    <g transform="translate(740, 44)">
+      <rect width="340" height="102" rx="8" fill="#FFFFFF" stroke="#94A3B8" stroke-width="1.2"/>
+      <rect x="270" y="10" width="60" height="18" rx="4" fill="#F1F5F9" stroke="#CBD5E1" stroke-width="1"/>
+      <text x="300" y="23" text-anchor="middle" fill="#0F172A" class="card-badge">FEED 3</text>
+      <text x="14" y="24" class="card-title" font-family="monospace" font-size="12.5px" fill="#0F172A">clearing_settlement.csv</text>
+      <circle cx="18" cy="45" r="2" class="bullet"/>
+      <text x="26" y="49" class="card-body">Financial presentment batch feed</text>
+      <circle cx="18" cy="65" r="2" class="bullet"/>
+      <text x="26" y="69" class="card-body">ISO 8583 MTI 0200 settlement message</text>
+      <circle cx="18" cy="85" r="2" class="bullet"/>
+      <text x="26" y="89" class="card-body">24-72h settlement vs. pre-auth holds</text>
+    </g>
+
+    <!-- Feed 4 -->
+    <g transform="translate(1100, 44)">
+      <rect width="340" height="102" rx="8" fill="#FFFFFF" stroke="#94A3B8" stroke-width="1.2"/>
+      <rect x="270" y="10" width="60" height="18" rx="4" fill="#F1F5F9" stroke="#CBD5E1" stroke-width="1"/>
+      <text x="300" y="23" text-anchor="middle" fill="#0F172A" class="card-badge">FEED 4</text>
+      <text x="14" y="24" class="card-title" font-family="monospace" font-size="12.5px" fill="#0F172A">dispute_recovery.csv</text>
+      <circle cx="18" cy="45" r="2" class="bullet"/>
+      <text x="26" y="49" class="card-body">Post-authorization dispute feed</text>
+      <circle cx="18" cy="65" r="2" class="bullet"/>
+      <text x="26" y="69" class="card-body">30-90 day chargeback arrival lag</text>
+      <circle cx="18" cy="85" r="2" class="bullet"/>
+      <text x="26" y="89" class="card-body">Visa VCR 10.4 &amp; Mastercom reason codes</text>
+    </g>
+  </g>
+
+  <!-- CONNECTORS INTO LAYER 04 -->
+  <path d="M 810 550 L 810 574 L 195 574 L 195 610" stroke="#475569" stroke-width="1.8" fill="none" marker-end="url(#arrow-slate)"/>
+  <rect x="435" y="564" width="120" height="20" rx="10" fill="#F1F5F9" stroke="#CBD5E1" stroke-width="1.2"/>
+  <text x="495" y="577.5" text-anchor="middle" class="line-label">switch messages</text>
+
+  <path d="M 870 550 L 870 592 L 550 592 L 550 610" stroke="#475569" stroke-width="1.8" fill="none" marker-end="url(#arrow-slate)"/>
+  <rect x="655" y="582" width="128" height="20" rx="10" fill="#F1F5F9" stroke="#CBD5E1" stroke-width="1.2"/>
+  <text x="719" y="595.5" text-anchor="middle" class="line-label">gateway telemetry</text>
+
+  <path d="M 1050 550 L 1050 576 L 910 576 L 910 610" stroke="#475569" stroke-width="1.8" fill="none" marker-end="url(#arrow-slate)"/>
+  <rect x="935" y="566" width="98" height="20" rx="10" fill="#F1F5F9" stroke="#CBD5E1" stroke-width="1.2"/>
+  <text x="984" y="579.5" text-anchor="middle" class="line-label">presentment</text>
+
+  <path d="M 1330 550 L 1330 610" stroke="#475569" stroke-width="1.8" fill="none" marker-end="url(#arrow-slate)"/>
+  <rect x="1260" y="570" width="140" height="20" rx="10" fill="#F1F5F9" stroke="#CBD5E1" stroke-width="1.2"/>
+  <text x="1330" y="583.5" text-anchor="middle" class="line-label">recovery outcomes</text>
+
+  <!-- LAYER 05: Ground-Truth Causal XAI Benchmark -->
+  <g id="layer-05" transform="translate(30, 820)">
+    <rect x="0" y="0" width="1460" height="145" rx="12" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.5"/>
+    <rect x="18" y="10" width="275" height="26" rx="13" fill="#1E293B"/>
+    <text x="32" y="27" class="container-title">Ground-Truth Causal XAI Benchmark</text>
+    <circle cx="1436" cy="23" r="14" fill="#1E293B"/>
+    <text x="1436" y="27.5" text-anchor="middle" class="layer-index">05</text>
+
+    <!-- Card 1 -->
+    <g transform="translate(20, 46)">
+      <rect width="445" height="84" rx="8" fill="#FFFFFF" stroke="#94A3B8" stroke-width="1.2"/>
+      <rect x="366" y="10" width="65" height="18" rx="4" fill="#F1F5F9" stroke="#CBD5E1" stroke-width="1"/>
+      <text x="398.5" y="23" text-anchor="middle" fill="#0F172A" class="card-badge">CAUSE</text>
+      <text x="14" y="24" class="card-title">Structural Causal Model (SCM)</text>
+      <circle cx="18" cy="46" r="2" class="bullet"/>
+      <text x="26" y="50" class="card-body">Exact counterfactual delta: Δx = x_fraud – x_baseline</text>
+      <circle cx="18" cy="66" r="2" class="bullet"/>
+      <text x="26" y="70" class="card-body">30-day cardholder baseline moments from streaming ledger</text>
+    </g>
+
+    <!-- Card 2 -->
+    <g transform="translate(485, 46)">
+      <rect width="455" height="84" rx="8" fill="#FFFFFF" stroke="#94A3B8" stroke-width="1.2"/>
+      <rect x="375" y="10" width="66" height="18" rx="4" fill="#F1F5F9" stroke="#CBD5E1" stroke-width="1"/>
+      <text x="408" y="23" text-anchor="middle" fill="#0F172A" class="card-badge">ATTRIB</text>
+      <text x="14" y="24" class="card-title">Path-Integrated Attribution</text>
+      <circle cx="18" cy="46" r="2" class="bullet"/>
+      <text x="26" y="50" class="card-body">Closed-form Owen multilinear Shapley values in logit space</text>
+      <circle cx="18" cy="66" r="2" class="bullet"/>
+      <text x="26" y="70" class="card-body">128-point Gauss-Legendre quadrature in probability space</text>
+    </g>
+
+    <!-- Card 3 -->
+    <g transform="translate(960, 46)">
+      <rect width="480" height="84" rx="8" fill="#FFFFFF" stroke="#94A3B8" stroke-width="1.2"/>
+      <rect x="406" y="10" width="60" height="18" rx="4" fill="#F1F5F9" stroke="#CBD5E1" stroke-width="1"/>
+      <text x="436" y="23" text-anchor="middle" fill="#0F172A" class="card-badge">SCORE</text>
+      <text x="14" y="24" class="card-title">GroundTruthXAIEvaluator</text>
+      <circle cx="18" cy="46" r="2" class="bullet"/>
+      <text x="26" y="50" class="card-body">Benchmark audit: TreeSHAP, KernelSHAP, EBM against ground truth</text>
+      <circle cx="18" cy="66" r="2" class="bullet"/>
+      <text x="26" y="70" class="card-body">Rigorous metrics: Precision@k, Recall@k, Kendall's τ-b, RAE</text>
+    </g>
+
+    <line x1="465" y1="88" x2="485" y2="88" stroke="#1E293B" stroke-width="1.8" marker-end="url(#arrow-slate)"/>
+    <rect x="453" y="76" width="44" height="16" rx="3" fill="#F1F5F9" stroke="#CBD5E1" stroke-width="1"/>
+    <text x="475" y="87.5" text-anchor="middle" font-size="8.5px" font-weight="700" fill="#0F172A">Δx delta</text>
+
+    <line x1="940" y1="88" x2="960" y2="88" stroke="#1E293B" stroke-width="1.8" marker-end="url(#arrow-slate)"/>
+    <rect x="928" y="76" width="44" height="16" rx="3" fill="#F1F5F9" stroke="#CBD5E1" stroke-width="1"/>
+    <text x="950" y="87.5" text-anchor="middle" font-size="8.5px" font-weight="700" fill="#0F172A">φ truth</text>
+  </g>
+
+  <!-- Connector from Layer 04 to Layer 05 -->
+  <path d="M 910 770 L 910 795 L 245 795 L 245 820" stroke="#475569" stroke-width="1.8" fill="none" marker-end="url(#arrow-slate)"/>
+  <rect x="510" y="785" width="155" height="20" rx="10" fill="#F1F5F9" stroke="#CBD5E1" stroke-width="1.2"/>
+  <text x="587.5" y="798.5" text-anchor="middle" class="line-label">settlement ground truth</text>
+</svg>
