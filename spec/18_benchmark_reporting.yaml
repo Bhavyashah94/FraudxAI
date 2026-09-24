@@ -1,0 +1,107 @@
+# ==============================================================================
+# Canonical Specification 18: Camera-Ready Publication Outputs & Benchmark Reporting
+# ==============================================================================
+# Grounding:
+#   - NeurIPS Datasets and Benchmarks Track (OpenXAI [Agarwal 2022], BAF [Jesus 2022])
+#   - JMLR Machine Learning Open Source Software (Quantus [Hedström 2023])
+#   - IEEE S&P / ACM CCS Publication Figure Specifications (IEEE PES Author Guide)
+#   - Operational Fraud Detection (Dal Pozzolo 2018, Carcillo 2021, Le Borgne 2021)
+#   - Dollar-Metric Fraud & Temporal SHAP Auditing (Chenyu Wu 2026)
+# ==============================================================================
+
+version: "1.0.0"
+slice_id: "slice-18-camera-ready-benchmark-reporting"
+
+# ------------------------------------------------------------------------------
+# 1. Publication Graphical Layout & Typography Presets
+# ------------------------------------------------------------------------------
+publication_styles:
+  ieee:
+    single_column_width_in: 3.50
+    double_column_width_in: 7.00
+    default_height_in: 2.80
+    dpi: 300
+    vector_format: "pdf"
+    font_family: "sans-serif"
+    font_sans_serif: ["DejaVu Sans", "Helvetica", "Arial"]
+    font_size_pt:
+      title: 10
+      axis_label: 9
+      tick_label: 8
+      legend: 8
+      annotation: 7
+
+  acm:
+    single_column_width_in: 3.33
+    double_column_width_in: 6.83
+    default_height_in: 2.70
+    dpi: 300
+    vector_format: "pdf"
+    font_family: "sans-serif"
+    font_sans_serif: ["DejaVu Sans", "Helvetica", "Arial"]
+    font_size_pt:
+      title: 10
+      axis_label: 9
+      tick_label: 8
+      legend: 8
+      annotation: 7
+
+  neurips:
+    single_column_width_in: 5.50
+    double_column_width_in: 5.50
+    default_height_in: 3.20
+    dpi: 300
+    vector_format: "pdf"
+    font_family: "serif"
+    font_sans_serif: ["DejaVu Serif", "Times New Roman", "Computer Modern"]
+    font_size_pt:
+      title: 10
+      axis_label: 9
+      tick_label: 8
+      legend: 8
+      annotation: 7
+
+# ------------------------------------------------------------------------------
+# 2. Universal Colorblind-Safe Palette (Paul Tol Muted/Bright)
+# ------------------------------------------------------------------------------
+color_palette:
+  primary_blue: "#4477AA"       # STRICT_DELAY_GAP / Main Model
+  light_blue: "#66CCEE"         # Alternate / Auxiliary Model
+  safe_green: "#228833"         # Alert Precision / Cost Savings
+  warning_amber: "#CCBB44"      # Drift Warning / SCM Baseline
+  alert_red: "#EE6677"          # ASSUME_NEGATIVE / Ground Truth SCM / Drift Alarm
+  accent_purple: "#AA3377"      # Card Precision CP@K
+  neutral_grey: "#BBBBBB"       # Gridlines / Shading
+
+# ------------------------------------------------------------------------------
+# 3. Four-Pillar Certification Acceptance Thresholds
+# ------------------------------------------------------------------------------
+certification_thresholds:
+  pillar_1_data_fidelity:
+    wasserstein_amount_log_max: 0.150       # 1D Wasserstein distance on log10(1 + amount)
+    wasserstein_arrival_log_max: 0.150      # 1D Wasserstein distance on log10(1 + delta_t)
+    js_divergence_mcc_max: 0.050            # Jensen-Shannon divergence on MCC distribution
+    js_divergence_channel_max: 0.050        # Jensen-Shannon divergence on POS entry mode / channel
+    spearman_frobenius_error_max: 1.250     # Frobenius error between synthetic and empirical correlation matrices
+
+  pillar_2_adversarial_privacy:
+    dcr_5th_percentile_min: 0.050           # Distance to Closest Record 5th percentile
+    nndr_mean_min: 0.700                    # Nearest Neighbor Distance Ratio mean
+    nndr_mean_max: 1.000                    # NNDR upper bound
+    mia_attack_roc_auc_max: 0.550           # Membership inference attack ROC-AUC ceiling
+    evasion_rate_macro_mean_max: 0.650      # Maximum macro-average adversarial evasion rate
+
+  pillar_3_operational_streaming:
+    min_days_evaluated: 2                   # Minimum test windows evaluated
+    min_prequential_pr_auc: 0.150           # Minimum prequential PR-AUC on forward stream
+    min_alert_precision_at_k: 0.050         # Minimum P@K for active investigator capacity
+    min_card_precision_at_k: 0.050          # Minimum CP@K (unique compromised cards)
+    min_net_cost_savings_ratio: 0.050       # Minimum financial cost savings over silent approval
+    drift_alarm_psi_threshold: 0.250        # Severe concept shift alarm threshold
+
+  pillar_4_causal_xai_fidelity:
+    min_spearman_rank_rho: 0.600            # Rank correlation with exact SCM ground truth
+    min_pearson_linear_r: 0.550             # Linear correlation with SCM ground truth
+    min_top_3_precision: 0.600              # Precision@3 against true causal support set
+    max_relative_attribution_error: 0.450   # Normalized L2 attribution error ceiling
+    min_causal_faithfulness: 0.500          # Score decay correlation under counterfactual replacement

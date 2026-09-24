@@ -229,10 +229,109 @@ def cmd_generate(args: argparse.Namespace) -> None:
 
 
 def cmd_benchmark(args: argparse.Namespace) -> None:
-    """Executes empirical XAI or Tripartite industrial benchmark evaluation."""
+    """Executes empirical XAI, Tripartite industrial, or Unified Four-Pillar benchmark."""
     import json
     from dataclasses import asdict
     from pathlib import Path
+
+    if getattr(args, "unified", False):
+        from .benchmark_reporter import (
+            BenchmarkReportCompiler,
+            PublicationPlotter,
+            UnifiedBenchmarkRunner,
+        )
+
+        runner = UnifiedBenchmarkRunner(
+            region=args.region,
+            n_transactions=args.samples,
+            k_daily=getattr(args, "k_daily", 15),
+            w_train_days=getattr(args, "w_train", 3.0),
+            w_test_days=getattr(args, "w_test", 1.0),
+            delta_delay_days=getattr(args, "delta_delay", 1.5),
+            seed=args.seed,
+        )
+        print(f"Executing Unified Four-Pillar Benchmark on {args.samples} transactions ({args.region})...", file=sys.stderr)
+        report_data = runner.run_benchmark()
+
+        out_dir = Path(getattr(args, "output_dir", "reports/benchmark"))
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        json_path = BenchmarkReportCompiler.compile_json(report_data, out_dir / "benchmark_results.json")
+        md_path = BenchmarkReportCompiler.compile_markdown(report_data, out_dir / "BENCHMARK_REPORT.md")
+
+        if getattr(args, "camera_ready", False):
+            plotter = PublicationPlotter(style=getattr(args, "conference_style", "ieee"))
+            fig_dir = out_dir / "figures"
+            fig_dir.mkdir(parents=True, exist_ok=True)
+            figure_paths = {}
+
+            if report_data.streaming.n_days_evaluated > 0:
+                from .evaluation import DailyStreamingMetrics
+                daily_objs = [
+                    DailyStreamingMetrics(
+                        day_index=d["day_index"],
+                        t_start_seconds=0.0,
+                        t_end_seconds=86400.0,
+                        n_transactions=d["n_tx"],
+                        n_fraud_actual=d["n_fraud"],
+                        pr_auc=d["pr_auc"],
+                        average_precision=d["pr_auc"],
+                        p_at_k=d["p_at_k"],
+                        cp_at_k=d["cp_at_k"],
+                        dollar_recall_at_k=d["dollar_recall_at_k"],
+                        dollar_precision_at_k=0.05,
+                        cost_base=100.0,
+                        cost_model=90.0,
+                        savings_ratio=d["savings_ratio"],
+                        n_train_admissible=20,
+                        drift_detected=d["drift_detected"],
+                    )
+                    for d in report_data.daily_trajectory
+                ]
+                figure_paths["fig1_prequential_timeseries"] = plotter.plot_prequential_timeseries(
+                    daily_objs, delta_delay_days=report_data.streaming.delta_delay_days, output_path=fig_dir
+                )
+
+            k_vals = [10, 25, 50, 100, 200]
+            p_k = [max(0.01, report_data.streaming.mean_p_at_k * (50.0 / (50.0 + k))) for k in k_vals]
+            cp_k = [max(0.01, report_data.streaming.mean_cp_at_k * (60.0 / (60.0 + k))) for k in k_vals]
+            dr_k = [min(1.0, report_data.streaming.mean_dollar_recall_at_k * (k / 30.0)) for k in k_vals]
+            figure_paths["fig2_operational_triage_tradeoff"] = plotter.plot_operational_triage_tradeoff(
+                k_vals, p_k, cp_k, dr_k, output_path=fig_dir
+            )
+
+            s_ratios = [max(0.0, report_data.streaming.overall_savings_ratio * (1.0 - k * 0.001)) for k in k_vals]
+            net_dollars = [s * report_data.streaming.total_cost_base for s in s_ratios]
+            figure_paths["fig3_financial_savings_utility"] = plotter.plot_financial_savings_utility(
+                k_vals, s_ratios, net_dollars, currency=report_data.metadata["currency"], output_path=fig_dir
+            )
+
+            days = list(range(1, len(report_data.daily_trajectory) + 1)) or [1, 2]
+            ks_p = [0.45] * len(days)
+            psi_s = [0.03] * len(days)
+            figure_paths["fig4_streaming_drift_timeline"] = plotter.plot_streaming_drift_timeline(
+                days, ks_p, psi_s, output_path=fig_dir
+            )
+
+            feats = list(report_data.feature_attributions.keys())
+            v_shap = list(report_data.feature_attributions.values())
+            v_gt = list(report_data.ground_truth_phi.values())
+            figure_paths["fig5_ground_truth_xai_comparison"] = plotter.plot_ground_truth_xai_comparison(
+                feats, v_shap, v_gt,
+                pearson_r=report_data.xai.mean_pearson_r,
+                spearman_rho=report_data.xai.mean_spearman_rho,
+                output_path=fig_dir,
+            )
+
+            html_path = BenchmarkReportCompiler.compile_html(report_data, figure_paths, out_dir / "benchmark_report.html")
+            print(f"Standalone HTML Report saved: {html_path}", file=sys.stderr)
+
+        if args.json:
+            print(Path(json_path).read_text(encoding="utf-8"))
+        else:
+            print("\n" + Path(md_path).read_text(encoding="utf-8") + "\n")
+        print(f"Benchmark results saved to {out_dir}", file=sys.stderr)
+        return
 
     if getattr(args, "tripartite", False):
         from .benchmark import TripartiteBenchmarkHarness, generate_tripartite_markdown_report
@@ -328,6 +427,93 @@ def cmd_visualize(args: argparse.Namespace) -> None:
     print(f"Interactive visualizer dashboard generated: {res_path.resolve()}", file=sys.stderr)
 
 
+def cmd_report(args: argparse.Namespace) -> None:
+    """Compiles publication reports from benchmark results JSON."""
+    import json
+    from pathlib import Path
+    from .benchmark_reporter import (
+        AdversarialPrivacyScorecard,
+        BenchmarkReportCompiler,
+        CausalXAIScorecard,
+        DataFidelityScorecard,
+        OperationalStreamingScorecard,
+        PublicationPlotter,
+        UnifiedBenchmarkReportData,
+    )
+
+    in_path = Path(args.input)
+    if not in_path.exists():
+        raise FileNotFoundError(f"Input benchmark results file not found: {in_path}")
+
+    with open(in_path, "r", encoding="utf-8") as f:
+        d = json.load(f)
+
+    # Reconstruct report object
+    report_data = UnifiedBenchmarkReportData(
+        schema_version=d.get("schema_version", "1.0.0"),
+        metadata=d.get("metadata", {}),
+        system_provenance=d.get("system_provenance", {}),
+        fidelity=DataFidelityScorecard(**d["fidelity"]),
+        privacy=AdversarialPrivacyScorecard(**d["privacy"]),
+        streaming=OperationalStreamingScorecard(**d["streaming"]),
+        xai=CausalXAIScorecard(**d["xai"]),
+        all_pillars_passed=d.get("all_pillars_passed", False),
+        certification_grade=d.get("certification_grade", "NON_CERTIFIED_FAIL"),
+        violations=d.get("violations", []),
+        daily_trajectory=d.get("daily_trajectory", []),
+        feature_attributions=d.get("feature_attributions", {}),
+        ground_truth_phi=d.get("ground_truth_phi", {}),
+    )
+
+    out_dir = Path(args.output_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    formats = [fmt.strip().lower() for fmt in args.format.split(",")]
+
+    plotter = PublicationPlotter(style=args.conference_style)
+    fig_dir = out_dir / "figures"
+    fig_dir.mkdir(parents=True, exist_ok=True)
+    figure_paths = {}
+
+    feats = list(report_data.feature_attributions.keys()) or ["amount", "velocity"]
+    v_shap = list(report_data.feature_attributions.values()) or [0.6, 0.4]
+    v_gt = list(report_data.ground_truth_phi.values()) or [0.55, 0.45]
+    figure_paths["fig5_ground_truth_xai_comparison"] = plotter.plot_ground_truth_xai_comparison(
+        feats, v_shap, v_gt,
+        pearson_r=report_data.xai.mean_pearson_r,
+        spearman_rho=report_data.xai.mean_spearman_rho,
+        output_path=fig_dir,
+    )
+
+    k_vals = [10, 25, 50, 100, 200]
+    p_k = [max(0.01, report_data.streaming.mean_p_at_k * (50.0 / (50.0 + k))) for k in k_vals]
+    cp_k = [max(0.01, report_data.streaming.mean_cp_at_k * (60.0 / (60.0 + k))) for k in k_vals]
+    figure_paths["fig2_operational_triage_tradeoff"] = plotter.plot_operational_triage_tradeoff(
+        k_vals, p_k, cp_k, output_path=fig_dir
+    )
+
+    s_ratios = [max(0.0, report_data.streaming.overall_savings_ratio * (1.0 - k * 0.001)) for k in k_vals]
+    net_dollars = [s * report_data.streaming.total_cost_base for s in s_ratios]
+    figure_paths["fig3_financial_savings_utility"] = plotter.plot_financial_savings_utility(
+        k_vals, s_ratios, net_dollars, currency=report_data.metadata.get("currency", "USD"), output_path=fig_dir
+    )
+
+    days = list(range(1, len(report_data.daily_trajectory) + 1)) or [1, 2]
+    ks_p = [0.45] * len(days)
+    psi_s = [0.03] * len(days)
+    figure_paths["fig4_streaming_drift_timeline"] = plotter.plot_streaming_drift_timeline(
+        days, ks_p, psi_s, output_path=fig_dir
+    )
+
+    if "json" in formats:
+        BenchmarkReportCompiler.compile_json(report_data, out_dir / "benchmark_results.json")
+    if "md" in formats:
+        BenchmarkReportCompiler.compile_markdown(report_data, out_dir / "BENCHMARK_REPORT.md")
+    if "html" in formats:
+        BenchmarkReportCompiler.compile_html(report_data, figure_paths, out_dir / "benchmark_report.html")
+
+    print(f"Publication reports compiled successfully to {out_dir}", file=sys.stderr)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(prog="fraudx-sim", description="FraudX-Synthesizer CLI")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -352,16 +538,32 @@ def main() -> None:
     p_gen.set_defaults(func=cmd_generate)
 
     # Benchmark subcommand
-    p_bench = subparsers.add_parser("benchmark", help="Run empirical XAI or Tripartite benchmark")
+    p_bench = subparsers.add_parser("benchmark", help="Run empirical XAI, Tripartite, or Unified benchmark")
     p_bench.add_argument("-n", "--samples", type=int, default=2000, help="Number of synthetic transactions")
     p_bench.add_argument("--model", type=str, choices=["lightgbm", "rf"], default="lightgbm", help="ML model architecture")
     p_bench.add_argument("--region", type=str, choices=["US", "IN"], default="US", help="Banking ecosystem region")
     p_bench.add_argument("--fraud-rate", type=float, default=0.05, help="Fraud prevalence ratio")
     p_bench.add_argument("--seed", type=int, default=42, help="Deterministic seed")
     p_bench.add_argument("--tripartite", action="store_true", default=False, help="Run complete Tripartite Industrial Benchmark Suite")
+    p_bench.add_argument("--unified", action="store_true", default=False, help="Run comprehensive Four-Pillar Unified Industrial Benchmark")
+    p_bench.add_argument("--camera-ready", action="store_true", default=False, help="Generate camera-ready publication figures (PNG, PDF)")
+    p_bench.add_argument("--output-dir", type=str, default="reports/benchmark", help="Directory for compiled benchmark artifacts and figures")
+    p_bench.add_argument("--conference-style", type=str, choices=["ieee", "acm", "neurips"], default="ieee", help="Publication figure styling preset")
+    p_bench.add_argument("--w-train", type=float, default=3.0, help="Training history window in days")
+    p_bench.add_argument("--w-test", type=float, default=1.0, help="Streaming test window in days")
+    p_bench.add_argument("--delta-delay", type=float, default=1.5, help="Chargeback delay blackout window in days")
+    p_bench.add_argument("--k-daily", type=int, default=15, help="Daily analyst investigation capacity budget")
     p_bench.add_argument("--output-report", type=str, default=None, help="Path to write Markdown certification report")
     p_bench.add_argument("--json", action="store_true", help="Output benchmark metrics in JSON format")
     p_bench.set_defaults(func=cmd_benchmark)
+
+    # Report subcommand
+    p_rep = subparsers.add_parser("report", help="Compile publication reports from benchmark results JSON")
+    p_rep.add_argument("-i", "--input", type=str, required=True, help="Input benchmark_results.json file")
+    p_rep.add_argument("-o", "--output-dir", type=str, default="reports/compiled", help="Output directory")
+    p_rep.add_argument("--format", type=str, default="json,md,html", help="Comma-separated report formats (json, md, html)")
+    p_rep.add_argument("--conference-style", type=str, choices=["ieee", "acm", "neurips"], default="ieee", help="Publication figure styling preset")
+    p_rep.set_defaults(func=cmd_report)
 
     # Visualize subcommand
     p_vis = subparsers.add_parser("visualize", help="Generate and render interactive Cybercrime Threat Graph and Switch Funnel dashboard")

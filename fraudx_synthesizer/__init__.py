@@ -121,6 +121,16 @@ from .visualizer import (
     generate_visualization_file,
     render_standalone_html,
 )
+from .benchmark_reporter import (
+    AdversarialPrivacyScorecard,
+    BenchmarkReportCompiler,
+    CausalXAIScorecard,
+    DataFidelityScorecard,
+    OperationalStreamingScorecard,
+    PublicationPlotter,
+    UnifiedBenchmarkReportData,
+    UnifiedBenchmarkRunner,
+)
 
 __version__ = "0.3.0"
 
@@ -210,5 +220,13 @@ __all__ = [
     "StreamingDatasetWriter",
     "ParallelSimulationCoordinator",
     "SimulationAggregates",
+    "AdversarialPrivacyScorecard",
+    "BenchmarkReportCompiler",
+    "CausalXAIScorecard",
+    "DataFidelityScorecard",
+    "OperationalStreamingScorecard",
+    "PublicationPlotter",
+    "UnifiedBenchmarkReportData",
+    "UnifiedBenchmarkRunner",
 ]
 
