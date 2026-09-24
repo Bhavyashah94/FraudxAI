@@ -124,7 +124,20 @@ def _export_csv_view(file_path: Path, records: list[dict], fieldnames: list[str]
 
 def cmd_generate(args: argparse.Namespace) -> None:
     """Generates synthetic transactions via discrete event engine or parallel coordinator."""
-    if getattr(args, "parallel", False) or args.n >= 100000:
+    if getattr(args, "parallel", False):
+        if getattr(args, "export_institutional_views", False):
+            print(
+                "Error: --export-institutional-views is currently supported in single-file mode (run without --parallel).",
+                file=sys.stderr,
+            )
+            sys.exit(2)
+        if getattr(args, "calibration", None):
+            print(
+                "Error: --calibration reporting is currently supported in single-file mode (run without --parallel).",
+                file=sys.stderr,
+            )
+            sys.exit(2)
+
         from .storage import ParallelSimulationCoordinator
 
         coordinator = ParallelSimulationCoordinator(
@@ -326,10 +339,16 @@ def cmd_benchmark(args: argparse.Namespace) -> None:
             html_path = BenchmarkReportCompiler.compile_html(report_data, figure_paths, out_dir / "benchmark_report.html")
             print(f"Standalone HTML Report saved: {html_path}", file=sys.stderr)
 
+        if sys.stdout.encoding and sys.stdout.encoding.lower() not in ("utf-8", "utf8"):
+            try:
+                sys.stdout.reconfigure(encoding="utf-8")
+            except Exception:
+                pass
+
         if args.json:
-            print(Path(json_path).read_text(encoding="utf-8"))
+            print(Path(json_path).read_text(encoding="utf-8", errors="replace"))
         else:
-            print("\n" + Path(md_path).read_text(encoding="utf-8") + "\n")
+            print("\n" + Path(md_path).read_text(encoding="utf-8", errors="replace") + "\n")
         print(f"Benchmark results saved to {out_dir}", file=sys.stderr)
         return
 

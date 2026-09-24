@@ -307,3 +307,48 @@ def test_cli_benchmark_report_end_to_end(tmp_path: Path, sample_report_data: Uni
     assert (out_dir / "BENCHMARK_REPORT.md").exists()
     assert (out_dir / "benchmark_report.html").exists()
     assert (out_dir / "figures" / "fig2_operational_triage_tradeoff.png").exists()
+
+
+def test_cli_generate_routing_without_arbitrary_threshold(tmp_path: Path, monkeypatch):
+    """Test 7: Verify CLI generate command routes to discrete event engine for arbitrary N unless --parallel is passed."""
+    import argparse
+    from fraudx_synthesizer.cli import cmd_generate
+
+    mock_records = [
+        {"transaction_id": "TX_001", "amount": 100.0, "is_fraud": 0, "card_id": "C_01"}
+    ]
+    captured = {}
+
+    def mock_generate_batch(self, n_transactions, fraud_prevalence, time_span_days):
+        captured["n"] = n_transactions
+        captured["prevalence"] = fraud_prevalence
+        return mock_records
+
+    from fraudx_synthesizer.engine import SimulationEngine
+    monkeypatch.setattr(SimulationEngine, "generate_batch", mock_generate_batch)
+
+    out_csv = tmp_path / "large_run.csv"
+    args = argparse.Namespace(
+        command="generate",
+        n=150000,
+        cards=100,
+        merchants=20,
+        region="US",
+        fraud_rate=0.01,
+        days=30,
+        seed=42,
+        output=str(out_csv),
+        parallel=False,
+        include_disputes=False,
+        adversary_mode="intent",
+        export_institutional_views=True,
+        calibration=None,
+    )
+
+    cmd_generate(args)
+
+    assert captured["n"] == 150000
+    assert out_csv.exists()
+    assert (tmp_path / "large_run_auth_stream.csv").exists()
+    assert (tmp_path / "large_run_gateway_telemetry.csv").exists()
+
