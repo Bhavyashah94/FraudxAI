@@ -47,22 +47,34 @@ def observed_statistics(records: List[Dict[str, Any]], specs: SpecRegistry) -> D
     credit_tickets: List[float] = []
     debit_tickets: List[float] = []
     for r in legit:
-        product = specs.indian_products.get(str(r.get("product_id", "")))
+        prod_id = str(r.get("product_id", ""))
+        product = specs.indian_products.get(prod_id) or specs.products.get(prod_id)
         category = product.category if product else ""
-        if _is_credit_product(category):
+        if _is_credit_product(category) or "CREDIT" in prod_id:
             credit_tickets.append(float(r["amount"]))
-        elif _is_debit_product(category):
+        elif _is_debit_product(category) or "DEBIT" in prod_id:
             debit_tickets.append(float(r["amount"]))
+
+    approved_count = sum(1 for r in records if str(r.get("auth_response_code", r.get("response_code", ""))) in ("00", "APPROVED"))
+    approval_rate = (approved_count / n) if n else None
+
+    cnp_fraud_amt = sum(float(r["amount"]) for r in fraud if str(r.get("channel_type", "")).startswith("CNP"))
+    cnp_fraud_share = (cnp_fraud_amt / float(fraud_amounts.sum())) if fraud_amounts.size > 0 and float(fraud_amounts.sum()) > 0 else None
 
     return {
         "fraud_prevalence": (len(fraud) / n) if n else None,
         "fraud_value_share_bps": (float(fraud_amounts.sum()) / total_amount * 10_000.0) if total_amount > 0.0 else None,
         "mean_fraud_amount_inr": _mean(list(fraud_amounts)),
+        "mean_fraud_amount_usd": _mean(list(fraud_amounts)),
         "fraud_cases_above_10000_share": _share_above(fraud_amounts, 10_000.0, by_value=False),
         "fraud_value_above_10000_share": _share_above(fraud_amounts, 10_000.0, by_value=True),
         "fraud_value_above_50000_share": _share_above(fraud_amounts, 50_000.0, by_value=True),
         "mean_credit_card_ticket_inr": _mean(credit_tickets),
         "mean_debit_card_ticket_inr": _mean(debit_tickets),
+        "mean_credit_card_ticket_usd": _mean(credit_tickets),
+        "mean_debit_card_ticket_usd": _mean(debit_tickets),
+        "authorization_approval_rate": approval_rate,
+        "cnp_fraud_value_share": cnp_fraud_share,
     }
 
 

@@ -66,3 +66,5 @@ data/*_production.csv
 data/*simulation*/
 data/smoke_test_parallel/
 reports/
+.licenses/
+

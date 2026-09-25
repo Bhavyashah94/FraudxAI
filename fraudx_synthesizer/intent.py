@@ -108,7 +108,7 @@ class ConstraintPruner:
                     continue
 
             # Contactless NFC Tap Invariant (Requires provisioned DPAN token)
-            elif c.channel == "CP_CONTACTLESS_NFC":
+            elif c.channel in ("CP_CONTACTLESS_NFC", "CP_POS_CONTACTLESS"):
                 if not dossier.has_bound_token:
                     continue
 

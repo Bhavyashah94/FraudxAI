@@ -587,10 +587,31 @@ class AdaptiveFraudsterAgent:
                 max_balance=float(card.credit_limit) / rate,
                 acquisition_cost_usd=15.0,
             )
-            # spec/07 section 7: OTP-stealing playbooks dominate the Indian mix, so the dossier often holds one
+            # Empirical compromise mix from threat intelligence (e-commerce CNP fullz, mobile wallet tokens, track 2)
+            rand_tier = float(self.rng.random())
             has_live_otp = bool(card.region == "IN" and self.rng.random() < self.telemetry.indian_intent_live_otp_probability)
+
+            if rand_tier < 0.15:
+                # Tokenized mobile wallet (Apple Pay / Google Pay yellow-path provisioned token)
+                tier = CredentialTier.TIER_APP_DEVICE_TOKEN
+                has_bound = True
+                has_chip = False
+            elif rand_tier < 0.28:
+                # Track 2 magnetic stripe / physical counterfeit fallback clone
+                tier = CredentialTier.TIER_TRACK_2_DUMP
+                has_bound = False
+                has_chip = True
+            elif has_live_otp:
+                tier = CredentialTier.TIER_PHISHED_OTP_STREAM
+                has_bound = False
+                has_chip = False
+            else:
+                tier = CredentialTier.TIER_CNP_FULLZ
+                has_bound = False
+                has_chip = False
+
             self.dossiers[card.card_id] = CredentialDossier(
-                tier=CredentialTier.TIER_PHISHED_OTP_STREAM if has_live_otp else CredentialTier.TIER_CNP_FULLZ,
+                tier=tier,
                 pan=card.card_id,
                 expiry_month=12,
                 expiry_year=2028,
@@ -598,6 +619,8 @@ class AdaptiveFraudsterAgent:
                 billing_zip=getattr(card, "zip_code", "94105"),
                 live_otp="000000" if has_live_otp else None,
                 has_live_otp=has_live_otp,
+                has_bound_token=has_bound,
+                has_chip_cryptogram=has_chip,
             )
         return self.target_states[card.card_id]
 
@@ -647,13 +670,15 @@ class AdaptiveFraudsterAgent:
             else:
                 if card.region == "IN":
                     playbook_choices = [
+                        FraudScenario.ADV_MICRO_AUTH_PROBE.value,
                         FraudScenario.IN_ADV_REVERSE_PROXY_VISHING.value,
                         FraudScenario.IN_ADV_APK_SMS_STEALER.value,
                         FraudScenario.IN_ADV_INTL_NON_3DS_BYPASS.value,
                         FraudScenario.IN_ADV_RENT_PORTAL_CASHOUT.value,
+                        FraudScenario.ADV_APPLE_PAY_YELLOW_PATH.value,
                         FraudScenario.ADV_NOCTURNAL_BURST.value,
                     ]
-                    playbook_weights = [0.30, 0.25, 0.20, 0.15, 0.10]
+                    playbook_weights = [0.25, 0.20, 0.15, 0.15, 0.10, 0.08, 0.07]
                 else:
                     playbook_choices = [
                         FraudScenario.ADV_MICRO_AUTH_PROBE.value,
@@ -664,7 +689,7 @@ class AdaptiveFraudsterAgent:
                         FraudScenario.ADV_DISTRIBUTED_BIN_ENUMERATION.value,
                         FraudScenario.ADV_TRIANGULATION_FRAUD.value,
                     ]
-                    playbook_weights = [0.20, 0.20, 0.15, 0.15, 0.10, 0.10, 0.10]
+                    playbook_weights = [0.35, 0.25, 0.05, 0.15, 0.08, 0.06, 0.06]
                 chosen_scenario = str(self.rng.choice(playbook_choices, p=playbook_weights))
 
         scenario_val = chosen_scenario.value if hasattr(chosen_scenario, "value") else str(chosen_scenario)
@@ -676,6 +701,11 @@ class AdaptiveFraudsterAgent:
             target.current_probe_amount = amount
             target.target_mcc = 8398
             ip_dist = stealth_ip if is_mimicry else float(self.rng.uniform(250.0, 1500.0))
+            is_cross_border = False
+            if card.region == "IN":
+                # spec/07 section 3: Indian cards tested at foreign merchants if international enabled;
+                # else domestic probe attempted without OTP fails AFA with ISO 63
+                is_cross_border = bool(card.international_enabled)
             return {
                 "amount": amount,
                 "channel_type": "CNP_WEB",
@@ -683,7 +713,7 @@ class AdaptiveFraudsterAgent:
                 "scenario_tag": FraudScenario.ADV_MICRO_AUTH_PROBE.value,
                 "ip_distance_km": ip_dist,
                 "preferred_mcc": 8398,
-                "is_cross_border": False,
+                "is_cross_border": is_cross_border,
                 "avs_code": "Z",
                 "asn_type": "residential",
             }
@@ -701,11 +731,11 @@ class AdaptiveFraudsterAgent:
                     )
                 else:
                     if card.currency == "INR":
-                        low_b = min(card.credit_limit * 0.3, 30000.0)
-                        high_b = max(low_b + 500.0, min(card.credit_limit * 0.85, 250000.0))
+                        low_b = min(card.credit_limit * 0.15, 3000.0)
+                        high_b = max(low_b + 500.0, min(card.credit_limit * 0.45, 25000.0))
                     else:
-                        low_b = min(card.credit_limit * 0.35, 1500.0)
-                        high_b = max(low_b + 25.0, min(card.credit_limit * 0.85, 8000.0))
+                        low_b = min(card.credit_limit * 0.15, 85.0)
+                        high_b = max(low_b + 25.0, min(card.credit_limit * 0.45, 650.0))
                     amount = round(float(self.rng.uniform(low_b, high_b)), 2)
                 target.current_probe_amount = amount
             target.target_mcc = card.sample_preferred_mcc(self.rng) if is_mimicry else 5732  # spec/07 section 14
@@ -841,7 +871,7 @@ class AdaptiveFraudsterAgent:
                 ip_dist = stealth_ip
             else:
                 probe_ratio = float(self.rng.choice([0.06, 0.15, 0.30, 0.65]))
-                amount = round(float(np.clip(probe_ratio * avail, 1500.0, 65000.0)), 2)
+                amount = round(float(np.clip(probe_ratio * avail, 1500.0, 35000.0)), 2)
                 ip_dist = float(self.rng.uniform(120.0, 1850.0))
             target.current_probe_amount = amount
             target.target_mcc = card.sample_preferred_mcc(self.rng) if is_mimicry else self._otp_theft_cashout_mcc()
@@ -867,7 +897,7 @@ class AdaptiveFraudsterAgent:
                 ip_dist = stealth_ip
             else:
                 probe_ratio = float(self.rng.choice([0.05, 0.12, 0.25, 0.50]))
-                amount = round(float(np.clip(probe_ratio * avail, 1000.0, 45000.0)), 2)
+                amount = round(float(np.clip(probe_ratio * avail, 1000.0, 30000.0)), 2)
                 ip_dist = float(self.rng.uniform(45.0, 950.0))
             target.current_probe_amount = amount
             target.target_mcc = card.sample_preferred_mcc(self.rng) if is_mimicry else self._otp_theft_cashout_mcc()
@@ -1052,6 +1082,10 @@ class AdaptiveFraudsterAgent:
                 else:
                     low, high = self.telemetry.micro_probe_ticket_range_usd
                 amount_usd = float(self.rng.uniform(low, high))
+            elif self.rng.random() < self.adversary_mimicry:
+                # Mimicking cashout camouflaged to cardholder's typical spend ticket
+                typical_spend_usd = card.sample_spend_amount(self.rng) / target.usd_rate
+                amount_usd = float(self.rng.uniform(1.5, 3.2)) * typical_spend_usd
             elif self.telemetry.ladder_jitter_fraction > 0.0:
                 jitter = self.telemetry.ladder_jitter_fraction
                 amount_usd *= float(self.rng.uniform(1.0 - jitter, 1.0 + jitter))

@@ -98,9 +98,9 @@ class RailVerifierSwitch:
         """Evaluates candidate intent against banking rails, solvency, and regulatory limits."""
         # 1. Terminal POS Entry Mode & Condition Codes
         ch = intent.channel_type
-        if ch == "CP_POS_CHIP":
+        if ch in ("CP_POS_CHIP", "ATM_CASH"):
             pos_entry = "051"
-        elif ch == "CP_POS_CONTACTLESS":
+        elif ch in ("CP_POS_CONTACTLESS", "CP_CONTACTLESS_NFC"):
             pos_entry = "071"
         elif ch == "CP_POS_MAGSTRIPE":
             pos_entry = "901"

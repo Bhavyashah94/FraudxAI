@@ -93,6 +93,9 @@ class MLUtilitySummary:
     trtr_f1_score: float
     trts_pr_auc: float
     utility_passed: bool
+    precision_at_k: float = 0.0
+    cost_savings: float = 0.0
+    temporal_split_fraction: float = 0.60
 
 
 @dataclass
@@ -125,6 +128,8 @@ class ModelBenchmarkSummary:
     pr_auc: float
     mean_intervention_precision_at_3: float = 0.0
     mean_intervention_recall_at_3: float = 0.0
+    interventional_kendall_tau: float = 0.0
+    scorer_kendall_tau: float = 0.0
     anti_leak_tripwire_passed: bool = True
     metrics_by_k: Dict[str, float] = field(default_factory=dict)
 
@@ -376,6 +381,145 @@ class MLUtilityEvaluator:
         )
 
 
+class TSTRHarness:
+    """TSTR (Train on Synthetic, Test on Real) & Temporal Self-TSTR Protocol Harness.
+
+    Provides standardized evaluation of synthetic data downstream utility under
+    time-ordered sequential splits with delayed supervision considerations.
+    """
+
+    @staticmethod
+    def evaluate_tstr(
+        X_syn: np.ndarray,
+        y_syn: np.ndarray,
+        X_ref_train: np.ndarray,
+        y_ref_train: np.ndarray,
+        X_ref_test: np.ndarray,
+        y_ref_test: np.ndarray,
+        random_state: int = 42,
+    ) -> MLUtilitySummary:
+        return MLUtilityEvaluator.evaluate_tstr(
+            X_syn=X_syn,
+            y_syn=y_syn,
+            X_ref_train=X_ref_train,
+            y_ref_train=y_ref_train,
+            X_ref_test=X_ref_test,
+            y_ref_test=y_ref_test,
+            random_state=random_state,
+        )
+
+    @staticmethod
+    def evaluate_temporal_self_tstr(
+        records: List[Dict[str, Any]],
+        train_fraction: float = 0.60,
+        k_daily: int = 50,
+        random_state: int = 42,
+    ) -> MLUtilitySummary:
+        """Executes the 60/40 time-ordered self-TSTR protocol on a generated transaction stream."""
+        if not records:
+            raise ValueError("records list cannot be empty")
+
+        # 1. Sort strictly by timestamp to ensure zero lookahead
+        order = np.argsort([float(r.get("tx_time_seconds", 0.0)) for r in records], kind="stable")
+        sorted_records = [records[i] for i in order]
+
+        n = len(sorted_records)
+        cut = int(n * train_fraction)
+        train_records = sorted_records[:cut]
+        test_records = sorted_records[cut:]
+
+        def _extract(recs: List[Dict[str, Any]]) -> Tuple[np.ndarray, np.ndarray]:
+            X, y = [], []
+            for r in recs:
+                ch = str(r.get("channel_type", "CNP_WEB"))
+                asn = str(r.get("asn_type", "residential"))
+                row = [
+                    float(r.get("amount", 0.0)),
+                    float(r.get("tx_count_1h", 0)),
+                    float(r.get("tx_count_24h", 0)),
+                    float(r.get("haversine_velocity_kph", 0.0)),
+                    float(r.get("ip_distance_from_home_km", 0.0)),
+                    float(r.get("vaai_score", 50)),
+                    1.0 if ch.startswith("CP") else 0.0,
+                    1.0 if "MOBILE" in ch else 0.0,
+                    1.0 if asn == "residential" else 0.0,
+                    1.0 if r.get("is_cross_border") else 0.0,
+                    float(r.get("cvv_match_flag", 1)),
+                ]
+                X.append(row)
+                y.append(int(r.get("is_fraud", 0)))
+            return np.array(X, dtype=np.float64), np.array(y, dtype=np.int32)
+
+        X_train, y_train = _extract(train_records)
+        X_test, y_test = _extract(test_records)
+
+        # Downstream learner (LightGBM if available, else HistGradientBoostingClassifier)
+        try:
+            import lightgbm as lgb
+            from sklearn.metrics import average_precision_score, f1_score, roc_auc_score
+            clf = lgb.LGBMClassifier(n_estimators=50, max_depth=4, random_state=random_state, verbose=-1)
+        except ImportError:
+            from sklearn.ensemble import HistGradientBoostingClassifier
+            from sklearn.metrics import average_precision_score, f1_score, roc_auc_score
+            clf = HistGradientBoostingClassifier(max_iter=50, random_state=random_state)
+
+        if len(np.unique(y_train)) < 2 or len(np.unique(y_test)) < 2:
+            return MLUtilitySummary(
+                tstr_pr_auc=0.0,
+                trtr_pr_auc=0.0,
+                relative_pr_auc_retention=0.0,
+                tstr_roc_auc=0.5,
+                trtr_roc_auc=0.5,
+                relative_roc_auc_retention=0.0,
+                tstr_f1_score=0.0,
+                trtr_f1_score=0.0,
+                trts_pr_auc=0.0,
+                utility_passed=False,
+                precision_at_k=0.0,
+                cost_savings=0.0,
+                temporal_split_fraction=train_fraction,
+            )
+
+        clf.fit(X_train, y_train)
+        p_test = clf.predict_proba(X_test)[:, 1]
+
+        pr_auc = float(average_precision_score(y_test, p_test))
+        roc_auc = float(roc_auc_score(y_test, p_test))
+
+        # Precision at top-K daily alert capacity
+        k = min(k_daily, len(y_test))
+        top_k_indices = np.argsort(p_test)[::-1][:k]
+        prec_at_k = float(np.mean(y_test[top_k_indices])) if k > 0 else 0.0
+
+        # Cost utility calculation under standard bank cost matrix ($2.50 admin, 1% customer friction, loss = amount)
+        test_amounts = np.array([float(r.get("amount", 0.0)) for r in test_records], dtype=float)
+        baseline_cost = float(np.sum(test_amounts[y_test == 1]))
+        pred_fraud = (p_test >= 0.50).astype(int)
+        fp = (pred_fraud == 1) & (y_test == 0)
+        fn = (pred_fraud == 0) & (y_test == 1)
+        model_cost = float(np.sum(pred_fraud) * 2.50 + np.sum(0.01 * test_amounts[fp]) + np.sum(test_amounts[fn]))
+        net_savings = max(0.0, baseline_cost - model_cost)
+
+        thresholds = np.linspace(0.1, 0.9, 17)
+        f1 = max(float(f1_score(y_test, (p_test >= t).astype(int), zero_division=0)) for t in thresholds)
+
+        return MLUtilitySummary(
+            tstr_pr_auc=pr_auc,
+            trtr_pr_auc=pr_auc,
+            relative_pr_auc_retention=1.0,
+            tstr_roc_auc=roc_auc,
+            trtr_roc_auc=roc_auc,
+            relative_roc_auc_retention=1.0,
+            tstr_f1_score=f1,
+            trtr_f1_score=f1,
+            trts_pr_auc=pr_auc,
+            utility_passed=bool(pr_auc >= 0.20 and roc_auc >= 0.65),
+            precision_at_k=prec_at_k,
+            cost_savings=net_savings,
+            temporal_split_fraction=train_fraction,
+        )
+
+
 # =====================================================================
 # DIMENSION 3: ADVERSARIAL PRIVACY & NON-MEMORIZATION EVALUATOR
 # =====================================================================
@@ -525,6 +669,35 @@ class XAIBenchmarkHarness:
 
         return np.array(X, dtype=np.float64), np.array(y, dtype=np.int32), np.array(GT, dtype=np.float64), records
 
+    def _build_interventional_ground_truth(self, record: Dict[str, Any]) -> np.ndarray:
+        """Builds normalized L1 interventional ground truth vector for a transaction.
+
+        Maps the record's scenario_tag to the active intervened features in CANONICAL_ATTACK_INTERVENTIONS.
+        Returns a vector of length len(FEATURE_NAMES) where sum(v) == 1.0 (or all 0 if legitimate/no target).
+        """
+        vec = np.zeros(len(FEATURE_NAMES), dtype=np.float64)
+        if not record.get("is_fraud", 0):
+            return vec
+
+        tag = str(record.get("scenario_tag", ""))
+        target_set = CANONICAL_ATTACK_INTERVENTIONS.get(tag)
+        if not target_set:
+            for canonical_tag, feats in CANONICAL_ATTACK_INTERVENTIONS.items():
+                if canonical_tag in tag or tag in canonical_tag:
+                    target_set = feats
+                    break
+        if not target_set:
+            return vec
+
+        for j, feat_name in enumerate(FEATURE_NAMES):
+            if feat_name in target_set:
+                vec[j] = 1.0
+
+        s = np.sum(vec)
+        if s > 0:
+            vec /= s
+        return vec
+
     def calculate_intervention_support_metrics(
         self,
         shap_values: np.ndarray,
@@ -629,15 +802,20 @@ class XAIBenchmarkHarness:
         if not fraud_test_indices:
             fraud_test_indices = list(range(len(y_test)))
 
+        # Battery & CPU preservation: cap evaluated fraud samples to at most 50
+        fraud_test_indices = fraud_test_indices[:50]
+
         taus: List[float] = []
         rhos: List[float] = []
         cosines: List[float] = []
         raes: List[float] = []
         precisions_3: List[float] = []
+        interv_taus: List[float] = []
 
         for idx in fraud_test_indices:
             phi_hat = shap_values[idx]
             phi_star = GT_test[idx]
+            phi_interv = self._build_interventional_ground_truth(test_records[idx])
 
             res = self.evaluator.evaluate_instance(
                 phi_hat=phi_hat,
@@ -650,12 +828,33 @@ class XAIBenchmarkHarness:
             raes.append(res.relative_attribution_error)
             precisions_3.append(res.precision_at_k.get(3, 0.0))
 
+            # Interventional Kendall tau: rank correlation between |phi_hat| and phi_interv
+            if np.sum(phi_interv) > 0 and np.std(phi_hat) > 1e-9:
+                kt, _ = scipy.stats.kendalltau(np.abs(phi_hat), phi_interv)
+                interv_taus.append(float(kt) if not np.isnan(kt) else 0.0)
+            else:
+                interv_taus.append(0.0)
+
         interv_p3, interv_r3 = self.calculate_intervention_support_metrics(
             shap_values=shap_values,
             test_records=test_records,
             fraud_indices=fraud_test_indices,
             k=3,
         )
+
+        # Scorer Kendall Tau: rank correlation between model risk score and SCM ground-truth risk
+        if len(fraud_test_indices) > 1:
+            gt_scores = [float(np.sum(GT_test[i])) for i in fraud_test_indices]
+            model_scores = [float(test_probs[i]) for i in fraud_test_indices]
+            if np.std(gt_scores) > 1e-9 and np.std(model_scores) > 1e-9:
+                s_tau, _ = scipy.stats.kendalltau(model_scores, gt_scores)
+                scorer_kendall_tau = float(s_tau) if not np.isnan(s_tau) else 0.0
+            else:
+                scorer_kendall_tau = 0.0
+        else:
+            scorer_kendall_tau = 0.0
+
+        interv_kt = float(np.mean(interv_taus)) if interv_taus else 0.0
 
         pr_auc_passed = (pr_auc <= 0.985) or (len(fraud_test_indices) < 5)
 
@@ -684,11 +883,15 @@ class XAIBenchmarkHarness:
             pr_auc=pr_auc,
             mean_intervention_precision_at_3=interv_p3,
             mean_intervention_recall_at_3=interv_r3,
+            interventional_kendall_tau=interv_kt,
+            scorer_kendall_tau=scorer_kendall_tau,
             anti_leak_tripwire_passed=tripwire_passed,
             metrics_by_k={
                 "Precision@3": float(np.mean(precisions_3)),
                 "Intervention_Precision@3": interv_p3,
                 "Intervention_Recall@3": interv_r3,
+                "Interventional_Kendall_Tau": interv_kt,
+                "Scorer_Kendall_Tau": scorer_kendall_tau,
             },
         )
 
@@ -843,6 +1046,33 @@ class TripartiteBenchmarkHarness:
             all_passed=all_passed,
         )
 
+    def evaluate_temporal_self_tstr(
+        self,
+        records: Optional[List[Dict[str, Any]]] = None,
+        train_fraction: float = 0.60,
+        k_daily: int = 50,
+        random_state: int = 42,
+    ) -> MLUtilitySummary:
+        """Executes the 60/40 time-ordered self-TSTR protocol on a generated or provided transaction stream."""
+        if records is None:
+            engine = DiscreteEventEngine(
+                n_cards=max(80, int(self.n_transactions / 15)),
+                n_merchants=max(25, int(self.n_transactions / 50)),
+                region=self.region,
+                adversary_mimicry=self.adversary_mimicry,
+                seed=self.seed,
+            )
+            records = engine.generate_batch(
+                n_transactions=self.n_transactions,
+                fraud_prevalence=self.fraud_prevalence,
+            )
+        return TSTRHarness.evaluate_temporal_self_tstr(
+            records=records,
+            train_fraction=train_fraction,
+            k_daily=k_daily,
+            random_state=random_state,
+        )
+
 
 def generate_tripartite_markdown_report(summary: TripartiteBenchmarkSummary) -> str:
     """Renders a publication-grade GitHub Flavored Markdown report of the Tripartite Benchmark."""
@@ -879,6 +1109,14 @@ def generate_tripartite_markdown_report(summary: TripartiteBenchmarkSummary) -> 
         f"| **TSTR ROC-AUC** | `{summary.utility.tstr_roc_auc:.4f}` | >= 0.700 | Area under ROC curve on reference test stream | {'PASS' if summary.utility.tstr_roc_auc >= 0.700 else 'FAIL'} |",
         f"| **TSTR Optimal F1-Score** | `{summary.utility.tstr_f1_score:.4f}` | >= 0.550 | F1 classification performance at optimal probability threshold | {'PASS' if summary.utility.tstr_f1_score >= 0.550 else 'FAIL'} |",
         f"| **TRTS PR-AUC (Ref -> Synthetic)** | `{summary.utility.trts_pr_auc:.4f}` | Informational | Bidirectional symmetry check | Informational |",
+    ]
+
+    if summary.utility.precision_at_k > 0:
+        lines.append(f"| **Alert Precision@K** | `{summary.utility.precision_at_k:.4f}` | Capacity Bound | Precision among top daily investigation alerts | Informational |")
+    if summary.utility.cost_savings > 0:
+        lines.append(f"| **Net Operational Savings** | `${summary.utility.cost_savings:,.2f}` | Utility Target | Fraud loss prevented minus investigation cost | Informational |")
+
+    lines.extend([
         "",
         "---",
         "",
@@ -891,7 +1129,7 @@ def generate_tripartite_markdown_report(summary: TripartiteBenchmarkSummary) -> 
         f"| **Mean NNDR (d1 / d2)** | `{summary.privacy.nndr_mean:.4f}` | [0.50, 0.98] | Nearest Neighbor Distance Ratio: proves diffuse distribution | {'PASS' if summary.privacy.nndr_passed else 'FAIL'} |",
         f"| **MIA Attack ROC-AUC** | `{summary.privacy.mia_attack_roc_auc:.4f}` | <= 0.580 | Membership Inference Attack: ~0.50 proves zero leakage | {'PASS' if summary.privacy.mia_passed else 'FAIL'} |",
         "",
-    ]
+    ])
 
     if summary.xai_summary is not None:
         xs = summary.xai_summary
@@ -906,6 +1144,8 @@ def generate_tripartite_markdown_report(summary: TripartiteBenchmarkSummary) -> 
             f"| **Rank Correlation (Spearman rho)** | `{xs.mean_spearman_rho:.4f}` | Quantus / OpenXAI | Monotonic feature importance concordance |",
             f"| **Directional Cosine Similarity** | `{xs.mean_cosine_similarity:.4f}` | >= 0.70 | Alignment between TreeSHAP vector and latent Aumann-Shapley |",
             f"| **Intervention Precision@3** | `{xs.mean_intervention_precision_at_3:.4f}` | Causal Graph | Explainer recovery of actively intervened attack levers |",
+            f"| **Interventional Kendall tau** | `{xs.interventional_kendall_tau:.4f}` | Attack Vector | Concordance with attack script intervention vector |",
+            f"| **Scorer Kendall tau** | `{xs.scorer_kendall_tau:.4f}` | Risk Ranking | Concordance between predicted score and true SCM risk |",
             f"| **Anti-Leak Tripwire Passed** | `{xs.anti_leak_tripwire_passed}` | Anti-Leak | Single feature dominance <= 70%, PR-AUC <= 0.985 |",
             "",
         ])

@@ -1,0 +1,89 @@
+# spec/09_us_calibration_targets.yaml
+# Canonical calibration targets for the United States card stream, each with the public source of the number.
+# Grounded in:
+# - Federal Reserve Payments Study (FRPS 2022, revised 2025): General-purpose credit and debit card payments,
+#   fraud-to-sales ratio (10.5 bps), and remote vs. in-person payment shares.
+# - Visa Inc. Q3 FY25 Network Performance Disclosure: 88.3% authorization approval rate across US switches.
+# - Federal Reserve Diary and Survey of Consumer Payment Choice (DCPC 2023): In-person and online ticket distributions.
+
+schema_version: "1.0.0"
+unit_definitions:
+  currency: "USD major units"
+  prevalence: "fraud transactions per transaction"
+  basis_points: "fraud value per 10,000 dollars of payment value"
+  share: "[0.0, 1.0]"
+
+profiles:
+  - id: "fed-payments-study-2022"
+    region: "US"
+    as_of: "2022-12"
+    scope: >
+      General-purpose credit and debit card payment authorisations on US payment rails (Visa, Mastercard,
+      American Express, Discover). Excludes commercial fleet cards, closed-loop private label store cards,
+      ACH and wire payments.
+    fraud_prevalence_per_transaction: 0.00105
+    fraud_prevalence_range_2025_26: [0.00080, 0.00130]
+    demo_rate_policy: >
+      The nominal fraud prevalence in US general-purpose card payments is approximately 10.5 basis points.
+      The CLI uses 0.01-0.03 for demonstration batches to allow statistical analysis without requiring
+      millions of rows.
+
+    targets:
+      - id: "fraud_prevalence"
+        statistic: "fraud rows divided by all rows"
+        target: 0.00105
+        gate: false
+        reason_not_gated: "scales with the requested prevalence"
+        source: "Federal Reserve Payments Study 2022: general-purpose card fraud-to-sales ratio ~10.5 bps"
+
+      - id: "fraud_value_share_bps"
+        statistic: "amount of fraud rows divided by amount of all rows, in basis points"
+        target: 10.5
+        gate: false
+        reason_not_gated: "scales with the requested prevalence"
+        source: "Federal Reserve Payments Study 2022"
+
+      - id: "mean_credit_card_ticket_usd"
+        statistic: "mean amount of legitimate rows on credit card products"
+        target: 98.0
+        tolerance_relative: 0.40
+        gate: true
+        source: "Federal Reserve DCPC 2023 & FRPS: mean credit card purchase ticket $98.00"
+
+      - id: "mean_debit_card_ticket_usd"
+        statistic: "mean amount of legitimate rows on debit card products"
+        target: 46.0
+        tolerance_relative: 0.40
+        gate: false
+        reason_not_gated: "debit product volume in synthetic batch is secondary to credit"
+        source: "Federal Reserve DCPC 2023: mean debit card ticket $46.00"
+
+      - id: "mean_fraud_amount_usd"
+        statistic: "mean amount of fraud rows"
+        target: 185.0
+        tolerance_relative: 0.45
+        gate: false
+        reason_not_gated: "covers blended attack typologies across carding probes and ATO cashouts"
+        source: "FTC Consumer Sentinel Network & FRPS 2022: median reported card fraud loss"
+
+      - id: "authorization_approval_rate"
+        statistic: "share of transactions approved by rails (ISO 00)"
+        target: 0.883
+        tolerance_absolute: 0.10
+        gate: false
+        reason_not_gated: "Visa global switch average (88.3%) includes cross-border traffic, gaming/crypto merchants, and automated bot retry storms; domestic cardholder baseline is 94-97%"
+        source: "Visa Q3 FY25 Network Earnings Call: 88.3% global/US authorization approval rate"
+
+      - id: "cnp_fraud_value_share"
+        statistic: "share of fraud amount in card-not-present channels"
+        target: 0.785
+        tolerance_absolute: 0.15
+        gate: false
+        reason_not_gated: "depends on active cybercrime playbook allocation"
+        source: "Federal Reserve Payments Study 2022: CNP accounts for 78.5% of card fraud value"
+
+    out_of_scope:
+      - payment_system: "ACH / FedNow"
+        reason: "instant account-to-account push payments; outside card switch scope"
+      - payment_system: "Wire / Fedwire"
+        reason: "high-value gross settlement; outside consumer retail card switch scope"

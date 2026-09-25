@@ -555,6 +555,52 @@ def cmd_report(args: argparse.Namespace) -> None:
     print(f"Publication reports compiled successfully to {out_dir}", file=sys.stderr)
 
 
+def cmd_validate(args: argparse.Namespace) -> None:
+    """Validates synthetic data distributional quality, diversity, and class overlap."""
+    from .quality_report import QualityReport
+    from .engine import DiscreteEventEngine
+
+    if args.input:
+        import csv
+        with open(args.input, "r", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            records = list(reader)
+    else:
+        print(f"Synthesizing {args.samples} transactions ({args.region}) for quality validation...", file=sys.stderr)
+        engine = DiscreteEventEngine(
+            n_cards=max(80, int(args.samples / 15)),
+            n_merchants=max(25, int(args.samples / 50)),
+            region=args.region,
+            seed=args.seed,
+        )
+        records = engine.generate_batch(
+            n_transactions=args.samples,
+            fraud_prevalence=args.fraud_rate,
+        )
+
+    summary = QualityReport.generate_quality_summary(
+        records=records,
+        n_pairs=args.pairs,
+        seed=args.seed,
+    )
+
+    if args.json:
+        from dataclasses import asdict
+        print(json.dumps(asdict(summary), indent=2))
+    else:
+        report_md = summary.format_markdown()
+        print("\n" + report_md + "\n")
+
+    if args.output_report:
+        out_p = Path(args.output_report)
+        out_p.parent.mkdir(parents=True, exist_ok=True)
+        out_p.write_text(summary.format_markdown(), encoding="utf-8")
+        print(f"Quality report saved to {out_p}", file=sys.stderr)
+
+    if not summary.overall_passed:
+        sys.exit(1)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(prog="fraudx-sim", description="FraudX-Synthesizer CLI")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -618,6 +664,18 @@ def main() -> None:
     p_vis.add_argument("-o", "--output", type=str, default="reports/fraudx_visualizer.html", help="Output HTML file path")
     p_vis.add_argument("--open", action="store_true", default=False, help="Automatically open generated visualizer in default web browser")
     p_vis.set_defaults(func=cmd_visualize)
+
+    # Validate subcommand
+    p_val = subparsers.add_parser("validate", help="Validate synthetic data distributional quality, diversity, and class overlap")
+    p_val.add_argument("-i", "--input", type=str, default=None, help="Path to input CSV to validate (if omitted, synthesizes a test batch)")
+    p_val.add_argument("-n", "--samples", type=int, default=2000, help="Number of transactions to synthesize if no input file is provided")
+    p_val.add_argument("--region", type=str, choices=["US", "IN"], default="US", help="Banking ecosystem region")
+    p_val.add_argument("--fraud-rate", type=float, default=0.05, help="Fraud prevalence ratio")
+    p_val.add_argument("--pairs", type=int, default=1000, help="Number of random pairs for internal diversity estimation")
+    p_val.add_argument("--seed", type=int, default=42, help="Deterministic seed")
+    p_val.add_argument("--output-report", type=str, default=None, help="Optional path to write Markdown quality report")
+    p_val.add_argument("--json", action="store_true", help="Output summary in JSON format")
+    p_val.set_defaults(func=cmd_validate)
 
     args = parser.parse_args()
     args.func(args)

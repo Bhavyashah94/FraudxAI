@@ -105,10 +105,10 @@ network_risk_score:
   scale: [0, 99]
   decline_threshold: 75   # spec/04 network_countermeasures.visa_vaai.threshold_decline
   distributions:          # Beta(alpha, beta) scaled to [0, 99] and floored to an integer
-    legitimate:         { alpha: 1.5, beta: 6.0 }   # median 17, 95th percentile 46, share at or above 60 about 1 percent, at or above 75 about 0.07 percent
-    card_testing_probe: { alpha: 3.5, beta: 3.0 }   # median 53, share at or above 75 about 13 percent; ROC-AUC against legitimate about 0.92
-    balance_bisection:  { alpha: 3.5, beta: 3.5 }   # median 50
-    cash_out_harvest:   { alpha: 3.0, beta: 4.0 }   # median 42
+    legitimate:         { alpha: 2.0, beta: 5.5 }   # median 24, 95th percentile 52, false positive noise
+    card_testing_probe: { alpha: 3.8, beta: 2.8 }   # median 58, realistic operational detection
+    balance_bisection:  { alpha: 3.5, beta: 3.0 }   # median 53
+    cash_out_harvest:   { alpha: 3.2, beta: 3.5 }   # median 47
     bin_enumeration:    { alpha: 6.0, beta: 2.0 }   # median 77; the spec/04 PEA countermeasure fires on most attempts
   hypothesis: true
   replace_with: "an issuer's own score histogram by outcome, should one ever be obtained"

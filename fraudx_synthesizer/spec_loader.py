@@ -459,6 +459,7 @@ def load_all_specs(spec_dir: Optional[str] = None) -> SpecRegistry:
     raw_05 = _read_yaml("05_india_payment_rails.yaml")
     raw_07 = _read_yaml("07_export_leakage_gate.yaml")
     raw_08 = _read_yaml("08_india_calibration_targets.yaml")
+    raw_09 = _read_yaml("09_us_calibration_targets.yaml") if (_find_spec_dir() / "09_us_calibration_targets.yaml").exists() else {}
     raw_16 = _read_yaml("16_operational_supervision.yaml")
 
     # 1. Parse 01_financial_instruments.yaml
@@ -736,9 +737,9 @@ def load_all_specs(spec_dir: Optional[str] = None) -> SpecRegistry:
         otp_theft_cashout_mccs={int(m): float(w) for m, w in cashout.items() if isinstance(w, (int, float)) and not isinstance(w, bool)},
     )
 
-    # 8. Parse 08_india_calibration_targets.yaml
+    # 8. Parse 08_india_calibration_targets.yaml and 09_us_calibration_targets.yaml
     calibration_profiles: Dict[str, CalibrationProfileSpec] = {}
-    for prof in raw_08.get("profiles", []):
+    for prof in raw_08.get("profiles", []) + raw_09.get("profiles", []):
         targets = tuple(
             CalibrationTargetSpec(
                 id=str(t["id"]),

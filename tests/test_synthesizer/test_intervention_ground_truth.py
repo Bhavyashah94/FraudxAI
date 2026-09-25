@@ -87,3 +87,12 @@ def test_treeshap_intervention_recovery_and_anti_leak_tripwires():
     assert summary.mean_kendall_tau > 0.20, (
         f"Kendall tau ranking concordance {summary.mean_kendall_tau:.4f} is too low"
     )
+
+    # 4. Interventional & Scorer Concordance
+    assert summary.interventional_kendall_tau >= 0.15, (
+        f"Interventional Kendall tau {summary.interventional_kendall_tau:.4f} is too low"
+    )
+    assert summary.scorer_kendall_tau >= 0.15, (
+        f"Scorer Kendall tau {summary.scorer_kendall_tau:.4f} is too low"
+    )
+

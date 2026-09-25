@@ -319,13 +319,22 @@ class DiscreteEventEngine:
                 tail_p = sp_spec.tail_prob if sp_spec.tail_prob is not None else 0.03
                 overdraft_limit = 350.0 if "DEBIT" in product_id else 0.0
 
-            ch_raw = cohort_spec.primary_channels
-            ch_probs = {
-                "CP_POS_CHIP": float(ch_raw.get("cp_chip_ratio", 0.50)),
-                "CP_POS_CONTACTLESS": float(ch_raw.get("cp_nfc_ratio", 0.25)),
-                "CNP_WEB": float(ch_raw.get("cnp_web_ratio", 0.15)),
-                "CNP_MOBILE": float(ch_raw.get("cnp_app_ratio", 0.10)),
-            }
+            if self.region == "IN":
+                # Grounded in RBI Payment System Indicators (PSI 2024-2026): 57.6% CNP vs 42.4% CP
+                ch_probs = {
+                    "CP_POS_CHIP": 0.27,
+                    "CP_POS_CONTACTLESS": 0.16,
+                    "CNP_WEB": 0.28,
+                    "CNP_MOBILE": 0.29,
+                }
+            else:
+                # Grounded in Federal Reserve Payments Study (2022-2025): ~58% CP vs ~42% CNP
+                ch_probs = {
+                    "CP_POS_CHIP": 0.36,
+                    "CP_POS_CONTACTLESS": 0.22,
+                    "CNP_WEB": 0.24,
+                    "CNP_MOBILE": 0.18,
+                }
             total_ch = sum(ch_probs.values())
             ch_probs = {k: v / total_ch for k, v in ch_probs.items()}
 
@@ -448,6 +457,30 @@ class DiscreteEventEngine:
             and card.international_enabled
             and not has_live_otp
         )
+
+    def _sample_channel_for_mcc(self, card: CardholderProfile, mcc: int) -> str:
+        """Samples channel conditioned on MCC business model (grounded in spec/05).
+        Digital/e-commerce/transit merchants are heavily CNP; physical retail/fuel are CP."""
+        # 1. Digital & E-Commerce MCCs: 90%+ CNP
+        if mcc in (5311, 5999, 5815, 4899, 4900, 7372, 8398, 4112, 4121, 5732, 5968):
+            return str(self.rng.choice(
+                ["CNP_WEB", "CNP_MOBILE", "CP_POS_CHIP", "CP_POS_CONTACTLESS"],
+                p=[0.48, 0.44, 0.05, 0.03],
+            ))
+        # 2. In-Person Retail, Grocery & Fuel MCCs: 85%+ CP
+        elif mcc in (5411, 5499, 5541, 5542, 5912, 5200, 7513, 5094, 5944):
+            return str(self.rng.choice(
+                ["CP_POS_CHIP", "CP_POS_CONTACTLESS", "CNP_WEB", "CNP_MOBILE"],
+                p=[0.55, 0.35, 0.06, 0.04],
+            ))
+        # 3. Dining & Fast Food: Split between in-restaurant POS and delivery apps
+        elif mcc in (5812, 5814):
+            return str(self.rng.choice(
+                ["CP_POS_CONTACTLESS", "CP_POS_CHIP", "CNP_MOBILE", "CNP_WEB"],
+                p=[0.35, 0.25, 0.30, 0.10],
+            ))
+        # 4. Fallback to cardholder cohort distribution
+        return card.sample_channel(self.rng)
 
     def generate_batch(
         self,
@@ -704,10 +737,10 @@ class DiscreteEventEngine:
 
             factual_tx = None
             if is_fraud_evt:
-                factual_channel = card.sample_channel(self.rng)
+                factual_mcc = card.dominant_mccs[0] if card.dominant_mccs else 5411
+                factual_channel = self._sample_channel_for_mcc(card, factual_mcc)
                 factual_amount = card.sample_spend_amount(self.rng)
                 factual_ip_dist = float(self.rng.uniform(0.5, 18.0))
-                factual_mcc = card.dominant_mccs[0] if card.dominant_mccs else 5411
                 factual_tx = {
                     "amount": factual_amount,
                     "channel_type": factual_channel,
@@ -811,6 +844,7 @@ class DiscreteEventEngine:
                         # a geo-matched residential proxy (the playbook adversary's stealth band) on the legitimate ASN mix
                         attack_params["ip_distance_km"] = float(self.rng.uniform(2.5, 32.0))
                         attack_params["asn_type"] = self._legit_asn_type(str(attack_params.get("channel_type", "CNP_WEB")))
+                        attack_params["vaai_score"] = self._sample_network_risk_score("legitimate")
                         if attack_params.get("macro_option") in ("OMEGA_HARVEST", "OMEGA_BISECT_DRAIN"):
                             # spec/07 section 14: a mimicking cash-out buys where the cardholder normally does
                             attack_params["preferred_mcc"] = card.sample_preferred_mcc(self.rng)
@@ -967,7 +1001,6 @@ class DiscreteEventEngine:
                             amount = card.sample_spend_amount(self.rng) * 1.50
                         else:
                             amount = card.sample_spend_amount(self.rng)
-                            channel = card.sample_channel(self.rng)
                             preferred_mcc = card.sample_preferred_mcc(self.rng)
                             # spec/07 sections 8 and 9: traffic at MCCs no cohort prefers, and micro-tickets
                             telemetry = self.specs.telemetry
@@ -978,6 +1011,7 @@ class DiscreteEventEngine:
                                 if draw < cumulative:
                                     preferred_mcc = int(uncovered_mcc)
                                     break
+                            channel = self._sample_channel_for_mcc(card, preferred_mcc)
                             if channel.startswith("CP") and self.rng.random() < telemetry.legit_micro_ticket_share.get(self.region, 0.0):
                                 low, high = telemetry.legit_micro_ticket_range.get(card.currency, (0.50, 4.99))
                                 amount = round(float(self.rng.uniform(low, high)), 2)

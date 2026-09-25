@@ -33,10 +33,15 @@ from .benchmark import (
     ModelBenchmarkSummary,
     StatisticalFidelityEvaluator,
     StatisticalFidelitySummary,
+    TSTRHarness,
     TripartiteBenchmarkHarness,
     TripartiteBenchmarkSummary,
     XAIBenchmarkHarness,
     generate_tripartite_markdown_report,
+)
+from .quality_report import (
+    QualityReport,
+    QualitySummary,
 )
 from .evaluation import (
     CostMatrixConfig,
@@ -170,6 +175,9 @@ __all__ = [
     "TripartiteBenchmarkSummary",
     "StatisticalFidelityEvaluator",
     "MLUtilityEvaluator",
+    "TSTRHarness",
+    "QualityReport",
+    "QualitySummary",
     "AdversarialPrivacyEvaluator",
     "TripartiteBenchmarkHarness",
     "generate_tripartite_markdown_report",
