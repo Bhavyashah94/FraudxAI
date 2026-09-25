@@ -191,8 +191,8 @@ class QualityReport:
     @classmethod
     def compute_class_overlaps(cls, records: List[Dict[str, Any]]) -> Dict[str, float]:
         """Computes Bhattacharyya overlap for continuous features between legitimate and fraud."""
-        legit = [r for r in records if not r.get("is_fraud", 0)]
-        fraud = [r for r in records if r.get("is_fraud", 0)]
+        legit = [r for r in records if int(float(r.get("is_fraud", 0))) == 0]
+        fraud = [r for r in records if int(float(r.get("is_fraud", 0))) == 1]
 
         overlaps: Dict[str, float] = {}
         for col in ["vaai_score", "amount", "haversine_velocity_kph", "ip_distance_from_home_km"]:
@@ -211,7 +211,7 @@ class QualityReport:
     ) -> QualitySummary:
         """Generates comprehensive distributional quality and realism summary."""
         n_samples = len(records)
-        n_fraud = sum(1 for r in records if r.get("is_fraud", 0))
+        n_fraud = sum(1 for r in records if int(float(r.get("is_fraud", 0))) == 1)
         fraud_rate = n_fraud / max(1, n_samples)
 
         diversity = cls.compute_internal_diversity(records, n_pairs=n_pairs, seed=seed)

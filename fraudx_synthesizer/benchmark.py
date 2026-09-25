@@ -676,7 +676,7 @@ class XAIBenchmarkHarness:
         Returns a vector of length len(FEATURE_NAMES) where sum(v) == 1.0 (or all 0 if legitimate/no target).
         """
         vec = np.zeros(len(FEATURE_NAMES), dtype=np.float64)
-        if not record.get("is_fraud", 0):
+        if int(float(record.get("is_fraud", 0))) == 0:
             return vec
 
         tag = str(record.get("scenario_tag", ""))

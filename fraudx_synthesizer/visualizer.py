@@ -33,8 +33,8 @@ def compile_simulation_data_bundle(
     if total_tx == 0:
         return {"error": "Empty transaction batch"}
 
-    fraud_records = [r for r in records if r.get("is_fraud") == 1]
-    legit_records = [r for r in records if r.get("is_fraud") == 0]
+    fraud_records = [r for r in records if int(float(r.get("is_fraud", 0))) == 1]
+    legit_records = [r for r in records if int(float(r.get("is_fraud", 0))) == 0]
     hard_neg_records = [r for r in legit_records if "HARD_NEGATIVE" in r.get("scenario_tag", "")]
 
     # 1. Macro-Option Breakdown
