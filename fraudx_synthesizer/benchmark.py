@@ -131,6 +131,8 @@ class ModelBenchmarkSummary:
     interventional_kendall_tau: float = 0.0
     scorer_kendall_tau: float = 0.0
     anti_leak_tripwire_passed: bool = True
+    mean_normalized_l1_distance: float = 0.0
+    mean_normalized_l2_distance: float = 0.0
     metrics_by_k: Dict[str, float] = field(default_factory=dict)
 
 
@@ -663,7 +665,7 @@ class XAIBenchmarkHarness:
             X.append(row)
             y.append(int(r["is_fraud"]))
 
-            gt_dict = r.get("analytical_shapley_probability", {})
+            gt_dict = r.get("analytical_shapley_log_odds", r.get("analytical_shapley_probability", {}))
             gt_vec = [float(gt_dict.get(gt_key, 0.0)) for _, gt_key in FEATURE_SPECS]
             GT.append(gt_vec)
 
@@ -809,6 +811,8 @@ class XAIBenchmarkHarness:
         rhos: List[float] = []
         cosines: List[float] = []
         raes: List[float] = []
+        l1_dists: List[float] = []
+        l2_dists: List[float] = []
         precisions_3: List[float] = []
         interv_taus: List[float] = []
 
@@ -826,6 +830,8 @@ class XAIBenchmarkHarness:
             rhos.append(res.spearman_rho)
             cosines.append(res.cosine_similarity)
             raes.append(res.relative_attribution_error)
+            l1_dists.append(res.normalized_l1_distance)
+            l2_dists.append(res.normalized_l2_distance)
             precisions_3.append(res.precision_at_k.get(3, 0.0))
 
             # Interventional Kendall tau: rank correlation between |phi_hat| and phi_interv
@@ -886,6 +892,8 @@ class XAIBenchmarkHarness:
             interventional_kendall_tau=interv_kt,
             scorer_kendall_tau=scorer_kendall_tau,
             anti_leak_tripwire_passed=tripwire_passed,
+            mean_normalized_l1_distance=float(np.mean(l1_dists)) if l1_dists else 0.0,
+            mean_normalized_l2_distance=float(np.mean(l2_dists)) if l2_dists else 0.0,
             metrics_by_k={
                 "Precision@3": float(np.mean(precisions_3)),
                 "Intervention_Precision@3": interv_p3,

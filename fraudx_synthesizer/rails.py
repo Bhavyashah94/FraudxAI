@@ -85,8 +85,18 @@ class RailVerificationResult:
 class RailVerifierSwitch:
     """Boundary Layer 1 Deterministic Rail Switch enforcing payment plumbing invariants."""
 
-    def __init__(self, region: str = "US", seed: int = 42):
+    def __init__(
+        self,
+        region: str = "US",
+        tau_decline: float = 0.88,
+        tau_challenge_low: float = 0.08,
+        tau_challenge_high: float = 0.45,
+        seed: int = 42,
+    ):
         self.region = region.upper()
+        self.tau_decline = tau_decline
+        self.tau_challenge_low = tau_challenge_low
+        self.tau_challenge_high = tau_challenge_high
         self.rng = np.random.default_rng(seed)
         self.telemetry = load_all_specs().telemetry
 
@@ -383,7 +393,7 @@ class RailVerifierSwitch:
                 if intent.amount < 30.0:
                     trans_status_3ds = "Y"
                     eci = "05"  # Low-Value Exemption (LVE)
-                elif intent.risk_score < 0.08 and intent.amount < 100.0:
+                elif intent.risk_score < self.tau_challenge_low and intent.amount < 100.0:
                     trans_status_3ds = "Y"
                     eci = "05"  # TRA Exemption
                 elif self.rng.random() < self.telemetry.legit_challenge_share.get(self.region, 0.0):
@@ -403,11 +413,11 @@ class RailVerifierSwitch:
                         )
                     trans_status_3ds = "C"
                     eci = "05"
-                elif intent.risk_score < 0.45:
+                elif intent.risk_score < self.tau_challenge_high:
                     trans_status_3ds = "Y"
                     eci = "05"  # Frictionless
                 else:
-                    # Step-Up Challenge (risk_score >= 0.45)
+                    # Step-Up Challenge (risk_score >= tau_challenge_high)
                     if not intent.otp_submitted:
                         return RailVerificationResult(
                             approved=False,
@@ -478,7 +488,7 @@ class RailVerifierSwitch:
         # Authentic EMV Contact Chip + valid cryptogram carries statutory counterfeit dispute protection
         if is_verified_hardware_crypto:
             pass  # Hardware cryptogram verified
-        elif intent.risk_score >= 0.88:
+        elif intent.risk_score >= self.tau_decline:
             return RailVerificationResult(
                 approved=False,
                 iso_response_code=ISO8583Response.SUSPECTED_FRAUD_59.value,

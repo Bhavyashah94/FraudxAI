@@ -1153,7 +1153,7 @@ class BankDecisionEngine:
 
     def __init__(
         self,
-        tau_decline: float = 0.85,
+        tau_decline: float = 0.88,
         tau_challenge: float = 0.45,
         max_speed_kmh: float = 900.0,
         max_hourly_velocity: int = 15,
@@ -1164,6 +1164,7 @@ class BankDecisionEngine:
         self.max_speed_kmh = max_speed_kmh
         self.max_hourly_velocity = max_hourly_velocity
         self.region = region.upper()
+        self._switches: Dict[str, Any] = {}
 
     def evaluate_authorization(
         self,
@@ -1191,7 +1192,14 @@ class BankDecisionEngine:
 
         # Delegate to unified institutional RailVerifierSwitch
         from .rails import CandidateTransactionIntent, RailVerifierSwitch
-        switch = RailVerifierSwitch(region=card.region or self.region)
+        reg = card.region or self.region
+        if reg not in self._switches:
+            self._switches[reg] = RailVerifierSwitch(
+                region=reg,
+                tau_decline=self.tau_decline,
+                tau_challenge_high=self.tau_challenge,
+            )
+        switch = self._switches[reg]
         intent = CandidateTransactionIntent(
             tx_id=f"TX_LEGACY_{int(sim_time)}",
             card_id=card.card_id,

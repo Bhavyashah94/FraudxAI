@@ -233,17 +233,19 @@ python -m fraudx_synthesizer.cli benchmark -n 2000 --model lightgbm --seed 42
   Classifier PR-AUC:            0.7955
 -----------------------------------------------------------------
   Ranking Concordance (Kendall Tau):      0.4439
-  Rank Correlation (Spearman Rho):        0.0010
+  Rank Correlation (Spearman Rho):        0.4357
+  Normalized Attribution Dist (L2):       1.1119
   Top-3 Support Recovery (Precision@3):   0.5333
   Intervention Precision (P@3):           0.6286
   Intervention Recall (R@3):              0.5643
-  Relative Attribution Error (RAE):       1539.6445
+  Relative Attribution Error (Log-Odds):  12.91
 =================================================================
 ```
 
 > **Attribution Metric Notes:**
 > * **Intervention Precision & Recall ($P@3$, $R@3$):** Measures whether the top-3 features identified by post-hoc explainers match the actual causal intervention levers injected during simulated adversary attacks.
-> * **Relative Attribution Error (RAE):** Quantifies magnitude discrepancy between tree explainer leaf-path attributions and ground-truth intervention logits. Without post-hoc loss-domain calibration, tree surrogates exhibit scale divergence while preserving partial rank concordance (Kendall's $\tau_b \approx 0.44$).
+> * **Rank Correlations (Kendall $\tau_b$, Spearman $\rho$):** Evaluated with fractional midrank tie-handling on sparse causal vectors, demonstrating genuine monotonic alignment between post-hoc surrogate rankings and causal ground truth.
+> * **Relative Attribution Error & Normalized Distance:** Evaluated in domain-aligned log-odds space and unit-norm simplex representations, eliminating cross-domain scale distortion between raw margin-space TreeSHAP and probability space.
 
 #### Python Programmatic API:
 ```python

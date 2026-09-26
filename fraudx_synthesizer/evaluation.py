@@ -43,19 +43,12 @@ class XAIBenchmarkResult:
 
 
 def compute_spearman_rho_pure_numpy(a: np.ndarray, b: np.ndarray) -> float:
-    """Pure NumPy implementation of Spearman rank correlation."""
+    """Computes Spearman rank correlation with fractional midrank tie handling."""
     if len(a) < 2 or np.all(a == a[0]) or np.all(b == b[0]):
         return 0.0
-    rank_a = np.argsort(np.argsort(a)).astype(np.float64)
-    rank_b = np.argsort(np.argsort(b)).astype(np.float64)
-    mean_a = np.mean(rank_a)
-    mean_b = np.mean(rank_b)
-    diff_a = rank_a - mean_a
-    diff_b = rank_b - mean_b
-    denom = np.sqrt(np.sum(diff_a ** 2) * np.sum(diff_b ** 2))
-    if denom <= 1e-12:
-        return 0.0
-    return float(np.sum(diff_a * diff_b) / denom)
+    res = stats.spearmanr(a, b)
+    corr = float(res.correlation) if hasattr(res, "correlation") else float(res[0])
+    return 0.0 if np.isnan(corr) else float(corr)
 
 
 def compute_kendall_tau_pure_numpy(a: np.ndarray, b: np.ndarray) -> float:

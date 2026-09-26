@@ -63,13 +63,10 @@ EVT_STATEMENT_PAYMENT = 7
 EVT_PAYROLL_DEPOSIT = 8
 
 # Calibrated Indian card product spend marginals (LogNormal parameters in INR nominal)
-# Grounded in RBI Payment System Indicators & spec/05_india_payment_rails.yaml
+# Grounded dynamically in canonical spec/05_india_payment_rails.yaml for backwards compatibility
 INDIAN_PRODUCT_SPEND_MARGINALS: Dict[str, Tuple[float, float]] = {
-    "IN_PROD_PMJDY_RUPAY_DEBIT": (6.50, 0.65),       # Median ₹665, Mean ₹822
-    "IN_PROD_ENTRY_FD_BACKED": (6.95, 0.70),         # Median ₹1,043, Mean ₹1,333
-    "IN_PROD_SALARIED_PRIME_REWARDS": (7.65, 0.70),  # Median ₹2,100, Mean ₹2,683
-    "IN_PROD_KISAN_CREDIT_CARD": (7.80, 0.72),       # Median ₹2,440, Mean ₹3,162
-    "IN_PROD_SUPER_PREMIUM_HNI": (8.55, 0.75),       # Median ₹5,166, Mean ₹6,844
+    p_id: (p.spend_mean_log, p.spend_sigma_log)
+    for p_id, p in load_all_specs().indian_products.items()
 }
 
 
@@ -103,7 +100,6 @@ class DiscreteEventEngine:
         )
         self.causal_engine = StructuralCausalEngine(base_prevalence=0.0020)
         self.fraudster = AdaptiveFraudsterAgent(self.rng, adversary_mimicry=adversary_mimicry)
-        self.bank = BankDecisionEngine()
         self.syndicate_registry = SyndicateRegistry(region=self.region, seed=seed)
         self.ledger = StreamingLedger(seed=seed)
         self.rail_switch = RailVerifierSwitch(region=self.region, seed=seed)
@@ -191,20 +187,15 @@ class DiscreteEventEngine:
         )
 
     def _compute_circular_diurnal_distribution(self) -> np.ndarray:
-        """Computes continuous 24-hour periodic diurnal arrival intensity."""
+        """Computes continuous 24-hour periodic diurnal arrival intensity from canonical circadian spec."""
+        if not (hasattr(self, "specs") and self.specs and self.specs.circadian):
+            raise RuntimeError(
+                "DiscreteEventEngine requires valid circadian specification in self.specs.circadian. "
+                "Silent trigonometric fallbacks violate AGENTS.md Anti-Astronaut Grounding."
+            )
         hours = np.arange(24, dtype=np.float64)
-        if hasattr(self, "specs") and self.specs.circadian:
-            intensity = np.array([self.specs.circadian.evaluate_density(h, is_weekend=False) for h in hours])
-            return intensity / intensity.sum()
-        two_pi = 2.0 * math.pi
-        lunch_kernel = np.exp(2.2 * np.cos(two_pi * (hours - 12.5) / 24.0))
-        dinner_kernel = np.exp(2.5 * np.cos(two_pi * (hours - 19.0) / 24.0))
-        sleep_trough = np.exp(2.8 * np.cos(two_pi * (hours - 3.5) / 24.0))
-        base_intensity = 0.05 + 0.45 * (lunch_kernel / lunch_kernel.max()) + 0.50 * (dinner_kernel / dinner_kernel.max())
-        sleep_suppression = 1.0 - 0.82 * (sleep_trough / sleep_trough.max())
-        intensity = base_intensity * sleep_suppression
-        probs = intensity / intensity.sum()
-        return probs
+        intensity = np.array([self.specs.circadian.evaluate_density(h, is_weekend=False) for h in hours])
+        return intensity / intensity.sum()
 
     def _compute_macro_rate_multiplier(self, t_sec: float, active_regime: Optional[str] = None) -> float:
         """Computes arrival rate multiplier based on calendar day-of-month and macro regimes."""
@@ -276,10 +267,12 @@ class DiscreteEventEngine:
                     in_prod = self.specs.indian_products[product_id]
                     spend_mu_log = in_prod.spend_mean_log
                     spend_sigma_log = in_prod.spend_sigma_log
-                else:
-                    prod_marginal = INDIAN_PRODUCT_SPEND_MARGINALS.get(product_id, (7.60, 0.70))
+                elif product_id in INDIAN_PRODUCT_SPEND_MARGINALS:
+                    prod_marginal = INDIAN_PRODUCT_SPEND_MARGINALS[product_id]
                     spend_mu_log = prod_marginal[0]
                     spend_sigma_log = prod_marginal[1]
+                else:
+                    raise KeyError(f"Product ID '{product_id}' not found in canonical Indian card products specification.")
                 is_spliced = False
                 u_val = 500.0
                 xi_val = 0.20

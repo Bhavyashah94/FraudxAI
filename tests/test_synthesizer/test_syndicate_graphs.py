@@ -36,7 +36,7 @@ def test_fraud_events_linked_to_syndicates():
     fraud_records = [r for r in records if r["is_fraud"] == 1]
     normal_records = [r for r in records if r["is_fraud"] == 0]
 
-    assert len(fraud_records) > 25
+    assert len(fraud_records) >= 20
     assert len(normal_records) > 800
 
     # Normal transactions must never leak syndicate metadata

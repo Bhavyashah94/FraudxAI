@@ -68,3 +68,8 @@ data/smoke_test_parallel/
 reports/
 .licenses/
 
+# Ad-hoc scratch scripts and presentation binaries
+scratch/
+scratch_*.py
+*.pptx
+
