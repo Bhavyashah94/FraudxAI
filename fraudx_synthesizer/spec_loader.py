@@ -459,7 +459,7 @@ def load_all_specs(spec_dir: Optional[str] = None) -> SpecRegistry:
     raw_05 = _read_yaml("05_india_payment_rails.yaml")
     raw_07 = _read_yaml("07_export_leakage_gate.yaml")
     raw_08 = _read_yaml("08_india_calibration_targets.yaml")
-    raw_09 = _read_yaml("09_us_calibration_targets.yaml") if (_find_spec_dir() / "09_us_calibration_targets.yaml").exists() else {}
+    raw_09 = _read_yaml("09_us_calibration_targets.yaml") if (base_dir / "09_us_calibration_targets.yaml").exists() else {}
     raw_16 = _read_yaml("16_operational_supervision.yaml")
 
     # 1. Parse 01_financial_instruments.yaml

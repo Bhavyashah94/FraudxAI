@@ -3,6 +3,7 @@ dual-region payment rails (US & India), and partitioned warehouse feeds.
 """
 
 import csv
+import ipaddress
 import subprocess
 import sys
 from pathlib import Path
@@ -72,9 +73,13 @@ def test_india_institutional_records():
         assert isinstance(r["amount_minor"], int)
         assert r["amount_minor"] == int(round(r["amount"] * 100))
 
-        # Indian IP space (103.x.x.x synthetic subnet for domestic CNP/remote transactions)
+        # Indian IP space (103.x.x.x synthetic subnet) for a legitimate domestic online payment;
+        # a fraudster connects from its own infrastructure, which sits inside the row's subnet.
         if not r["channel_type"].startswith("CP") and not r.get("is_cross_border", False):
-            assert r["client_ip"].startswith("103.")
+            if r["is_fraud"] == 0:
+                assert r["client_ip"].startswith("103.")
+            elif r.get("ip_subnet_prefix"):
+                assert ipaddress.ip_address(r["client_ip"]) in ipaddress.ip_network(r["ip_subnet_prefix"], strict=False)
 
         # RuPay on UPI QR code channels use POS entry mode 031
         if r["channel_type"] == "UPI_QR_CREDIT":
@@ -193,3 +198,16 @@ def test_cli_export_institutional_views(tmp_path):
             assert header == expected_cols, f"Columns mismatch in {path.name}"
             rows = list(reader)
             assert len(rows) == 100, f"Row count mismatch in {path.name}"
+
+
+@pytest.mark.parametrize("region", ["IN", "US"])
+def test_card_present_rows_never_carry_a_client_ip(region):
+    """A card-present payment has no cardholder IP address: the terminal is on the
+    acquirer's network. Every legitimate card-present row carries the 127.0.0.1 sentinel,
+    so a fraud row carrying the fraudster's botnet address hands a detector the label."""
+    engine = SimulationEngine(n_cards=100, n_merchants=50, region=region, seed=202)
+    records = engine.generate_batch(n_transactions=500, fraud_prevalence=0.06)
+    card_present = [r for r in records if r["channel_type"].startswith("CP")]
+    assert any(r["is_fraud"] == 1 for r in card_present), "the batch must hold card-present fraud or this proves nothing"
+    offenders = sorted({(r["is_fraud"], r["client_ip"]) for r in card_present if r["client_ip"] != "127.0.0.1"})
+    assert offenders == []

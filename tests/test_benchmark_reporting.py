@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 import tempfile
 import pytest
@@ -401,3 +402,39 @@ def test_html_report_dynamic_fail_pills(tmp_path: Path, sample_report_data: Unif
     assert '<span class="pill pill-fail">FAIL</span>' in content, "Failing metrics must render pill-fail!"
     assert 'badge-danger' in content
 
+
+def test_evasion_rate_counts_approved_fraud():
+    """Evasion is the share of fraud the issuer approved. Records carry the answer in
+    auth_response_code; reading a key no record has made the rate 0.0 on every run."""
+    from fraudx_synthesizer import DiscreteEventEngine
+
+    records = DiscreteEventEngine(n_cards=60, n_merchants=20, region="US", seed=5).generate_batch(
+        n_transactions=400, fraud_prevalence=0.1
+    )
+    fraud = [r for r in records if r["is_fraud"] == 1]
+    approved = sum(1 for r in fraud if str(r["auth_response_code"]) == "00")
+    assert 0 < approved < len(fraud), "the batch must hold approved and declined fraud or this proves nothing"
+    runner = UnifiedBenchmarkRunner(region="US", n_transactions=400, time_span_days=4.0, k_daily=10, seed=5)
+    scorecard = runner._evaluate_adversarial_privacy(records)
+    # the scorecard stores four decimals
+    assert scorecard.evasion_rate_macro_mean == pytest.approx(approved / len(fraud), abs=5e-5)
+
+
+def test_causal_scorecard_without_ground_truth_does_not_pass():
+    """With no fraud record carrying a ground-truth attribution there is nothing to
+    compare, so the scorecard reports no measurement and does not pass. It used to
+    report perfect agreement."""
+    from fraudx_synthesizer import DiscreteEventEngine
+
+    records = DiscreteEventEngine(n_cards=60, n_merchants=20, region="US", seed=5).generate_batch(
+        n_transactions=300, fraud_prevalence=0.1
+    )
+    stripped = [
+        {k: v for k, v in r.items() if k not in ("analytical_shapley_probability", "counterfactual_twin")}
+        for r in records
+    ]
+    runner = UnifiedBenchmarkRunner(region="US", n_transactions=300, time_span_days=4.0, k_daily=10, seed=5)
+    scorecard, _, _ = runner._evaluate_causal_xai(stripped)
+    assert scorecard.passed is False
+    assert math.isnan(scorecard.mean_kendall_tau)
+    assert math.isnan(scorecard.mean_causal_faithfulness)

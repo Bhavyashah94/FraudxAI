@@ -108,7 +108,7 @@ def test_delay_gap_blackout_enforcement():
             if t_gap_start <= t_tx < t_epoch:
                 if sup.label_source != LabelSource.INVESTIGATOR_ALERT:
                     # Must NOT have label available at t_epoch (blacked out pending dispute)
-                    assert sup.is_label_available_at(t_epoch) is None or sup.discovery_timestamp_seconds > t_epoch
+                    assert sup.is_label_available_at(t_epoch) is None or sup.discovery_time_seconds > t_epoch
 
 
 def test_operational_metrics_exactness():

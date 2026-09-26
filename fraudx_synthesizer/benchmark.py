@@ -458,7 +458,7 @@ class TSTRHarness:
             import lightgbm as lgb
             from sklearn.metrics import average_precision_score, f1_score, roc_auc_score
             clf = lgb.LGBMClassifier(n_estimators=50, max_depth=4, random_state=random_state, verbose=-1)
-        except ImportError:
+        except (ImportError, AttributeError):
             from sklearn.ensemble import HistGradientBoostingClassifier
             from sklearn.metrics import average_precision_score, f1_score, roc_auc_score
             clf = HistGradientBoostingClassifier(max_iter=50, random_state=random_state)

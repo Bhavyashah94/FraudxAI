@@ -353,3 +353,21 @@ class TestTaxonomySpecifications:
         assert cfc["helpline_number"] == 1930
         assert cfc["critical_golden_hour_cutoff_seconds"] == 900
         assert cfc["inter_bank_api_lien_propagation_latency_seconds"] == 180
+
+
+def test_a_custom_spec_directory_without_the_us_targets_loads(tmp_path):
+    """load_all_specs(spec_dir=...) decided whether to read the optional US targets by
+    looking in the packaged spec directory instead of the one it was given, so a custom
+    directory without that file failed to load."""
+    import shutil
+    from pathlib import Path
+
+    import fraudx_synthesizer
+    from fraudx_synthesizer.spec_loader import load_all_specs
+
+    packaged = Path(fraudx_synthesizer.__file__).resolve().parents[1] / "spec"
+    for f in packaged.glob("*.yaml"):
+        if f.name != "09_us_calibration_targets.yaml":
+            shutil.copy(f, tmp_path / f.name)
+    registry = load_all_specs(spec_dir=str(tmp_path))
+    assert registry is not None

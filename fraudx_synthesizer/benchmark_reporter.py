@@ -696,7 +696,7 @@ class UnifiedBenchmarkRunner:
         for r in records:
             if r.get("is_fraud", 0) == 1:
                 # Declined by bank switch -> caught
-                evaded = 1.0 if r.get("iso_response_code") == "00" else 0.0
+                evaded = 1.0 if str(r.get("auth_response_code", r.get("response_code", ""))) == "00" else 0.0
                 evasion_rates.append(evaded)
         evasion_mean = float(np.mean(evasion_rates)) if evasion_rates else 0.15
 
@@ -820,16 +820,17 @@ class UnifiedBenchmarkRunner:
         ]
 
         if not fraud_records:
-            empirical_attributions = {c: 1.0 / len(feature_cols) for c in feature_cols}
-            ground_truth_phi = {c: 1.0 / len(feature_cols) for c in feature_cols}
+            # Nothing to compare: report no measurement, and do not pass.
+            empirical_attributions = {c: float("nan") for c in feature_cols}
+            ground_truth_phi = {c: float("nan") for c in feature_cols}
             scorecard = CausalXAIScorecard(
-                mean_kendall_tau=1.0,
-                mean_spearman_rho=1.0,
-                mean_pearson_r=1.0,
-                mean_precision_at_3=1.0,
-                mean_relative_attribution_error=0.0,
-                mean_causal_faithfulness=1.0,
-                passed=True,
+                mean_kendall_tau=float("nan"),
+                mean_spearman_rho=float("nan"),
+                mean_pearson_r=float("nan"),
+                mean_precision_at_3=float("nan"),
+                mean_relative_attribution_error=float("nan"),
+                mean_causal_faithfulness=float("nan"),
+                passed=False,
             )
             return scorecard, empirical_attributions, ground_truth_phi
 
