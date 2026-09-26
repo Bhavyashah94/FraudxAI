@@ -268,9 +268,6 @@ class StreamingLedger:
             else:
                 client_ip = f"72.{self.rng.integers(10, 250)}.{self.rng.integers(1, 254)}.{self.rng.integers(1, 254)}"
 
-        if override_client_ip and channel_type.startswith("CP"):
-            client_ip = override_client_ip
-
         # Synthetic Device Canvas Murmur3 Hash (deterministic for card, noisy if fraudster, or cluster-derived)
         if device_fingerprint_id:
             canvas_hash = hashlib.md5(device_fingerprint_id.encode("utf-8")).hexdigest()[:16]

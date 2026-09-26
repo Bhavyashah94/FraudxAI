@@ -521,6 +521,20 @@ class CardholderProfile:
         return False
 
 
+# After an ISO 51 (insufficient funds) decline the adversary retries at 70 percent of the
+# last amount. The floor stops that decay from reaching absurdly small amounts, but only for
+# amounts that were above it: a micro-probe below the floor keeps decaying, so a decline never
+# raises the next attempt. The floor is in the card's own currency, as the amounts are.
+INSUFFICIENT_FUNDS_DECAY = 0.70
+INSUFFICIENT_FUNDS_FLOOR = 25.0
+
+
+def decay_after_insufficient_funds(previous: float, floor: float = INSUFFICIENT_FUNDS_FLOOR) -> float:
+    """The next attempt's amount after an ISO 51 decline of ``previous``."""
+    decayed = round(previous * INSUFFICIENT_FUNDS_DECAY, 2)
+    return max(decayed, floor) if previous > floor else decayed
+
+
 @dataclass
 class TargetCardAdversaryState:
     """Per-target adversary memory tracking discovered state and campaign lifecycle."""
@@ -1018,11 +1032,11 @@ class AdaptiveFraudsterAgent:
                 target.consecutive_declines += 1
                 target.fsm_state = FraudsterState.AMOUNT_ADAPTATION
                 target.last_response_code = response_code
-                target.current_probe_amount = max(25.0, round(target.current_probe_amount * 0.70, 2))
+                target.current_probe_amount = decay_after_insufficient_funds(target.current_probe_amount)
                 target.cooldown_until_sec = sim_time_seconds + 30.0
             self.consecutive_declines += 1
             self.state = FraudsterState.AMOUNT_ADAPTATION
-            self.current_amount = max(25.0, round(self.current_amount * 0.70, 2))
+            self.current_amount = decay_after_insufficient_funds(self.current_amount)
 
         elif trans_status_3ds == "C":
             if target:

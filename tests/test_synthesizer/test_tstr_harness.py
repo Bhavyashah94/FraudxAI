@@ -47,3 +47,19 @@ def test_tripartite_harness_temporal_delegation():
     summary = harness.evaluate_temporal_self_tstr(train_fraction=0.60, k_daily=25)
     assert isinstance(summary, MLUtilitySummary)
     assert summary.tstr_roc_auc >= 0.60
+
+
+def test_tstr_falls_back_when_lightgbm_has_no_classifier(monkeypatch):
+    """The harness already falls back to HistGradientBoosting when lightgbm is missing;
+    an installed lightgbm without LGBMClassifier (a broken or partial install) raised
+    AttributeError instead of taking the same fallback."""
+    import sys
+    import types
+
+    monkeypatch.setitem(sys.modules, "lightgbm", types.ModuleType("lightgbm"))
+    engine = DiscreteEventEngine(n_cards=150, n_merchants=30, region="US", seed=42)
+    records = engine.generate_batch(n_transactions=1200, fraud_prevalence=0.06)
+    summary = TSTRHarness.evaluate_temporal_self_tstr(
+        records=records, train_fraction=0.60, k_daily=30, random_state=42
+    )
+    assert isinstance(summary, MLUtilitySummary)

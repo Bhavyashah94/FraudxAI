@@ -10,6 +10,7 @@ from fraudx_synthesizer.agents import (
     BankDecisionEngine,
     CardholderState,
     ISO8583Response,
+    decay_after_insufficient_funds,
 )
 from fraudx_synthesizer.spec_loader import load_all_specs
 
@@ -158,7 +159,7 @@ def test_per_target_adversary_memory_and_adaptation():
     target_a = fraudster.target_states[card_a.card_id]
     assert target_a.consecutive_declines == 1
     assert target_a.current_probe_amount < amt_a1
-    assert abs(target_a.current_probe_amount - max(15.0, amt_a1 * 0.70)) < 0.01
+    assert target_a.current_probe_amount == decay_after_insufficient_funds(amt_a1)
 
     # Attack Card B: Should NOT be throttled or decayed by Card A's decline
     params_b1 = fraudster.select_attack_playbook(card_b, 1704067200.0, 34.0522, -118.2437)
@@ -191,3 +192,41 @@ def test_commuter_anchor_location_schedule():
     assert state == CardholderState.HOMESTEAD
     assert abs(lat - card.home_lat) < 1e-4
     assert abs(lon - card.home_lon) < 1e-4
+
+
+@pytest.mark.parametrize("previous", [1.95, 10.0, 24.99, 25.0, 25.01, 30.0, 100.0, 5000.0])
+def test_insufficient_funds_never_raises_the_next_attempt(previous):
+    """An ISO 51 decline means the amount was more than the card could pay, so the next
+    attempt is lower, never higher. The floor only stops the decay of amounts above it:
+    a 1.95 micro-probe followed by a 25.00 attempt would be an adversary learning backwards."""
+    following = decay_after_insufficient_funds(previous)
+    assert following < previous
+    expected = max(round(previous * 0.70, 2), 25.0) if previous > 25.0 else round(previous * 0.70, 2)
+    assert following == expected
+
+
+def test_decline_feedback_lowers_the_target_and_the_agent_amount():
+    """The per-card memory and the agent's own amount both follow the same rule."""
+    fraudster = AdaptiveFraudsterAgent(rng=np.random.default_rng(7))
+    card = CardholderProfile(
+        card_id="CARD_VICTIM_C",
+        home_lat=40.7128,
+        home_lon=-74.0060,
+        work_lat=40.7589,
+        work_lon=-73.9851,
+        is_commuter=False,
+        credit_limit=5000.0,
+    )
+    fraudster.select_attack_playbook(card, 1704067200.0, 40.7128, -74.0060)
+    target = fraudster.target_states[card.card_id]
+    for previous in (1.95, 64.31):
+        target.current_probe_amount = previous
+        fraudster.current_amount = previous
+        fraudster.receive_feedback(
+            response_code=ISO8583Response.INSUFFICIENT_FUNDS_51,
+            trans_status_3ds="N",
+            sim_time_seconds=1704067300.0,
+            card_id=card.card_id,
+        )
+        assert target.current_probe_amount < previous
+        assert fraudster.current_amount < previous

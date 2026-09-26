@@ -48,7 +48,7 @@ previous_slices:
   - id: "slice-15b-export-level-leakage-gate"
     title: "Export-Level Label Leakage Gate & Point-in-Time Telemetry Calibration (spec/07)"
     status: "verified"
-    verdict: "PASS (CERTIFIED: Exported views scored on time-ordered split; PR-AUC bounded in [0.20, 0.97]; zero discrete fraud-only values; single-feature AUC ceiling <= 0.95)."
+    verdict: "PASS at seed 42 on four configurations (US and IN, intent and playbook): exported views scored on a time-ordered split, PR-AUC inside [0.20, 0.97], no fraud-only value with support 25 or more, no single column above ROC-AUC 0.95. Not covered: other seeds (IN playbook fails at seed 5 on 15f5e9f) and the identifier columns the gate excludes (client_ip and device_canvas_hash, where every fraud row's /24 prefix and device are fraud-only on 15f5e9f)."
   - id: "slice-15-india-empirical-calibration-rbi-npci"
     title: "Day 2: India Empirical Payment Rails & Kinematics Calibration (Reserve Bank of India & NPCI Grounding)"
     status: "verified"
