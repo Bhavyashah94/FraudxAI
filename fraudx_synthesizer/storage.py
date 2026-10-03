@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import math
+import multiprocessing
 import os
 import sys
 import time
@@ -423,7 +424,8 @@ class ParallelSimulationCoordinator:
         print(f"   Region: {self.region} | Mode: {self.adversary_mode} | Output: {self.output_dir}")
 
         worker_results = []
-        with ProcessPoolExecutor(max_workers=self.num_workers) as executor:
+        mp_ctx = multiprocessing.get_context("spawn")
+        with ProcessPoolExecutor(max_workers=self.num_workers, mp_context=mp_ctx) as executor:
             futures = [
                 executor.submit(
                     _worker_simulation_task,
