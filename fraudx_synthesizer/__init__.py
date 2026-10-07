@@ -75,14 +75,21 @@ from .storage import (
     SimulationAggregates,
     StreamingDatasetWriter,
 )
+from .network import ClientAddressSpace
 from .stream import (
+    AUTHORISATION_OUTCOME_COLUMNS,
     INFERENCE_ALLOWLIST,
+    LABEL_FIELDS,
+    REQUEST_FIELDS,
     InvestigationStatus,
+    LabelFeed,
     LabelSource,
     PriorityStrategy,
     SupervisionEngine,
     SupervisionRecord,
     ZeroLeakageDataPartitioner,
+    label_payload,
+    request_payload,
 )
 from .syndicates import (
     BotnetCluster,
@@ -206,6 +213,13 @@ __all__ = [
     "RailVerifierSwitch",
     "ZeroLeakageDataPartitioner",
     "INFERENCE_ALLOWLIST",
+    "AUTHORISATION_OUTCOME_COLUMNS",
+    "REQUEST_FIELDS",
+    "LABEL_FIELDS",
+    "LabelFeed",
+    "request_payload",
+    "label_payload",
+    "ClientAddressSpace",
     "SupervisionEngine",
     "SupervisionRecord",
     "LabelSource",

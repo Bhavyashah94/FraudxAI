@@ -554,6 +554,11 @@ class TargetCardAdversaryState:
     usd_rate: float = 1.0  # card-currency units per US dollar; the intent optimiser reasons in USD
 
 
+# The optimiser's lattice names two channels the engine does not: a tap with a provisioned token
+# is a contactless payment, and a wallet provisioning runs in the wallet app.
+ENGINE_CHANNEL_NAMES = {"CP_CONTACTLESS_NFC": "CP_POS_CONTACTLESS", "PROVISION_DIGITAL_WALLET": "CNP_MOBILE"}
+
+
 class AdaptiveFraudsterAgent:
     """Stateful adversarial agent executing closed-loop adaptive cybercrime playbooks with per-target memory."""
 
@@ -637,6 +642,38 @@ class AdaptiveFraudsterAgent:
                 has_chip_cryptogram=has_chip,
             )
         return self.target_states[card.card_id]
+
+    def _attack_channel_preference(self, key: str, table: str = "by_dossier_tier") -> Optional[str]:
+        """spec/07 section 18: the channel an attacker draws for this attempt from its tier's or playbook's mix."""
+        mix = self.telemetry.attack_channel_mix.get(table, {}).get(key)
+        if not mix:
+            return None
+        names = list(mix.keys())
+        weights = np.array([mix[n] for n in names], dtype=float)
+        return str(self.rng.choice(names, p=weights / weights.sum()))
+
+    def _uses_victim_device(self, *, tier: Optional[str] = None, playbook: Optional[str] = None) -> bool:
+        """spec/07 section 17: whether this attempt runs on the cardholder's own device and connection."""
+        spec = self.telemetry.device_sharing.get("victim_device_fraud_share", {})
+        share = None
+        if tier is not None:
+            share = spec.get("by_dossier_tier", {}).get(tier)
+        elif playbook is not None:
+            share = spec.get("by_playbook", {}).get(playbook)
+        if share is None:
+            share = spec.get("default", 0.0)
+        return bool(self.rng.random() < float(share))
+
+    def finish_playbook_params(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        """Playbook mode: a playbook written for the web draws its card-not-present channel from the
+        spec/07 section 18 mix, and decides whether it runs on the victim's device (section 17)."""
+        name = str(params.get("playbook_name", params.get("scenario_tag", "")))
+        if params.get("channel_type") == "CNP_WEB":
+            preferred = self._attack_channel_preference(name, "by_playbook") or self._attack_channel_preference("default_cnp", "by_playbook")
+            if preferred:
+                params["channel_type"] = preferred
+        params["victim_device"] = self._uses_victim_device(playbook=name)
+        return params
 
     def _otp_theft_cashout_mcc(self) -> int:
         """spec/07 section 13: where an attacker holding a live OTP converts the card to cash."""
@@ -1085,6 +1122,7 @@ class AdaptiveFraudsterAgent:
             belief=belief,
             dossier=dossier,
             current_hour_local=current_hour,
+            preferred_channel=self._attack_channel_preference(dossier.tier.value),
         )
         # spec/07 section 3: the optimiser's ladder is in USD; the authorisation carries the card's currency.
         is_probe = action.macro_option == MacroOptionType.OMEGA_PROBE
@@ -1116,7 +1154,8 @@ class AdaptiveFraudsterAgent:
 
         return {
             "amount": amount,
-            "channel_type": action.channel,
+            "channel_type": ENGINE_CHANNEL_NAMES.get(action.channel, action.channel),
+            "victim_device": self._uses_victim_device(tier=dossier.tier.value),
             "is_fraud": 1,
             "scenario_tag": f"INTENT_{action.macro_option.value}",
             "ip_distance_km": float(self.rng.uniform(15.0, 85.0)),

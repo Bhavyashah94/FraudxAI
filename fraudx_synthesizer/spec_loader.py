@@ -341,6 +341,12 @@ class TelemetryCalibrationSpec:
     legit_micro_ticket_range: Dict[str, Tuple[float, float]]
     legit_ip_distance_lognormal: Dict[str, Tuple[float, float]]
     otp_theft_cashout_mccs: Dict[int, float]
+    # spec/07 sections 16 to 19
+    address_space: Dict[str, Any] = field(default_factory=dict)
+    device_sharing: Dict[str, Any] = field(default_factory=dict)
+    attack_channel_mix: Dict[str, Any] = field(default_factory=dict)
+    prevalence_warm_up_rows: int = 25
+    prevalence_window_hours: float = 24.0
 
     def usd_rate(self, currency: str) -> float:
         """Card-currency units per US dollar."""
@@ -397,6 +403,7 @@ class SpecRegistry:
         telemetry: Optional[TelemetryCalibrationSpec] = None,
         calibration_profiles: Optional[Dict[str, CalibrationProfileSpec]] = None,
         supervision: Optional[OperationalSupervisionSpec] = None,
+        credit_limit_steps: Optional[Dict[str, List[Tuple[Optional[float], float]]]] = None,
     ):
         self.products = products
         self.cohorts = cohorts
@@ -413,6 +420,8 @@ class SpecRegistry:
         self.telemetry = telemetry
         self.calibration_profiles = calibration_profiles or {}
         self.supervision = supervision or OperationalSupervisionSpec()
+        # Per region, (upper bound or None, step) in major units: the grid credit lines are assigned on.
+        self.credit_limit_steps: Dict[str, List[Tuple[Optional[float], float]]] = credit_limit_steps or {}
 
     def get_cohort(self, cohort_id: str) -> CohortPersonaSpec:
         """Looks up a cohort specification, handling legacy alias names."""
@@ -696,6 +705,10 @@ def load_all_specs(spec_dir: Optional[str] = None) -> SpecRegistry:
     micro = raw_07.get("legitimate_micro_tickets", {})
     ip_dist = raw_07.get("legitimate_ip_distance_km", {})
     cashout = raw_07.get("otp_theft_cashout_mccs", {})
+    address_space = raw_07.get("client_ip_address_space", {})
+    device_sharing = raw_07.get("device_sharing", {})
+    channel_mix = raw_07.get("attack_channel_mix", {})
+    pacing = raw_07.get("prevalence_pacing", {})
     probe_range = amounts.get("micro_probe_ticket_range_usd", [0.50, 1.99])
     mimicry_range = amounts.get("mimicry_probe_ticket_range_usd", [3.50, 18.50])
     telemetry_spec = TelemetryCalibrationSpec(
@@ -735,7 +748,28 @@ def load_all_specs(spec_dir: Optional[str] = None) -> SpecRegistry:
             str(ch): (float(p["median_km"]), float(p["sigma_log"])) for ch, p in ip_dist.get("by_channel", {}).items()
         },
         otp_theft_cashout_mccs={int(m): float(w) for m, w in cashout.items() if isinstance(w, (int, float)) and not isinstance(w, bool)},
+        address_space={str(k): v for k, v in address_space.items() if k not in ("hypothesis", "note")},
+        device_sharing={str(k): v for k, v in device_sharing.items() if k not in ("hypothesis", "note")},
+        attack_channel_mix={
+            str(table): {str(key): {str(ch): float(w) for ch, w in mix.items()} for key, mix in entries.items()}
+            for table, entries in channel_mix.items()
+            if isinstance(entries, dict)
+        },
+        prevalence_warm_up_rows=int(pacing.get("warm_up_rows", 25)),
+        prevalence_window_hours=float(pacing.get("window_hours", 24.0)),
     )
+
+    def _credit_limit_steps(raw: Dict[str, Any], key: str) -> List[Tuple[Optional[float], float]]:
+        steps: List[Tuple[Optional[float], float]] = []
+        for tier in raw.get("credit_limit_assignment", {}).get(key, []):
+            up_to = tier.get("up_to")
+            steps.append((None if up_to is None else float(up_to) / 100.0, float(tier["step"]) / 100.0))
+        return steps
+
+    credit_limit_steps = {
+        "US": _credit_limit_steps(raw_01, "rounding_steps_cents"),
+        "IN": _credit_limit_steps(raw_05, "rounding_steps_paisa"),
+    }
 
     # 8. Parse 08_india_calibration_targets.yaml and 09_us_calibration_targets.yaml
     calibration_profiles: Dict[str, CalibrationProfileSpec] = {}
@@ -816,4 +850,5 @@ def load_all_specs(spec_dir: Optional[str] = None) -> SpecRegistry:
         telemetry=telemetry_spec,
         calibration_profiles=calibration_profiles,
         supervision=supervision_spec,
+        credit_limit_steps=credit_limit_steps,
     )

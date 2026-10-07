@@ -235,8 +235,14 @@ class InformationDirectedOptimizer:
         dossier: CredentialDossier,
         current_hour_local: int = 12,
         velocity_kmh: float = 0.0,
+        preferred_channel: Optional[str] = None,
     ) -> CandidateAction:
-        """Selects the optimal candidate action using Information-Directed Sampling."""
+        """Selects the optimal candidate action using Information-Directed Sampling.
+
+        preferred_channel: the channel the attacker drew from its credential tier's mix (spec/07
+        section 18). The utility has no channel term, so among equally valued actions the first
+        candidate channel wins; the preferred one is tried first and still has to pass the pruner.
+        """
         # 1. Target Burned / Closed Account Invariant -> Purge
         if belief.is_burned or belief.p_valid <= 0.0:
             return CandidateAction(
@@ -263,7 +269,12 @@ class InformationDirectedOptimizer:
         raw_candidates: List[CandidateAction] = []
         candidate_amounts = [1.50, 3.50, 15.00, 28.00, 75.00, 150.00, 350.00, 850.00, 1200.00, 2500.00]
         candidate_mccs = [8398, 5815, 4899, 5311, 5732, 5944, 5947, 6051]
-        candidate_channels = ["CNP_WEB", "CNP_MOBILE", "CP_CONTACTLESS_NFC", "CP_POS_CHIP", "PROVISION_DIGITAL_WALLET"]
+        candidate_channels = ["CNP_WEB", "CNP_MOBILE", "CP_POS_CONTACTLESS", "CP_POS_CHIP", "PROVISION_DIGITAL_WALLET"]
+        if preferred_channel:
+            preferred = {"CP_CONTACTLESS_NFC": "CP_POS_CONTACTLESS"}.get(preferred_channel, preferred_channel)
+            if preferred in candidate_channels:
+                candidate_channels.remove(preferred)
+                candidate_channels.insert(0, preferred)
 
         for amt in candidate_amounts:
             for mcc in candidate_mccs:

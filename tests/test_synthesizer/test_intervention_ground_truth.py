@@ -63,8 +63,11 @@ def test_legitimate_hard_negatives_approval_primacy():
 
 def test_treeshap_intervention_recovery_and_anti_leak_tripwires():
     """Asserts that TreeSHAP recovers attack script interventions and satisfies anti-leak tripwires."""
+    # 3,000 rows: at 1,500 the scorer's rank concordance is taken over a few dozen fraud rows in
+    # the test window and swung between 0.07 and 0.46 across seeds on the same code; at 3,000 it
+    # sits between 0.39 and 0.52 on the seeds tried.
     harness = XAIBenchmarkHarness(
-        n_transactions=1500,
+        n_transactions=3000,
         fraud_prevalence=0.06,
         region="US",
         seed=303,

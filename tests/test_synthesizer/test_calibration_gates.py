@@ -71,6 +71,8 @@ def test_us_report_refuses_indian_records():
 
 
 def test_cli_us_calibration_generation(tmp_path: Path):
+    # 1,500 rows on 150 cards: at 300 rows on 50 cards the gated mean ticket swung between 57 and
+    # 112 dollars across seeds against a band of 59 to 137, so the gate's verdict was the seed's.
     out = tmp_path / "us_calibrated.csv"
     cmd = [
         sys.executable,
@@ -78,11 +80,11 @@ def test_cli_us_calibration_generation(tmp_path: Path):
         "fraudx_synthesizer.cli",
         "generate",
         "-n",
-        "300",
+        "1500",
         "--cards",
-        "50",
+        "150",
         "--merchants",
-        "20",
+        "40",
         "--region",
         "US",
         "--calibration",

@@ -186,6 +186,23 @@ python -m fraudx_synthesizer.cli generate -n 5000 --region IN --calibration rbi-
 
 Every target in the profile carries its source. Targets that the public figure cannot support for a card-only stream (the CPFIR average covers every payment system; the discussion paper's value concentration is dominated by authorised push payments on UPI) are reported next to their observed value with the reason they are not gated. UPI, IMPS and PPI figures are listed as out of scope so that a card export is never read as the Indian retail payment mix.
 
+### Streaming to a detector
+
+`python -m fraudx_synthesizer.stream` posts authorisation requests to a detector and releases the labels on a feed of their own. A request carries the authorisation feed and the gateway telemetry of the export contract minus the authorisation outcome (`REQUEST_FIELDS` in `fraudx_synthesizer/stream.py`): no label, no scenario tag, no syndicate identifier, no reference risk score. A label is released only once the bank would know it: an investigator's verdict hours after the alert, a chargeback weeks after the payment, never for fraud that goes unreported (`spec/16_operational_supervision.yaml`). The investigation queue is driven by the generator's reference risk score, so the feed says what the bank learned and when, not what the detector under test scored.
+
+```bash
+# Indian traffic at the registry's fraud prevalence, requests to one endpoint, labels to another
+python -m fraudx_synthesizer.stream --region IN --calibration rbi-psi-2026-07 --duration 600 --tps 5 \
+    --endpoint http://localhost:8000/api/v1/predict --label-endpoint http://localhost:8000/api/v1/labels
+
+# a demo rate, labels appended to a file; --flush-labels releases at the end every label the bank would ever learn
+python -m fraudx_synthesizer.stream --region IN --fraud-rate 0.03 --duration 120 --tps 10 \
+    --endpoint http://localhost:8000/api/v1/predict --label-file data/labels.jsonl --flush-labels
+
+# no endpoint: requests and labels on stdout as {"kind": "request" | "label", "payload": {...}} lines
+python -m fraudx_synthesizer.stream --region US --duration 30 --tps 5 --stdout
+```
+
 ### Python API
 
 ```python
@@ -321,6 +338,8 @@ Certifies:
 * Calendar-anchored macroeconomic regimes (payday surges, holiday shopping blitzes).
 * Solvency accounting, pre-auth holds, and non-mutating decline invariants.
 * Shared syndicate topologies (botnet IP subnets and mule account rings).
+* Attackers and cardholders share the consumer address space, and malware and vishing attacks run on the victim's own device; fraud reaches the mobile and contactless channels; credit lines fall on issuer steps; small batches deliver the requested prevalence (`spec/07_export_leakage_gate.yaml` sections 16 to 19, `credit_limit_assignment` in `spec/01` and `spec/05`).
+* The streaming daemon posts request fields only, and the label feed releases each label in discovery order and never before its discovery time (`tests/test_stream_feeds.py`).
 
 ### 2. Grounded 37-Scenario Invariant Verification (100% Passed)
 ```bash
