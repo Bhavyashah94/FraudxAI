@@ -376,7 +376,9 @@ def test_benchmark_measurements_are_empirical_not_constants():
 
     # 4. Multi-seed variation proves genuine data-dependent execution
     assert report1.fidelity.wasserstein_amount_log != report2.fidelity.wasserstein_amount_log
-    assert report1.privacy.dcr_5th_percentile != report2.privacy.dcr_5th_percentile
+    # the distance to the closest record is rounded to four decimals and sits at 0.0004 for both seeds
+    # at 500 rows; the nearest-neighbour distance ratio is the privacy figure that moves with the data
+    assert report1.privacy.nndr_mean != report2.privacy.nndr_mean
 
     # 5. Triage curves and daily drift metrics must be populated from test stream
     assert "k_values" in report1.triage_curves and len(report1.triage_curves["k_values"]) == 5

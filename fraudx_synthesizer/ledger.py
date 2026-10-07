@@ -293,8 +293,11 @@ class StreamingLedger:
                 client_ip = self.address_space.legitimate_ip(card.card_id, card.region, channel_type, asn_type, self.rng)
 
         # Device canvas hash: the botnet's device, the attacker's own (seen once), or one of the
-        # cardholder's devices, which a victim-device attack also uses (spec/07 section 17)
-        if device_fingerprint_id:
+        # cardholder's devices, which a victim-device attack also uses (spec/07 section 17).
+        # A card-present payment comes from a terminal, not a device (section 20).
+        if channel_type.startswith("CP"):
+            canvas_hash = ""
+        elif device_fingerprint_id:
             canvas_hash = hashlib.md5(device_fingerprint_id.encode("utf-8")).hexdigest()[:16]
         elif is_fraud == 1 and not victim_device:
             canvas_hash = hashlib.md5(f"{card.card_id}_{card.home_lat:.3f}_{tx_time}".encode("utf-8")).hexdigest()[:16]

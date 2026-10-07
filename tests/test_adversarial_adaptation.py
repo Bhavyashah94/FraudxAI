@@ -184,7 +184,8 @@ def test_zero_leakage_feed_partitioning():
         # Invariant: Must contain essential point-in-time features
         assert "transaction_id" in record
         assert "amount" in record
-        assert "response_code" in record
+        # the authorisation outcome is the issuer's answer; a detector scoring the request has not seen it
+        assert "response_code" not in record
         assert "mti" in record
 
     # 2. Delayed Labels Feed Verification

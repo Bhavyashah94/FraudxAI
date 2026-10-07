@@ -313,24 +313,8 @@ def main():
     ))
 
 
-INFERENCE_ALLOWLIST = {
-    "transaction_id", "card_id", "pan_masked", "product_id", "cohort_id",
-    "merchant_id", "merchant_name", "mid", "tid", "mcc", "merchant_category",
-    "merchant_lat", "merchant_lon", "acquirer_bin", "gateway_provider",
-    "country_code", "postal_code", "timestamp_utc", "tx_time_seconds",
-    "hour_of_day", "day_of_week", "amount", "amount_minor", "currency",
-    "channel_type", "credit_limit", "current_balance", "available_balance",
-    "user_avg_tx_amount_30d", "user_std_tx_amount_30d", "z_score_amount_30d",
-    "tx_count_1h", "tx_count_24h", "tx_amount_sum_24h", "distinct_merchants_24h",
-    "distance_from_last_tx_km", "time_since_last_tx_seconds", "haversine_velocity_kph",
-    "ip_distance_from_home_km", "client_ip", "asn_type", "geo_risk_score",
-    "device_canvas_hash", "is_cross_border", "billing_shipping_match",
-    "avs_match_code", "cvv_match_flag", "mti", "stan", "rrn", "auth_code",
-    "response_code", "auth_response_code", "pos_entry_mode", "pos_condition_code",
-    "eci", "trans_status_3ds", "vaai_score", "clearing_mti", "clearing_delay_hours",
-    "settled_amount", "settled_amount_minor", "interchange_fee_minor",
-    "hawkes_intensity_R",
-}
+# What the offline partitioner hands a detector: the same request fields the daemon posts.
+INFERENCE_ALLOWLIST = frozenset(REQUEST_FIELDS)
 
 
 class LabelSource(str, Enum):

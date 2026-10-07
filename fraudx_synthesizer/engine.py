@@ -53,6 +53,29 @@ from .rails import (
 )
 from .spec_loader import load_all_specs
 
+# spec/07 section 20: the ASN type of a proxied address is the network the proxy sits on
+PROXY_NETWORK_ASN = {"DATACENTER_ROTATING": "datacenter", "MOBILE_4G_5G": "mobile", "RESIDENTIAL_STICKY": "residential"}
+
+
+def _plain(value: Any) -> Any:
+    """A record's dictionary fields as plain Python values with floats rounded to six
+    decimals, so the master export is the same bytes on every machine (spec/07 section 20)."""
+    if isinstance(value, dict):
+        return {str(k): _plain(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_plain(v) for v in value]
+    if isinstance(value, (bool, np.bool_)):
+        return bool(value)
+    if isinstance(value, (int, np.integer)):
+        return int(value)
+    if isinstance(value, (float, np.floating)):
+        # plus 0.0 turns a negative zero, whose sign depends on the processor, into zero
+        return round(float(value), 6) + 0.0
+    if isinstance(value, np.ndarray):
+        return [_plain(v) for v in value.tolist()]
+    return value
+
+
 # Event Type Enums
 EVT_CARDHOLDER_TX = 1
 EVT_FRAUD_ATTACK = 2
@@ -941,6 +964,10 @@ class DiscreteEventEngine:
                 override_lon = attack_params.get("override_lon")
                 override_avs = attack_params.get("avs_code")
                 override_cvv = attack_params.get("cvv_match_flag")
+                # spec/07 section 20: a row that carries the proxy's address carries the proxy's network
+                proxy_type = str(syn_telemetry.get("proxy_type", ""))
+                if syn_telemetry.get("client_ip") and proxy_type in PROXY_NETWORK_ASN:
+                    attack_params["asn_type"] = PROXY_NETWORK_ASN[proxy_type]
                 asn_type = str(attack_params.get("asn_type", "residential"))
                 otp_provided = bool(attack_params.get("otp_submitted", False))
                 if "vaai_score" in attack_params:
@@ -1194,10 +1221,10 @@ class DiscreteEventEngine:
             record["dominant_causal_driver"] = causal_gt.dominant_causal_driver
             record["analytical_shapley_probability"] = causal_gt.analytical_shapley_probability
             record["analytical_shapley_log_odds"] = causal_gt.analytical_shapley_log_odds
-            record["counterfactual_input_deltas"] = causal_gt.counterfactual_input_deltas
+            record["counterfactual_input_deltas"] = _plain(causal_gt.counterfactual_input_deltas)
             record["counterfactual_mode"] = causal_gt.counterfactual_mode
-            record["counterfactual_twin"] = causal_gt.counterfactual_twin
-            record["normative_baseline"] = causal_gt.normative_baseline
+            record["counterfactual_twin"] = _plain(causal_gt.counterfactual_twin)
+            record["normative_baseline"] = _plain(causal_gt.normative_baseline)
             record["explanation_narrative"] = causal_gt.explanation_narrative
 
             # Boundary Layer 1: Decoupled Payment Rail Verifier Switch
