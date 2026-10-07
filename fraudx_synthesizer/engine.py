@@ -12,6 +12,7 @@ Orchestrates:
 
 from __future__ import annotations
 
+import collections
 import heapq
 import itertools
 import math
@@ -68,6 +69,29 @@ INDIAN_PRODUCT_SPEND_MARGINALS: Dict[str, Tuple[float, float]] = {
     p_id: (p.spend_mean_log, p.spend_sigma_log)
     for p_id, p in load_all_specs().indian_products.items()
 }
+
+
+def round_to_issuer_step(
+    limit: float,
+    steps: List[Tuple[Optional[float], float]],
+    low: float = 0.0,
+    high: Optional[float] = None,
+) -> float:
+    """A credit line on the issuer's assignment grid (spec/01 and spec/05 credit_limit_assignment):
+    rounded to the step of its tier and kept inside the product's range."""
+    if not steps:
+        return float(limit)
+    step = steps[-1][1]
+    for up_to, tier_step in steps:
+        if up_to is None or limit <= up_to:
+            step = tier_step
+            break
+    rounded = max(step, round(limit / step) * step)
+    floor = max(step, math.ceil((low - 1e-9) / step) * step) if low > 0.0 else step
+    ceiling = math.floor((high + 1e-9) / step) * step if high else None
+    if ceiling is not None and ceiling >= floor:
+        rounded = min(max(rounded, floor), ceiling)
+    return float(rounded)
 
 
 class DiscreteEventEngine:
@@ -255,6 +279,10 @@ class DiscreteEventEngine:
                         prod_spec.credit_limit_median_inr,
                         max(prod_spec.credit_limit_min_inr + 1000.0, prod_spec.credit_limit_max_inr)
                     ))
+                    credit_limit = round_to_issuer_step(
+                        credit_limit, self.specs.credit_limit_steps.get("IN", []),
+                        low=prod_spec.credit_limit_min_inr, high=prod_spec.credit_limit_max_inr,
+                    )
                 else:
                     credit_limit = 50000.0
 
@@ -294,6 +322,10 @@ class DiscreteEventEngine:
                         prod_spec.credit_limit_median_usd,
                         max(prod_spec.credit_limit_min_usd + 100.0, prod_spec.credit_limit_max_usd)
                     ))
+                    credit_limit = round_to_issuer_step(
+                        credit_limit, self.specs.credit_limit_steps.get("US", []),
+                        low=prod_spec.credit_limit_min_usd, high=prod_spec.credit_limit_max_usd,
+                    )
                 else:
                     credit_limit = 5000.0
 
@@ -596,6 +628,12 @@ class DiscreteEventEngine:
         card_last_tx: Dict[str, Dict[str, Any]] = {}
         last_global_tx_time = -1.0
         tx_counter = 0
+        fraud_counter = 0
+        pacing_warm_up = int(self.specs.telemetry.prevalence_warm_up_rows)
+        # the legitimate rows of the last daily cycle: their rate follows freezes and burns over the
+        # run without letting a night-time attack set a night-time rate for the next day
+        pacing_window_sec = float(self.specs.telemetry.prevalence_window_hours) * 3600.0
+        legit_times: collections.deque = collections.deque()
         loop_iterations = 0
         max_loop_iterations = max(50000, n_transactions * 25)
 
@@ -610,6 +648,21 @@ class DiscreteEventEngine:
 
             # Dynamically schedule next fraud attack in competing Poisson stream
             if is_fraud_evt and t_fraud_mean is not None:
+                # spec/07 section 19: the fraud rate follows the legitimate rate realised over the
+                # last rows, so the share delivered is the share requested whatever the batch size
+                while legit_times and legit_times[0] < tx_time_sec - pacing_window_sec:
+                    legit_times.popleft()
+                elapsed_sec = tx_time_sec - start_time_seconds
+                legit_so_far = tx_counter - fraud_counter
+                realised_legit_rate = 0.0
+                if len(legit_times) >= pacing_warm_up and elapsed_sec > 0.0:
+                    realised_legit_rate = len(legit_times) / min(pacing_window_sec, elapsed_sec)
+                elif legit_so_far >= pacing_warm_up and elapsed_sec > 0.0:
+                    # too few rows in a day to measure: the whole run so far, so that a tiny batch
+                    # whose cards are being frozen is not attacked at the planned rate for ever
+                    realised_legit_rate = legit_so_far / elapsed_sec
+                if realised_legit_rate > 0.0 and 0.0 < fraud_prevalence < 1.0:
+                    t_fraud_mean = (1.0 - fraud_prevalence) / (fraud_prevalence * realised_legit_rate)
                 next_f_delta_sec = float(self.rng.exponential(scale=t_fraud_mean))
                 next_f_t_us = t_us + int(next_f_delta_sec * 1_000_000)
                 active_cards = [c for c in self.cards if not c.is_frozen and not self.fraudster.is_card_burned(c.card_id)]
@@ -848,6 +901,7 @@ class DiscreteEventEngine:
                         world_center_lat=self.world.center_lat,
                         world_center_lon=self.world.center_lon,
                     )
+                    attack_params = self.fraudster.finish_playbook_params(attack_params)
                 playbook_name = str(attack_params.get("playbook_name", attack_params.get("scenario_tag", "")))
                 macro_opt = str(attack_params.get("macro_option", ""))
                 cand_amount = float(attack_params.get("amount", 0.0))
@@ -869,6 +923,15 @@ class DiscreteEventEngine:
 
                 amount = float(attack_params["amount"])
                 channel = str(attack_params["channel_type"])
+                # spec/07 section 17: an attack run from the victim's own device uses the victim's
+                # connection; the syndicate and its mule ring stay, the botnet address and device go
+                victim_device = bool(attack_params.get("victim_device", False)) and channel.startswith("CNP")
+                if victim_device:
+                    for marker in ("botnet_cluster_id", "ip_subnet_prefix", "client_ip", "device_fingerprint_id", "asn", "isp", "ja4_signature"):
+                        if marker in syn_telemetry:
+                            syn_telemetry[marker] = ""
+                    attack_params["asn_type"] = self._legit_asn_type(channel)
+                    attack_params["ip_distance_km"] = self._legit_ip_distance_km(channel)
                 scenario_tag = str(attack_params["scenario_tag"])
                 is_fraud = int(attack_params["is_fraud"])
                 preferred_mcc = attack_params.get("preferred_mcc")
@@ -898,6 +961,7 @@ class DiscreteEventEngine:
                 override_client_ip = syn_telemetry.get("client_ip") or None
             else:
                 is_fraud = 0
+                victim_device = False
                 credentials_complete = False
                 is_cross_border = False
                 override_lat = None
@@ -1108,6 +1172,7 @@ class DiscreteEventEngine:
                 beneficiary_account_id=beneficiary_account_id,
                 ip_subnet_prefix=ip_subnet_prefix,
                 device_fingerprint_id=device_fingerprint_id,
+                victim_device=victim_device,
             )
 
             if is_fraud:
@@ -1441,6 +1506,10 @@ class DiscreteEventEngine:
             last_global_tx_time = tx_time_sec
             records.append(record)
             tx_counter += 1
+            if is_fraud == 1:
+                fraud_counter += 1
+            else:
+                legit_times.append(tx_time_sec)
 
             if chunk_callback is not None and len(records) >= chunk_size:
                 chunk_callback(records)

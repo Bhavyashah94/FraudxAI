@@ -12,15 +12,18 @@ from __future__ import annotations
 
 import collections
 import math
+import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 import hashlib
 from typing import Any, Deque, Dict, List, Optional, Tuple
+import zlib
 
 import numpy as np
 
 from .agents import CardholderProfile, ChannelType
 from .invariants import haversine_distance_km
+from .network import ClientAddressSpace
 from .spec_loader import load_all_specs
 
 
@@ -96,7 +99,27 @@ class StreamingLedger:
         self.rng = np.random.default_rng(seed)
         self.card_states: Dict[str, CardholderLedgerState] = {}
         self.telemetry = load_all_specs().telemetry
+        # spec/07 sections 16 and 17: the prefixes this run's traffic comes from, and how devices are shared
+        self.address_space = ClientAddressSpace(seed=seed)
+        self.device_sharing = dict(self.telemetry.device_sharing)
         self.double_entry = DoubleEntryWorldLedger()
+
+    def _cardholder_device_seed(self, card: CardholderProfile, channel_type: str, tx_time: float) -> str:
+        """Which of the cardholder's devices this session is on (spec/07 section 17)."""
+        spec = self.device_sharing
+        draw = float(self.rng.random())
+        household = float(spec.get("legitimate_household_device_share", 0.0))
+        secondary = float(spec.get("legitimate_secondary_device_share", {}).get(channel_type, 0.0))
+        one_off = float(spec.get("legitimate_one_off_device_share", 0.0))
+        if draw < household:
+            digits = re.sub(r"\D", "", card.card_id)
+            index = int(digits) if digits else zlib.crc32(card.card_id.encode("utf-8"))
+            return f"HOUSEHOLD_{card.region}_{index // max(1, int(spec.get('household_size', 3)))}"
+        if draw < household + secondary:
+            return f"{card.card_id}_{card.home_lat:.3f}_second"
+        if draw < household + secondary + one_off:
+            return f"{card.card_id}_{card.home_lat:.3f}_{tx_time}"
+        return f"{card.card_id}_{card.home_lat:.3f}"
 
     def get_or_create_state(self, card: CardholderProfile) -> CardholderLedgerState:
         """Retrieves cardholder state or initializes with theoretical lognormal priors."""
@@ -164,11 +187,13 @@ class StreamingLedger:
         ip_subnet_prefix: str = "",
         device_fingerprint_id: str = "",
         credentials_complete: bool = False,
+        victim_device: bool = False,
     ) -> Dict[str, Any]:
         """Enriches raw transaction parameters into full institutional telemetry record.
 
         credentials_complete: the attacker holds the full cardholder record (spec/07 section 11), so
         AVS, CVV and billing outcomes follow the legitimate distribution.
+        victim_device: the attack runs on the cardholder's own device and connection (spec/07 section 17).
         """
         state = self.get_or_create_state(card)
 
@@ -260,22 +285,21 @@ class StreamingLedger:
                 geo_risk_score += int(self.rng.choice([25, 30, 35]))
             geo_risk_score = min(100, geo_risk_score)
 
-            # Generate synthetic client IP
+            # The client address: the attacker's proxy when given, else the cardholder's own
+            # connection on the prefixes this run's traffic shares (spec/07 section 16)
             if override_client_ip:
                 client_ip = override_client_ip
-            elif card.region == "IN":
-                client_ip = f"103.{self.rng.integers(10, 250)}.{self.rng.integers(1, 254)}.{self.rng.integers(1, 254)}"
             else:
-                client_ip = f"72.{self.rng.integers(10, 250)}.{self.rng.integers(1, 254)}.{self.rng.integers(1, 254)}"
+                client_ip = self.address_space.legitimate_ip(card.card_id, card.region, channel_type, asn_type, self.rng)
 
-        # Synthetic Device Canvas Murmur3 Hash (deterministic for card, noisy if fraudster, or cluster-derived)
+        # Device canvas hash: the botnet's device, the attacker's own (seen once), or one of the
+        # cardholder's devices, which a victim-device attack also uses (spec/07 section 17)
         if device_fingerprint_id:
             canvas_hash = hashlib.md5(device_fingerprint_id.encode("utf-8")).hexdigest()[:16]
+        elif is_fraud == 1 and not victim_device:
+            canvas_hash = hashlib.md5(f"{card.card_id}_{card.home_lat:.3f}_{tx_time}".encode("utf-8")).hexdigest()[:16]
         else:
-            device_seed = f"{card.card_id}_{card.home_lat:.3f}"
-            if is_fraud == 1 or (self.rng.random() < 0.05):
-                device_seed += f"_{tx_time}"
-            canvas_hash = hashlib.md5(device_seed.encode("utf-8")).hexdigest()[:16]
+            canvas_hash = hashlib.md5(self._cardholder_device_seed(card, channel_type, tx_time).encode("utf-8")).hexdigest()[:16]
 
         # Construct ISO-8601 UTC timestamp
         dt_utc = datetime.fromtimestamp(tx_time, tz=timezone.utc)

@@ -14,6 +14,8 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 
+from .network import ClientAddressSpace, prefix_of
+
 
 class MuleTier(str, Enum):
     TIER_1_SMURF = "TIER_1_SMURF"
@@ -102,7 +104,7 @@ class SyndicateEntity:
             botnet = rng.choice(self.botnets)
             ip, dev, net_tel = botnet.sample_ip_and_device(rng)
             res["botnet_cluster_id"] = botnet.cluster_id
-            res["ip_subnet_prefix"] = botnet.subnet_prefix
+            res["ip_subnet_prefix"] = prefix_of(ip)
             res["client_ip"] = ip
             res["device_fingerprint_id"] = dev
             res["asn"] = net_tel["asn"]
@@ -128,6 +130,8 @@ class SyndicateRegistry:
         self.syndicates: List[SyndicateEntity] = []
         self._syndicate_by_id: Dict[str, SyndicateEntity] = {}
         self._playbook_to_syndicates: Dict[str, List[SyndicateEntity]] = {}
+        # spec/07 section 16: the proxy pools ride on the prefixes the cardholders use
+        self.address_space = ClientAddressSpace(seed=seed)
         self._initialize_syndicates()
 
     def _initialize_syndicates(self) -> None:
@@ -136,6 +140,11 @@ class SyndicateRegistry:
             self._init_india_syndicates()
         else:
             self._init_us_syndicates()
+
+        for syn in self.syndicates:
+            for botnet in syn.botnets:
+                kind = "datacenter" if botnet.proxy_type == "DATACENTER_ROTATING" else "residential"
+                botnet.subnet_prefix, botnet.ip_pool = self.address_space.proxy_pool(self.region, kind, self.rng)
 
         for syn in self.syndicates:
             self._syndicate_by_id[syn.syndicate_id] = syn

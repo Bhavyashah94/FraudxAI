@@ -216,9 +216,10 @@ def test_fraud_rate_accuracy(target_rate):
     ci_lo = float(sp_stats.beta.ppf(0.005, fraud_count, n - fraud_count + 1))
     ci_hi = float(sp_stats.beta.ppf(0.995, fraud_count + 1, n - fraud_count))
 
-    # Observed fraud rate must be within 35% relative tolerance of target
+    # Observed fraud rate must be within 20% relative tolerance of target (spec/07 section 19:
+    # the fraud stream follows the realised legitimate rate)
     rel_dev = abs(observed - target_rate) / target_rate
-    assert rel_dev < 0.35, (
+    assert rel_dev < 0.20, (
         f"Fraud rate {observed:.4f} deviates {rel_dev * 100:.1f}% from target {target_rate} "
         f"(99% CI: [{ci_lo:.4f}, {ci_hi:.4f}])"
     )

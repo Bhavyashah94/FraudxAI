@@ -1,7 +1,11 @@
-"""Real-time streaming daemon for FraudX-Synthesizer.
+"""Real-time streaming daemon.
 
-Provides high-throughput transaction streaming to REST endpoints or stdout
-with zero PRISM-X coupling, asynchronous dispatch, and deterministic replaying.
+Posts what an authorisation request carries (the authorisation feed and the gateway
+telemetry of the export contract, minus the authorisation outcome) to a detector's
+endpoint, and releases each label on a feed of its own once the bank would know it:
+an investigator's verdict hours after the alert, a chargeback weeks after the payment,
+never for fraud that goes unreported. Asynchronous dispatch, deterministic replay, both
+regions, an optional calibration profile.
 """
 
 from __future__ import annotations
@@ -11,6 +15,8 @@ import asyncio
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
+import heapq
+import itertools
 import json
 import math
 from pathlib import Path
@@ -18,11 +24,81 @@ import sys
 import time
 import urllib.request
 import urllib.error
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 
 from .engine import SimulationEngine
+from .spec_loader import load_all_specs
+from .storage import AUTH_STREAM_COLUMNS, GATEWAY_TELEMETRY_COLUMNS
+
+# The authorisation outcome is the issuer's answer; a detector scoring the request has not seen it.
+AUTHORISATION_OUTCOME_COLUMNS: Tuple[str, ...] = ("response_code", "auth_response_code", "auth_code")
+
+# What a detector receives: the two contract views joined on transaction_id, minus the outcome.
+REQUEST_FIELDS: Tuple[str, ...] = tuple(
+    column
+    for column in dict.fromkeys(AUTH_STREAM_COLUMNS + GATEWAY_TELEMETRY_COLUMNS)
+    if column not in AUTHORISATION_OUTCOME_COLUMNS
+)
+
+# What the label feed carries: the verdict, where it came from and when the bank learned it.
+LABEL_FIELDS: Tuple[str, ...] = (
+    "transaction_id",
+    "card_id",
+    "tx_timestamp_utc",
+    "discovered_label",
+    "label_source",
+    "discovery_time_seconds",
+    "discovery_timestamp_utc",
+)
+
+Emitter = Callable[[Dict[str, Any]], Awaitable[bool]]
+
+
+def request_payload(record: Dict[str, Any]) -> Dict[str, Any]:
+    """The request fields of a record, in contract order; nothing else rides along."""
+    return {key: record[key] for key in REQUEST_FIELDS if key in record}
+
+
+def label_payload(record: "SupervisionRecord") -> Dict[str, Any]:
+    """The label fields of a supervision record; the ground truth and the triage score stay behind."""
+    full = record.to_dict()
+    return {key: full.get(key) for key in LABEL_FIELDS}
+
+
+class LabelFeed:
+    """Labels the bank will learn, released in discovery order once the clock passes each
+    discovery time. Fraud that is never reported never enters the feed."""
+
+    def __init__(self) -> None:
+        self._heap: List[Tuple[float, int, Dict[str, Any]]] = []
+        self._sequence = itertools.count()
+        self.dark = 0
+
+    def push(self, record: "SupervisionRecord") -> bool:
+        """Queues the label if the bank will ever learn it; says whether it did."""
+        discovery = record.discovery_time_seconds
+        if discovery is None or math.isinf(discovery):
+            self.dark += 1
+            return False
+        heapq.heappush(self._heap, (float(discovery), next(self._sequence), label_payload(record)))
+        return True
+
+    @property
+    def pending(self) -> int:
+        return len(self._heap)
+
+    def due(self, clock_seconds: float) -> List[Dict[str, Any]]:
+        """Every label whose discovery time the clock has reached, earliest first."""
+        released: List[Dict[str, Any]] = []
+        while self._heap and self._heap[0][0] <= clock_seconds:
+            released.append(heapq.heappop(self._heap)[2])
+        return released
+
+    def drain(self) -> List[Dict[str, Any]]:
+        """Every remaining label, in discovery order."""
+        return self.due(float("inf"))
 
 
 async def dispatch_transaction_async(
@@ -30,7 +106,7 @@ async def dispatch_transaction_async(
     record: Dict[str, Any],
     timeout_sec: float = 2.0,
 ) -> Tuple[bool, int, float]:
-    """Asynchronously dispatches a JSON transaction payload to a target REST endpoint."""
+    """Asynchronously dispatches a JSON payload to a target REST endpoint."""
     loop = asyncio.get_running_loop()
     payload = json.dumps(record).encode("utf-8")
     req = urllib.request.Request(
@@ -56,55 +132,165 @@ async def dispatch_transaction_async(
     return success, status_code, elapsed_ms
 
 
+def _request_emitter(endpoint: Optional[str], to_stdout: bool) -> Emitter:
+    if endpoint and not to_stdout:
+        async def post(payload: Dict[str, Any]) -> bool:
+            ok, code, _ = await dispatch_transaction_async(endpoint, payload)
+            if not ok:
+                print(f"[WARN] Failed dispatch {payload.get('transaction_id')} (HTTP {code})", file=sys.stderr)
+            return ok
+        return post
+
+    async def write(payload: Dict[str, Any]) -> bool:
+        print(json.dumps({"kind": "request", "payload": payload}))
+        sys.stdout.flush()
+        return True
+    return write
+
+
+def _label_emitter(label_endpoint: Optional[str], label_file: Optional[str]) -> Emitter:
+    if label_endpoint:
+        async def post(payload: Dict[str, Any]) -> bool:
+            ok, code, _ = await dispatch_transaction_async(label_endpoint, payload)
+            if not ok:
+                print(f"[WARN] Failed label dispatch {payload.get('transaction_id')} (HTTP {code})", file=sys.stderr)
+            return ok
+        return post
+
+    if label_file:
+        path = Path(label_file)
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        async def append(payload: Dict[str, Any]) -> bool:
+            with open(path, "a", encoding="utf-8") as f:
+                f.write(json.dumps(payload) + "\n")
+            return True
+        return append
+
+    async def write(payload: Dict[str, Any]) -> bool:
+        print(json.dumps({"kind": "label", "payload": payload}))
+        sys.stdout.flush()
+        return True
+    return write
+
+
 async def run_stream_daemon(
     endpoint: Optional[str] = None,
     duration_sec: float = 60.0,
     target_tps: float = 5.0,
-    fraud_prevalence: float = 0.02,
+    fraud_prevalence: Optional[float] = None,
     seed: int = 42,
     to_stdout: bool = False,
-) -> None:
-    """Executes continuous streaming transaction emission loop."""
-    engine = SimulationEngine(n_cards=500, n_merchants=100, seed=seed)
+    *,
+    region: str = "US",
+    calibration: Optional[str] = None,
+    adversary_mode: str = "intent",
+    n_cards: int = 500,
+    n_merchants: int = 100,
+    label_endpoint: Optional[str] = None,
+    label_file: Optional[str] = None,
+    flush_labels: bool = False,
+    k_daily: Optional[int] = None,
+    alert_threshold: Optional[float] = None,
+    emit_request: Optional[Emitter] = None,
+    emit_label: Optional[Emitter] = None,
+) -> Dict[str, int]:
+    """Streams authorisation requests and, on a feed of its own, the labels as the bank learns them.
+
+    The investigation queue that decides which alerts are reviewed runs on the generator's
+    reference risk score, so the label feed says what the bank learned and when, not what
+    the detector under test scored. Returns the counts it printed.
+    """
+    region = region.upper()
+    if calibration:
+        profiles = load_all_specs().calibration_profiles
+        if calibration not in profiles:
+            raise ValueError(f"Unknown calibration profile {calibration!r}; known: {sorted(profiles)}")
+        profile = profiles[calibration]
+        if profile.region != region:
+            raise ValueError(f"Calibration profile {calibration} is for region {profile.region}; run with --region {profile.region}.")
+        if fraud_prevalence is None:
+            fraud_prevalence = profile.fraud_prevalence
+    if fraud_prevalence is None:
+        fraud_prevalence = 0.02
+
+    engine = SimulationEngine(
+        n_cards=n_cards, n_merchants=n_merchants, region=region, adversary_mode=adversary_mode, seed=seed,
+    )
+    supervision = SupervisionEngine(k_daily=k_daily, alert_threshold=alert_threshold, seed=seed)
+    feed = LabelFeed()
+    send_request = emit_request or _request_emitter(endpoint, to_stdout)
+    send_label = emit_label or _label_emitter(label_endpoint, label_file)
     print(
-        f"[FraudX-Synthesizer Stream Daemon] Initialized (seed={seed}, target_tps={target_tps}, duration={duration_sec}s)",
+        f"[Stream Daemon] Initialized (region={region}, seed={seed}, target_tps={target_tps}, "
+        f"duration={duration_sec}s, fraud_prevalence={fraud_prevalence:.3g}, adversary_mode={adversary_mode})",
         file=sys.stderr,
     )
 
-    count = 0
+    sent = 0
+    failed = 0
+    released = 0
     t_start = time.time()
     for record in engine.stream_continuous(
         duration_seconds=duration_sec,
         target_tps=target_tps,
         fraud_prevalence=fraud_prevalence,
     ):
-        count += 1
-        if to_stdout or endpoint is None:
-            print(json.dumps(record))
-            sys.stdout.flush()
+        clock = float(record["tx_time_seconds"])
+        for label in feed.due(clock):
+            await send_label(label)
+            released += 1
+        if await send_request(request_payload(record)):
+            sent += 1
         else:
-            success, code, latency = await dispatch_transaction_async(endpoint, record)
-            if not success:
-                print(f"[WARN] Failed dispatch {record['transaction_id']} (HTTP {code})", file=sys.stderr)
+            failed += 1
+        feed.push(supervision.process_record(record))
 
         # Rate limiting sleep
         await asyncio.sleep(1.0 / max(target_tps, 0.1))
 
+    if flush_labels:
+        for label in feed.drain():
+            await send_label(label)
+            released += 1
+
     total_time = time.time() - t_start
+    counts = {
+        "requests_sent": sent,
+        "requests_failed": failed,
+        "labels_released": released,
+        "labels_pending": feed.pending,
+        "never_reported": feed.dark,
+    }
     print(
-        f"[FraudX-Synthesizer Stream Daemon] Finished: {count} transactions in {total_time:.2f}s ({count / max(total_time, 0.01):.1f} TPS)",
+        f"[Stream Daemon] Finished: {sent} requests in {total_time:.2f}s ({sent / max(total_time, 0.01):.1f} TPS), "
+        f"{failed} failed; {released} labels released, {feed.pending} not yet known to the bank, "
+        f"{feed.dark} never reported",
         file=sys.stderr,
     )
+    return counts
 
 
 def main():
-    parser = argparse.ArgumentParser(description="FraudX-Synthesizer Streaming CLI")
-    parser.add_argument("--endpoint", type=str, default=None, help="Target REST API URL (e.g. http://localhost:8000/api/v1/predict)")
+    parser = argparse.ArgumentParser(
+        description="Streaming CLI: authorisation requests to a detector, labels on a feed of their own",
+    )
+    parser.add_argument("--endpoint", type=str, default=None, help="REST URL that receives each authorisation request (e.g. http://localhost:8000/api/v1/predict)")
+    parser.add_argument("--label-endpoint", type=str, default=None, help="REST URL that receives each label once the bank would know it")
+    parser.add_argument("--label-file", type=str, default=None, help="JSON-lines file that receives the labels instead of an endpoint")
     parser.add_argument("--duration", type=float, default=30.0, help="Stream duration in seconds")
     parser.add_argument("--tps", type=float, default=5.0, help="Target transactions per second")
-    parser.add_argument("--fraud-rate", type=float, default=0.03, help="Adversarial fraud ratio (0.0 to 1.0)")
+    parser.add_argument("--fraud-rate", type=float, default=None, help="Fraud prevalence ratio (default 0.02; with --calibration, the registry rate of the profile)")
     parser.add_argument("--seed", type=int, default=42, help="Deterministic random seed")
-    parser.add_argument("--stdout", action="store_true", help="Print transactions to stdout as JSON lines")
+    parser.add_argument("--stdout", action="store_true", help="Print requests and labels to stdout as JSON lines tagged with their kind")
+    parser.add_argument("--region", type=str, choices=["US", "IN"], default="US", help="Banking ecosystem region")
+    parser.add_argument("--calibration", type=str, choices=sorted(load_all_specs().calibration_profiles), default=None, help="Run at the fraud prevalence of a published calibration profile")
+    parser.add_argument("--adversary-mode", type=str, choices=["intent", "playbook"], default="intent", help="Adversary decision architecture")
+    parser.add_argument("--cards", type=int, default=500, help="Number of simulated cardholders")
+    parser.add_argument("--merchants", type=int, default=100, help="Number of simulated merchants")
+    parser.add_argument("--flush-labels", action="store_true", help="At the end, release every label the bank would ever learn, in discovery order")
+    parser.add_argument("--k-daily", type=int, default=None, help="Daily analyst investigation capacity (default from spec/16)")
+    parser.add_argument("--alert-threshold", type=float, default=None, help="Reference risk score above which an alert is queued (default from spec/16)")
 
     args = parser.parse_args()
     asyncio.run(run_stream_daemon(
@@ -114,6 +300,16 @@ def main():
         fraud_prevalence=args.fraud_rate,
         seed=args.seed,
         to_stdout=args.stdout,
+        region=args.region,
+        calibration=args.calibration,
+        adversary_mode=args.adversary_mode,
+        n_cards=args.cards,
+        n_merchants=args.merchants,
+        label_endpoint=args.label_endpoint,
+        label_file=args.label_file,
+        flush_labels=args.flush_labels,
+        k_daily=args.k_daily,
+        alert_threshold=args.alert_threshold,
     ))
 
 

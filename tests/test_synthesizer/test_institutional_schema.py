@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pytest
 from fraudx_synthesizer import SimulationEngine
+from fraudx_synthesizer.spec_loader import load_all_specs
 from fraudx_synthesizer.cli import (
     AUTH_STREAM_COLUMNS,
     CLEARING_SETTLEMENT_COLUMNS,
@@ -66,6 +67,10 @@ def test_india_institutional_records():
         "IN_PROD_KISAN_CREDIT_CARD",
         "IN_PROD_SUPER_PREMIUM_HNI",
     }
+    address_space = load_all_specs().telemetry.address_space
+    indian_octets = {
+        str(o) for o in address_space["residential_first_octets"]["IN"] + address_space["datacenter_first_octets"]["IN"]
+    }
 
     for r in records:
         assert r["currency"] == "INR"
@@ -73,11 +78,11 @@ def test_india_institutional_records():
         assert isinstance(r["amount_minor"], int)
         assert r["amount_minor"] == int(round(r["amount"] * 100))
 
-        # Indian IP space (103.x.x.x synthetic subnet) for a legitimate domestic online payment;
+        # Indian consumer address space (spec/07 section 16) for a legitimate domestic online payment;
         # a fraudster connects from its own infrastructure, which sits inside the row's subnet.
         if not r["channel_type"].startswith("CP") and not r.get("is_cross_border", False):
             if r["is_fraud"] == 0:
-                assert r["client_ip"].startswith("103.")
+                assert r["client_ip"].split(".")[0] in indian_octets, r["client_ip"]
             elif r.get("ip_subnet_prefix"):
                 assert ipaddress.ip_address(r["client_ip"]) in ipaddress.ip_network(r["ip_subnet_prefix"], strict=False)
 

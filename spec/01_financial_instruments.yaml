@@ -217,3 +217,20 @@ card_products:
     chargeback_liability_allocation: "ISSUER_FULL_ABSORPTION"
     primary_adversarial_vulnerabilities:
       - "TOKEN_PROVISIONING_YELLOW_PATH_OTP_PHISHING"
+
+# ----------------------------------------------------------------------------------------------
+# Credit line assignment
+# ----------------------------------------------------------------------------------------------
+# Issuers assign credit lines in steps, not as continuous amounts: the underwriting decision rounds to
+# the product's step, and the step grows with the line. A continuous triangular draw gave every
+# simulated card its own limit, so the credit_limit column of the authorisation feed identified the card.
+credit_limit_assignment:
+  rounding_steps_cents:
+    - { up_to: 100000,  step: 10000 }    # to $1,000 in $100 steps
+    - { up_to: 500000,  step: 25000 }    # to $5,000 in $250 steps
+    - { up_to: 2500000, step: 50000 }    # to $25,000 in $500 steps
+    - { up_to: 10000000, step: 500000 }  # to $100,000 in $5,000 steps
+    - { up_to: null,    step: 1000000 }  # above, $10,000 steps
+  applies_to: "credit_limit_cents and demand_deposit_balance_cents of every product, clamped to the product's range"
+  hypothesis: true
+  note: "replace with the line-assignment grid of an issuer's underwriting policy"
