@@ -13,6 +13,7 @@ To eliminate the gap between high-level research and executable reality, all dom
 - `04_adversarial_playbooks.yaml`: Cybercrime playbooks (card testing, ATO baking, bust-out, BIN attacks, amount decay).
 - `05_india_payment_rails.yaml`: RBI AFA and card-control defaults, RuPay on UPI, limited-liability tiers, CFCFRMS 1930 race, Indian playbooks.
 - `07_export_leakage_gate.yaml`: The export-level label leakage gate (what a bank's detector may recover from the auth feed plus gateway telemetry) and the class-conditional telemetry calibration behind it; every number is sourced, a gate tolerance, or a flagged hypothesis. Sections 16 to 19: the client address space attackers and cardholders share, device sharing, the attack channel mix, and prevalence pacing.
+- `19_detector_contract.yaml`: The detector contract, version 1: the authorisation request a detector receives (the two export views joined, minus the issuer's answer), the authorisation outcome, the label event, and the columns of the two export views; the code reads its columns from it and an export conforms to it by test.
 - `08_india_calibration_targets.yaml`: Dated calibration profiles for the Indian card stream (RBI PSI fraud prevalence and ticket sizes, RBI discussion-paper value concentration), each target sourced and either gated or reported with the reason; what is out of scope (UPI, IMPS, PPI) is written down.
 
 ## Rules of Engagement

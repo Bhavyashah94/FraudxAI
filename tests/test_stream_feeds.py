@@ -156,3 +156,36 @@ def test_the_offline_partitioner_feeds_a_detector_the_request_fields_only():
         assert not (set(row) & NEVER_IN_A_REQUEST)
     one_inference, one_labels, one_graph = ZeroLeakageDataPartitioner(seed=1).partition_record(records[0])
     assert set(one_inference) <= set(REQUEST_FIELDS)
+
+
+def test_the_detectors_answer_decides_what_gets_investigated():
+    """When the endpoint answers a request with a score, that score, not the generator's
+    reference score, feeds the investigation queue: a detector that scores everything at
+    0.99 has every row investigated; one that scores everything at 0.0 has no alert at all."""
+    def daemon(answer):
+        labels = []
+
+        async def take_request(payload):
+            return answer
+
+        async def take_label(payload):
+            labels.append(payload)
+            return True
+
+        counts = asyncio.run(run_stream_daemon(
+            duration_sec=2.0, target_tps=100.0, fraud_prevalence=0.10, seed=5, region="IN",
+            n_cards=80, n_merchants=30, flush_labels=True, k_daily=10_000, alert_threshold=0.5,
+            emit_request=take_request, emit_label=take_label,
+        ))
+        return counts, labels
+
+    counts, labels = daemon({"risk_score": 0.99})
+    assert counts["labels_from_detector"] == counts["requests_sent"] > 0
+    assert labels and all(l["label_source"] == "INVESTIGATOR_ALERT" for l in labels)
+
+    counts, labels = daemon({"risk_score": 0.0})
+    assert counts["labels_from_detector"] == counts["requests_sent"]
+    assert all(l["label_source"] != "INVESTIGATOR_ALERT" for l in labels)
+
+    counts, labels = daemon(True)
+    assert counts["labels_from_detector"] == 0, "an answer without a score leaves the generator's reference score in charge"

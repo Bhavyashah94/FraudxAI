@@ -12,33 +12,7 @@ from .engine import SimulationEngine
 from .spec_loader import load_all_specs
 
 
-AUTH_STREAM_COLUMNS = [
-    "transaction_id",
-    "card_id",
-    "pan_masked",
-    "product_id",
-    "cohort_id",
-    "timestamp_utc",
-    "tx_time_seconds",
-    "mti",
-    "stan",
-    "rrn",
-    "auth_code",
-    "response_code",
-    "auth_response_code",
-    "pos_entry_mode",
-    "pos_condition_code",
-    "eci",
-    "trans_status_3ds",
-    "vaai_score",
-    "amount",
-    "amount_minor",
-    "currency",
-    "available_balance",
-    "credit_limit",
-    "mcc",
-    "merchant_id",
-]
+from .storage import AUTH_STREAM_COLUMNS, GATEWAY_TELEMETRY_COLUMNS  # spec/19
 
 THREAT_INTEL_GRAPH_COLUMNS = [
     "transaction_id",
@@ -52,24 +26,6 @@ THREAT_INTEL_GRAPH_COLUMNS = [
     "device_fingerprint_id",
 ]
 
-GATEWAY_TELEMETRY_COLUMNS = [
-    "transaction_id",
-    "timestamp_utc",
-    "merchant_id",
-    "mid",
-    "tid",
-    "acquirer_bin",
-    "gateway_provider",
-    "client_ip",
-    "asn_type",
-    "ip_distance_from_home_km",
-    "device_canvas_hash",
-    "channel_type",
-    "avs_match_code",
-    "cvv_match_flag",
-    "geo_risk_score",
-    "is_cross_border",
-]
 
 CLEARING_SETTLEMENT_COLUMNS = [
     "transaction_id",

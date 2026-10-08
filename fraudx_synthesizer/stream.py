@@ -28,32 +28,20 @@ from typing import Any, Awaitable, Callable, Dict, List, Optional, Sequence, Tup
 
 import numpy as np
 
+from .contract import load_contract
 from .engine import SimulationEngine
 from .spec_loader import load_all_specs
-from .storage import AUTH_STREAM_COLUMNS, GATEWAY_TELEMETRY_COLUMNS
 
-# The authorisation outcome is the issuer's answer; a detector scoring the request has not seen it.
-AUTHORISATION_OUTCOME_COLUMNS: Tuple[str, ...] = ("response_code", "auth_response_code", "auth_code")
+# spec/19: the three feeds come from the contract. The authorisation outcome is the issuer's
+# answer, which a detector scoring the request has not seen; the request is the two export views
+# joined on transaction_id minus that outcome; the label feed says what the bank learned and when.
+AUTHORISATION_OUTCOME_COLUMNS: Tuple[str, ...] = tuple(load_contract().field_names("authorisation_outcome"))
+REQUEST_FIELDS: Tuple[str, ...] = tuple(load_contract().field_names("authorisation_request"))
+LABEL_FIELDS: Tuple[str, ...] = tuple(load_contract().field_names("label_event"))
 
-# What a detector receives: the two contract views joined on transaction_id, minus the outcome.
-REQUEST_FIELDS: Tuple[str, ...] = tuple(
-    column
-    for column in dict.fromkeys(AUTH_STREAM_COLUMNS + GATEWAY_TELEMETRY_COLUMNS)
-    if column not in AUTHORISATION_OUTCOME_COLUMNS
-)
-
-# What the label feed carries: the verdict, where it came from and when the bank learned it.
-LABEL_FIELDS: Tuple[str, ...] = (
-    "transaction_id",
-    "card_id",
-    "tx_timestamp_utc",
-    "discovered_label",
-    "label_source",
-    "discovery_time_seconds",
-    "discovery_timestamp_utc",
-)
-
-Emitter = Callable[[Dict[str, Any]], Awaitable[bool]]
+# An emitter returns whether the payload was taken; a request emitter may return the answer's
+# body instead, and a score in it drives the investigation queue.
+Emitter = Callable[[Dict[str, Any]], Awaitable[Union[bool, Dict[str, Any]]]]
 
 
 def request_payload(record: Dict[str, Any]) -> Dict[str, Any]:
@@ -101,12 +89,13 @@ class LabelFeed:
         return self.due(float("inf"))
 
 
-async def dispatch_transaction_async(
+async def dispatch_request_async(
     endpoint: str,
     record: Dict[str, Any],
     timeout_sec: float = 2.0,
-) -> Tuple[bool, int, float]:
-    """Asynchronously dispatches a JSON payload to a target REST endpoint."""
+) -> Tuple[bool, int, float, Optional[Dict[str, Any]]]:
+    """Posts a JSON payload to a REST endpoint and returns success, the status, the elapsed
+    milliseconds and the answer's JSON body when it has one."""
     loop = asyncio.get_running_loop()
     payload = json.dumps(record).encode("utf-8")
     req = urllib.request.Request(
@@ -121,24 +110,40 @@ async def dispatch_transaction_async(
     def _sync_post():
         try:
             with urllib.request.urlopen(req, timeout=timeout_sec) as resp:
-                return True, resp.status
+                raw = resp.read()
+                try:
+                    body = json.loads(raw.decode("utf-8")) if raw else None
+                except (ValueError, UnicodeDecodeError):
+                    body = None
+                return True, resp.status, body if isinstance(body, dict) else None
         except urllib.error.HTTPError as e:
-            return False, e.code
+            return False, e.code, None
         except Exception:
-            return False, 0
+            return False, 0, None
 
-    success, status_code = await loop.run_in_executor(None, _sync_post)
+    success, status_code, body = await loop.run_in_executor(None, _sync_post)
     elapsed_ms = (time.perf_counter() - t0) * 1000.0
+    return success, status_code, elapsed_ms, body
+
+
+async def dispatch_transaction_async(
+    endpoint: str,
+    record: Dict[str, Any],
+    timeout_sec: float = 2.0,
+) -> Tuple[bool, int, float]:
+    """Asynchronously dispatches a JSON payload to a target REST endpoint."""
+    success, status_code, elapsed_ms, _ = await dispatch_request_async(endpoint, record, timeout_sec)
     return success, status_code, elapsed_ms
 
 
 def _request_emitter(endpoint: Optional[str], to_stdout: bool) -> Emitter:
     if endpoint and not to_stdout:
-        async def post(payload: Dict[str, Any]) -> bool:
-            ok, code, _ = await dispatch_transaction_async(endpoint, payload)
+        async def post(payload: Dict[str, Any]) -> Union[bool, Dict[str, Any]]:
+            ok, code, _, body = await dispatch_request_async(endpoint, payload)
             if not ok:
                 print(f"[WARN] Failed dispatch {payload.get('transaction_id')} (HTTP {code})", file=sys.stderr)
-            return ok
+                return False
+            return body if body is not None else True
         return post
 
     async def write(payload: Dict[str, Any]) -> bool:
@@ -192,14 +197,16 @@ async def run_stream_daemon(
     flush_labels: bool = False,
     k_daily: Optional[int] = None,
     alert_threshold: Optional[float] = None,
+    score_field: str = "risk_score",
     emit_request: Optional[Emitter] = None,
     emit_label: Optional[Emitter] = None,
 ) -> Dict[str, int]:
     """Streams authorisation requests and, on a feed of its own, the labels as the bank learns them.
 
-    The investigation queue that decides which alerts are reviewed runs on the generator's
-    reference risk score, so the label feed says what the bank learned and when, not what
-    the detector under test scored. Returns the counts it printed.
+    When the endpoint answers a request with a score (the field named by score_field), that
+    score feeds the investigation queue that decides which alerts are reviewed, so the labels
+    the bank learns follow the detector under test; an answer without a score leaves the
+    generator's reference score in charge. Returns the counts it printed.
     """
     region = region.upper()
     if calibration:
@@ -230,6 +237,7 @@ async def run_stream_daemon(
     sent = 0
     failed = 0
     released = 0
+    scored_by_detector = 0
     t_start = time.time()
     for record in engine.stream_continuous(
         duration_seconds=duration_sec,
@@ -240,11 +248,17 @@ async def run_stream_daemon(
         for label in feed.due(clock):
             await send_label(label)
             released += 1
-        if await send_request(request_payload(record)):
-            sent += 1
-        else:
+        answer = await send_request(request_payload(record))
+        if answer is False or answer is None:
             failed += 1
-        feed.push(supervision.process_record(record))
+        else:
+            sent += 1
+        score = answer.get(score_field) if isinstance(answer, dict) else None
+        if isinstance(score, (int, float)) and not isinstance(score, bool):
+            feed.push(supervision.process_record(record, risk_score=float(score)))
+            scored_by_detector += 1
+        else:
+            feed.push(supervision.process_record(record))
 
         # Rate limiting sleep
         await asyncio.sleep(1.0 / max(target_tps, 0.1))
@@ -261,11 +275,12 @@ async def run_stream_daemon(
         "labels_released": released,
         "labels_pending": feed.pending,
         "never_reported": feed.dark,
+        "labels_from_detector": scored_by_detector,
     }
     print(
         f"[Stream Daemon] Finished: {sent} requests in {total_time:.2f}s ({sent / max(total_time, 0.01):.1f} TPS), "
         f"{failed} failed; {released} labels released, {feed.pending} not yet known to the bank, "
-        f"{feed.dark} never reported",
+        f"{feed.dark} never reported; the queue ran on the detector's score for {scored_by_detector} requests",
         file=sys.stderr,
     )
     return counts
@@ -290,7 +305,8 @@ def main():
     parser.add_argument("--merchants", type=int, default=100, help="Number of simulated merchants")
     parser.add_argument("--flush-labels", action="store_true", help="At the end, release every label the bank would ever learn, in discovery order")
     parser.add_argument("--k-daily", type=int, default=None, help="Daily analyst investigation capacity (default from spec/16)")
-    parser.add_argument("--alert-threshold", type=float, default=None, help="Reference risk score above which an alert is queued (default from spec/16)")
+    parser.add_argument("--alert-threshold", type=float, default=None, help="Score above which an alert is queued (default from spec/16)")
+    parser.add_argument("--score-field", type=str, default="risk_score", help="Field of the endpoint's answer whose score drives the investigation queue")
 
     args = parser.parse_args()
     asyncio.run(run_stream_daemon(
@@ -310,6 +326,7 @@ def main():
         flush_labels=args.flush_labels,
         k_daily=args.k_daily,
         alert_threshold=args.alert_threshold,
+        score_field=args.score_field,
     ))
 
 
