@@ -140,3 +140,19 @@ def test_the_daemon_takes_a_calibration_profile():
             duration_sec=1.0, target_tps=10.0, seed=5, region="US", calibration="rbi-psi-2026-07",
             n_cards=20, n_merchants=10, emit_request=take_request,
         ))
+
+
+def test_the_offline_partitioner_feeds_a_detector_the_request_fields_only():
+    """The partitioner's inference feed is the same thing the daemon posts: no authorisation
+    outcome, no settlement, no latent intensity."""
+    from fraudx_synthesizer.stream import INFERENCE_ALLOWLIST, ZeroLeakageDataPartitioner
+
+    assert set(INFERENCE_ALLOWLIST) == set(REQUEST_FIELDS)
+    records = _records()
+    inference, labels, graph = ZeroLeakageDataPartitioner(seed=1).partition_batch(records)
+    assert len(inference) == len(records)
+    for row in inference:
+        assert set(row) <= set(REQUEST_FIELDS)
+        assert not (set(row) & NEVER_IN_A_REQUEST)
+    one_inference, one_labels, one_graph = ZeroLeakageDataPartitioner(seed=1).partition_record(records[0])
+    assert set(one_inference) <= set(REQUEST_FIELDS)

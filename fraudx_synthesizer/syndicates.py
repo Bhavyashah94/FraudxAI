@@ -109,6 +109,7 @@ class SyndicateEntity:
             res["device_fingerprint_id"] = dev
             res["asn"] = net_tel["asn"]
             res["isp"] = net_tel["isp"]
+            res["proxy_type"] = net_tel["proxy_type"]
             res["ja4_signature"] = net_tel["ja4_signature"]
 
         if self.mule_rings:

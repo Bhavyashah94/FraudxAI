@@ -50,7 +50,7 @@ def test_us_institutional_records():
         # Gateway Risk Telemetry
         assert "client_ip" in r
         assert r["asn_type"] in ["residential", "datacenter", "mobile"]
-        assert len(r["device_canvas_hash"]) == 16
+        assert len(r["device_canvas_hash"]) == (0 if r["channel_type"].startswith("CP") else 16)
 
 
 def test_india_institutional_records():

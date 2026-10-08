@@ -433,3 +433,27 @@ prevalence_pacing:
   warm_up_rows: 25       # the planned rate is used until this many legitimate rows have arrived
   window_hours: 24
   hypothesis: false
+
+# ----------------------------------------------------------------------------------------------
+# 20. Telemetry that agrees with itself
+# ----------------------------------------------------------------------------------------------
+# Three things a detector could use as a rule rather than a signal, measured on the seed-42 export
+# after section 16 to 19. The ASN type of a fraud row was drawn from the attack's macro option, apart
+# from the network the address sits on: the Jio mobile botnet's rows carried residential 6, mobile 12,
+# datacenter 5, and a datacenter ASN on a 4G address is both a tell and nonsense. A card-present payment
+# carried a device hash although it comes from a terminal; every card-present fraud row's hash was
+# fraud-only (50 of 50), the track-2 clones carrying the botnet device while legitimate card-present
+# rows carried the cardholder's. And the offline partitioner's inference feed still carried the
+# authorisation outcome, the settlement fields and the Hawkes intensity, which the stream daemon had
+# stopped posting. Now: a row that carries a proxy's address carries the proxy's network as its ASN
+# type; card-present rows carry no device hash; the partitioner hands a detector the request fields
+# and nothing else. The master export's explanation dictionaries are written as plain values rounded
+# to six decimals with negative zero normalised: the contract views of one seed were already the same
+# bytes on two processors, and the dictionaries now differ only where a value sits on a rounding
+# boundary (125 cells in a 30,000-row export between a laptop and a workstation; 21,259 rows before).
+telemetry_consistency:
+  asn_type_by_proxy_network: { DATACENTER_ROTATING: datacenter, MOBILE_4G_5G: mobile, RESIDENTIAL_STICKY: residential }
+  card_present_device_hash: ""
+  partitioner_inference_fields: "the stream's request fields"
+  explanation_dictionary_decimals: 6
+  hypothesis: false
