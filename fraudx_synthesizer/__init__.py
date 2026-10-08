@@ -75,6 +75,7 @@ from .storage import (
     SimulationAggregates,
     StreamingDatasetWriter,
 )
+from .contract import ContractField, DetectorContract, load_contract
 from .network import ClientAddressSpace
 from .stream import (
     AUTHORISATION_OUTCOME_COLUMNS,
@@ -220,6 +221,9 @@ __all__ = [
     "request_payload",
     "label_payload",
     "ClientAddressSpace",
+    "ContractField",
+    "DetectorContract",
+    "load_contract",
     "SupervisionEngine",
     "SupervisionRecord",
     "LabelSource",
