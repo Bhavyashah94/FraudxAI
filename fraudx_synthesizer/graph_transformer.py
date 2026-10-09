@@ -160,14 +160,22 @@ class ForensicGraphTransformer:
         K = len(unique_syndicates)
         cx = self.canvas_width / 2.0
         cy = self.canvas_height / 2.0
-        constellation_radius = min(cx, cy) * 0.58
 
         syndicate_anchors: Dict[str, Tuple[float, float]] = {}
-        for idx, sid in enumerate(unique_syndicates):
-            angle = (2.0 * math.pi * idx / max(1, K)) - (math.pi / 2.0)
-            ax = cx + constellation_radius * math.cos(angle)
-            ay = cy + constellation_radius * math.sin(angle)
-            syndicate_anchors[sid] = (round(ax, 1), round(ay, 1))
+        if K == 1:
+            syndicate_anchors[unique_syndicates[0]] = (round(cx - cx * 0.35, 1), round(cy, 1))
+        elif K == 2:
+            # Widescreen lateral distribution: Left and Right with safe margins
+            syndicate_anchors[unique_syndicates[0]] = (round(cx - cx * 0.42, 1), round(cy, 1))
+            syndicate_anchors[unique_syndicates[1]] = (round(cx + cx * 0.42, 1), round(cy, 1))
+        else:
+            rx = cx * 0.54
+            ry = cy * 0.44
+            for idx, sid in enumerate(unique_syndicates):
+                angle = 2.0 * math.pi * idx / K
+                ax = cx + rx * math.cos(angle)
+                ay = cy + ry * math.sin(angle)
+                syndicate_anchors[sid] = (round(ax, 1), round(ay, 1))
 
         nodes: List[Dict[str, Any]] = []
         node_ids: Set[str] = set()
@@ -294,6 +302,18 @@ class ForensicGraphTransformer:
                 camp_y = say + 175.0 * math.sin(camp_angle)
                 r_scale = min(24.0, max(11.0, 8.0 + 4.5 * math.log10(max(1, n_rem))))
 
+                constituent_cards_data = [
+                    {
+                        "id": c,
+                        "label": f"Card: {c[-6:] if len(c) >= 6 else c}",
+                        "volume": round(card_volumes[c], 2),
+                        "tx_count": card_tx_counts[c],
+                        "approval_rate": round((card_approvals[c] / max(1, card_tx_counts[c])) * 100.0, 1),
+                        "merchants": sorted(list(card_merchants[c]))[:5],
+                    }
+                    for c in remainder_cards
+                ]
+
                 register_node({
                     "id": camp_id,
                     "label": f"Batch: {n_rem} Cards",
@@ -306,6 +326,7 @@ class ForensicGraphTransformer:
                     "botnet_id": bid,
                     "target_x": round(camp_x, 1),
                     "target_y": round(camp_y, 1),
+                    "constituent_cards": constituent_cards_data,
                     "details": {
                         "Campaign ID": camp_id,
                         "Compromised Cards": f"{n_rem:,}",
@@ -386,16 +407,19 @@ class ForensicGraphTransformer:
                         targeting_syns.add(s)
 
             if len(targeting_syns) > 1:
-                mx = cx + 110.0 * math.cos(m_idx * m_angle_step)
-                my = cy + 110.0 * math.sin(m_idx * m_angle_step)
+                # Merchants targeted by multiple threat groups spread along central corridor
+                m_offset_y = (m_idx - len(active_merchant_meta) / 2.0) * 36.0
+                mx = cx + (math.sin(m_idx * 1.6) * 90.0)
+                my = cy + m_offset_y
             elif targeting_syns:
                 target_syn = next(iter(targeting_syns))
                 sax, say = syndicate_anchors.get(target_syn, (cx, cy))
-                mx = sax + 240.0 * math.cos(m_idx * 0.8)
-                my = say + 240.0 * math.sin(m_idx * 0.8)
+                dir_x = 1.0 if sax < cx else -1.0
+                mx = sax + dir_x * 230.0 + (math.cos(m_idx * 1.3) * 60.0)
+                my = say + (math.sin(m_idx * 1.3) * 150.0)
             else:
-                mx = cx + 200.0 * math.cos(m_idx * m_angle_step)
-                my = cy + 200.0 * math.sin(m_idx * m_angle_step)
+                mx = cx + 240.0 * math.cos(m_idx * m_angle_step)
+                my = cy + 180.0 * math.sin(m_idx * m_angle_step)
 
             register_node({
                 "id": mid,
@@ -419,9 +443,12 @@ class ForensicGraphTransformer:
             sid = meta.get("syndicate_id") or (unique_syndicates[0] if unique_syndicates else "")
             sax, say = syndicate_anchors.get(sid, (cx, cy))
             tier_str = meta.get("tier", "TIER_1_SMURF")
-            tier_dist = 220.0 if "TIER_1" in tier_str else (280.0 if "TIER_2" in tier_str else 340.0)
-            ux = sax + tier_dist * math.cos(u_idx * mule_angle_step)
-            uy = say + tier_dist * math.sin(u_idx * mule_angle_step)
+            tier_dist_x = 270.0 if "TIER_1" in tier_str else (340.0 if "TIER_2" in tier_str else 420.0)
+            tier_dist_y = 190.0 if "TIER_1" in tier_str else (250.0 if "TIER_2" in tier_str else 310.0)
+            fan_dir = -1.0 if sax < cx else 1.0
+            fan_angle = (u_idx * 0.7) - math.pi / 2.5
+            ux = sax + fan_dir * tier_dist_x * (0.6 + 0.4 * abs(math.cos(fan_angle)))
+            uy = say + tier_dist_y * math.sin(fan_angle)
 
             register_node({
                 "id": mule_id,

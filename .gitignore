@@ -73,3 +73,10 @@ scratch/
 scratch_*.py
 *.pptx
 
+# Frontend dependencies
+node_modules/
+gui/frontend/node_modules/
+
+# Archives
+*.zip
+

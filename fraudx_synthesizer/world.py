@@ -243,8 +243,10 @@ class WorldEnvironment:
         preferred_mcc: Optional[int] = None,
         delta_t_sec: Optional[float] = None,
         last_merchant_id: Optional[str] = None,
+        last_lat: Optional[float] = None,
+        last_lon: Optional[float] = None,
     ) -> MerchantProfile:
-        """Selects merchant using distance-weighted probabilities filtered by maximum travel radius."""
+        """Selects merchant using distance-weighted probabilities filtered by kinematic travel constraints."""
         n = len(self.merchants)
         eligible_mask = np.ones(n, dtype=bool)
 
@@ -282,23 +284,34 @@ class WorldEnvironment:
         d_lon = (sub_lons - agent_lon) * (111.139 * np.cos(mean_lat_rad))
         dist_km = np.sqrt(d_lat * d_lat + d_lon * d_lon)
 
-        # Maximum Travel Radius Filtering for Card-Present Transactions
+        # Kinematic Reachable Radius Filtering for Card-Present Transactions
         if channel_type.startswith("CP") and delta_t_sec is not None:
-            r_max = compute_reachable_radius_km(delta_t_sec, radius_metro_km=self.radius_km)
-            kinematic_mask = (dist_km <= r_max)
+            # Physical origin of the cardholder: where they physically transacted most recently
+            orig_lat = last_lat if last_lat is not None else agent_lat
+            orig_lon = last_lon if last_lon is not None else agent_lon
+
+            d_lat_orig = (sub_lats - orig_lat) * 111.139
+            mean_lat_rad_orig = np.radians(0.5 * (sub_lats + orig_lat))
+            d_lon_orig = (sub_lons - orig_lon) * (111.139 * np.cos(mean_lat_rad_orig))
+            dist_from_orig_km = np.sqrt(d_lat_orig * d_lat_orig + d_lon_orig * d_lon_orig)
+
+            # Cap velocity at 720 km/h (ensuring safety margin below 900 km/h commercial flight ceiling)
+            v_cap_kph = 720.0
+            r_max = max(0.05, min(compute_reachable_radius_km(delta_t_sec, radius_metro_km=self.radius_km), delta_t_sec * (v_cap_kph / 3600.0)))
+            kinematic_mask = (dist_from_orig_km <= r_max)
 
             if np.any(kinematic_mask):
                 eligible_indices = eligible_indices[kinematic_mask]
                 sub_weights = sub_weights[kinematic_mask]
                 dist_km = dist_km[kinematic_mask]
+                dist_from_orig_km = dist_from_orig_km[kinematic_mask]
             else:
-                # Fallback to same merchant or nearest eligible merchant if travel distance is exceeded
+                # Dwell fallback: cardholder remains at the same merchant facility
                 if last_merchant_id is not None:
                     for m in self.merchants:
-                        if m.merchant_id == last_merchant_id and channel_type in m.supported_channels:
+                        if m.merchant_id == last_merchant_id:
                             return m
-                # Fallback to closest eligible merchant
-                closest_sub_idx = np.argmin(dist_km)
+                closest_sub_idx = np.argmin(dist_from_orig_km)
                 return self.merchants[eligible_indices[closest_sub_idx]]
 
         if not channel_type.startswith("CP"):

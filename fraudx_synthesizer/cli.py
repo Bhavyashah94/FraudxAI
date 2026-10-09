@@ -557,9 +557,46 @@ def cmd_validate(args: argparse.Namespace) -> None:
         sys.exit(1)
 
 
+def cmd_gui(args: argparse.Namespace) -> None:
+    """Launch the FraudxAI Studio interactive GUI web server."""
+    try:
+        import uvicorn
+    except ImportError:
+        print(
+            "Error: GUI dependencies not installed. Install with:\n"
+            "  pip install -e \".[gui]\"\n"
+            "or:\n"
+            "  pip install fastapi uvicorn",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    import threading
+    import webbrowser
+
+    url = f"http://{args.host}:{args.port}"
+    print(f"\n=======================================================")
+    print(f"  Starting FraudxAI Studio GUI at {url}")
+    print(f"  API Docs available at {url}/docs")
+    print(f"=======================================================\n")
+
+    if args.open:
+        threading.Timer(1.2, lambda: webbrowser.open(url)).start()
+
+    uvicorn.run("gui.backend.app:app", host=args.host, port=args.port, reload=args.reload)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(prog="fraudx-sim", description="FraudX-Synthesizer CLI")
     subparsers = parser.add_subparsers(dest="command", required=True)
+
+    # GUI subcommand
+    p_gui = subparsers.add_parser("gui", help="Launch the FraudxAI Studio interactive web GUI")
+    p_gui.add_argument("--host", type=str, default="127.0.0.1", help="Host interface to bind (default: 127.0.0.1)")
+    p_gui.add_argument("--port", type=int, default=8000, help="Port to bind (default: 8000)")
+    p_gui.add_argument("--reload", action="store_true", default=False, help="Enable auto-reload for development")
+    p_gui.add_argument("--open", action="store_true", default=False, help="Open default web browser automatically")
+    p_gui.set_defaults(func=cmd_gui)
 
     # Generate subcommand
     p_gen = subparsers.add_parser("generate", help="Generate batch transactions")

@@ -1,130 +1,157 @@
 # FraudxAI: Grounded Multi-Agent Payment Fraud Simulation & Causal XAI Benchmark
 
 [![CI](https://github.com/Bhavyashah94/FraudxAI/actions/workflows/ci.yml/badge.svg)](https://github.com/Bhavyashah94/FraudxAI/actions/workflows/ci.yml)
-[![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue.svg)]()
-[![Tests](https://img.shields.io/badge/pytest-60%20passed-brightgreen.svg)]()
-[![Invariants](https://img.shields.io/badge/invariants-37%2F37%20verified-brightgreen.svg)]()
-[![Standard](https://img.shields.io/badge/rails-ISO%208583%20%7C%20RBI%20AFA%20%7C%20Visa%20VCR-orange.svg)]()
-[![Anti-Astronaut](https://img.shields.io/badge/grounding-Anti--Astronaut%20Certified-darkgreen.svg)](AGENTS.md)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![Python: 3.10 | 3.11 | 3.12 | 3.13](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-3776AB.svg)]()
+[![Tests: 260 Passed](https://img.shields.io/badge/pytest-260%20passed-brightgreen.svg)]()
+[![Invariants: 37/37 Verified](https://img.shields.io/badge/invariants-37%2F37%20verified-brightgreen.svg)]()
+[![Rails: ISO 8583 | RBI AFA | Visa VCR](https://img.shields.io/badge/rails-ISO%208583%20%7C%20RBI%20AFA%20%7C%20Visa%20VCR-orange.svg)]()
+[![Contract: Spec 19 v1](https://img.shields.io/badge/contract-Spec%2019%20v1-purple.svg)](spec/19_detector_contract.yaml)
+[![Anti-Astronaut Certified](https://img.shields.io/badge/grounding-Anti--Astronaut%20Certified-darkgreen.svg)](AGENTS.md)
 
-**FraudxAI** is an open-source payment fraud simulation engine and machine learning evaluation benchmark calibrated to real-world payment rail plumbing and regulatory standards.
+**FraudxAI** is an open-source, publication-grade multi-agent payment fraud simulation framework and causal explainable AI (XAI) benchmarking platform. It models high-throughput financial switches under continuous physical time, authentic dual-region banking rails (**United States** and **India**), and adaptive cybercrime syndicates.
 
-Unlike synthetic data generators that rely on ungrounded statistical distributions or toy column schemas, FraudxAI synthesizes authentic **institutional banking feeds** calibrated to official payment network operating regulations (Visa Core Rules, Mastercard Rules), statutory central bank mandates (Reserve Bank of India Master Directions), and empirical cybercrime research.
+Unlike legacy synthetic datasets that rely on static, ungrounded tabular distributions (such as PaySim or 2013 PCA benchmarks), FraudxAI couples event synthesis with a closed-form **Structural Causal Model (SCM)** to generate mathematically exact Pearlian counterfactual twins ($\Delta \mathbf{x} = \mathbf{x}_{\text{fraud}} - \mathbf{x}_{\text{baseline}}$) and analytical Shapley attributions ($\phi^*$). This provides an objective, auditable ground-truth baseline to benchmark post-hoc explainers (TreeSHAP, KernelSHAP, Explainable Boosting Machines) under realistic streaming delayed feedback.
 
 ---
 
-## Key Capabilities
+## The Two Crises in Financial Fraud AI
 
-### 1. Dual-Region Payment Rail Ecosystems
-* **US Dual-Message Rails (USD Cents)**:
-  * Two-stage lifecycle: Authorization Request (`MTI 0100` $\to$ `0110`) followed by Financial Presentment/Clearing (`MTI 0200` $\to$ `0210`) with 24–72 hour settlement delays.
-  * Real-world pre-auth mechanics: Automated Fuel Dispenser (AFD, MCC 5542) \$175 hold vs. final nozzle cutoff; Dining (MCC 5812) post-auth 10–20% tip tolerances; Hotel/Lodging (MCC 7011) incidental hold windows.
+```
+┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                  1. THE GROUND-TRUTH EXPLANATION VOID                            │
+│  Production banking warehouses record binary dispute outcomes (Y ∈ {0, 1}), never the true causal│
+│  reasons why an authorization occurred. When banks deploy post-hoc XAI tools (TreeSHAP, LIME),   │
+│  compliance teams have zero ground truth to verify if explanations reflect authentic fraud       │
+│  mechanisms or dangerous heuristic artifacts—violating ECOA Reg B and SR 11-7 requirements.      │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
+                                                 ▲
+                                                 │ FraudxAI bridges both gaps
+                                                 ▼
+┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                               2. THE REALISM & SUPERVISION LATENCY GAP                           │
+│  Real transaction logs are confidential under PCI-DSS. Meanwhile, real fraud supervision is      │
+│  severely delayed: chargeback disputes lag by 30 to 90 days, investigator queues have finite     │
+│  daily capacities (Top-K alerts), and small-ticket fraud goes unreported (dark fraud).           │
+│  Models trained on stale, static tabular snapshots suffer catastrophic concept drift.            │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Core Capabilities & Architectural Pillars
+
+### 1. The Formal Detector Contract (`spec/19_detector_contract.yaml` & `contract.py`)
+FraudxAI establishes an immutable, machine-readable contract (**version 1**) governing all interactions between the simulation and external detection models. The contract guarantees zero target label leakage by decoupling streaming transactions into three distinct feeds:
+* **Authorisation Request Feed (35 fields):** The exact pre-decision data an acquirer or payment gateway passes to an issuer risk switch in sub-50ms (combining `auth_stream` and `gateway_telemetry` on `transaction_id`). Strictly excludes issuer outcomes, scenario tags, and internal generator scores (`NEVER_IN_A_REQUEST`).
+* **Authorisation Outcome Feed (3 fields):** The issuer host's decision (`response_code`, `auth_response_code`, `auth_code`), released only *after* the detector has scored the request.
+* **Label Event Feed (7 fields):** The supervision verdict (`INVESTIGATOR_ALERT` within 0.5–72 hours, `CHARGEBACK_DISPUTE` within 3–120 days, or `UNLABELLED` for dark fraud), released strictly in chronological discovery order.
+
+All CLI exports, storage formats, and streaming daemons take their columns directly from `load_contract()`.
+
+### 2. Closed-Loop Streaming Daemon & Active Learning
+`python -m fraudx_synthesizer.stream` posts authorization requests to an external REST endpoint and releases labels on a dedicated feed as the bank would naturally discover them.
+* **Detector-Driven Supervision Queue:** When an endpoint responds with a prediction score (`risk_score` or `--score-field`), that score directly determines which transactions enter the bank's daily investigator review budget (top-$K$ alerts).
+* **Operational Feedback Loop:** If the detector under test achieves high precision, true frauds are verified and added to the bank's training pool within hours. If the detector has blind spots, fraudulent transactions escape into the 30–90 day chargeback delay or dark fraud pool. The training stream dynamically mirrors the operational performance of the detector under test.
+
+### 3. Dual-Region Payment Rail Kinematics
+* **United States Payment Infrastructure (USD Cents):**
+  * Models the two-stage lifecycle: Authorization (`MTI 0100` $\to$ `0110`) followed by Financial Presentment/Clearing (`MTI 0200` $\to$ `0210`) with 24–72h settlement delays.
+  * Real-world pre-authorization mechanics: Automated Fuel Dispenser (AFD, MCC 5542) \$175 hold vs. final nozzle cutoff; Dining (MCC 5812) post-auth 10–20% tip tolerances; Hotel/Lodging (MCC 7011) incidental folio holds.
   * Stand-In Processing (STIP) floor limits when issuer cores timeout ($> 2.0\,\text{s}$).
   * Address Verification Service (AVS) numeric street + ZIP matrix adjudication (`Y`, `A`, `Z`, `N`, `U`).
-* **Indian Payment Rails (INR Paisa)**:
-  * Mandatory Additional Factor of Authentication (AFA/OTP) on domestic CNP e-commerce.
-  * Contactless NFC tap-and-pay limits (₹5,000 ceiling without PIN, requiring PIN challenge or chip fallback after 5 consecutive taps).
+* **Indian Payment Rails (INR Paisa):**
+  * Mandatory Additional Factor of Authentication (AFA/OTP challenges) on domestic CNP transactions enforcing `ISO 63` declines.
+  * Contactless NFC tap-and-pay rules (₹5,000 PIN ceiling, ₹15,000 cumulative velocity cap enforcing `ISO 65`).
   * RuPay Credit Cards on UPI QR code rails (POS Entry Mode `031`).
-  * Card-on-File Tokenization (CoFT, `RBI/2021-22/96`) network tokenization flows.
-  * Indian card product taxonomy: Kisan Credit Card (KCC), PMJDY RuPay Debit, FD-Backed Entry Cards, Salaried Prime Rewards, and Super-Premium HNI cards.
+  * RBI Master Directions (`RBI/2017-18/15`) limited liability customer tiers (Zero Liability, ₹5k/₹10k caps) and CFCFRMS Helpline 1930 golden hour cyber-liens.
+  * Product taxonomies: Kisan Credit Card (KCC), PMJDY RuPay Debit, FD-Backed Entry Cards, Salaried Prime Rewards, and Super-Premium HNI cards.
 
-### 2. Multi-Agent Closed-Loop Feedback
-* **Cardholder Profiles**:
-  * Calibrated to the Federal Reserve Diary of Consumer Payment Choice (DCPC) and BLS surveys across 7 verified demographic cohorts.
-  * 24-hour periodic diurnal arrival schedules calibrated to Federal Reserve DCPC payment diaries (suppressing night transactions to < 4.5% and peaking during daytime retail hours).
-  * Multi-modal discovery latency survival models: instant push notification (10–60s) vs. daily banking app checks (12–36h) vs. monthly billing statement reviews (30–45d).
-  * Authentic hard negatives: legitimate home relocations and cross-border vacation travel that exhibit high spend/velocity anomalies but carry valid EMV chip cryptograms.
-* **Adversarial Fraud Playbooks & Ring Infrastructure**:
-  * Closed-loop adaptation to bank responses: bisection amount decay on `ISO 51` (Insufficient Funds), gateway hopping to lower-tier acquirers on `3DS Challenge`, velocity backoff on `ISO 59` (Suspected Fraud), and darknet warranty replacement on `ISO 05/14/54`.
-  * Grounded attack playbooks: Micro-auth card testing probes (AVS `Z` ZIP bypass), Account Takeover (ATO) with 14-day silent dormancy baking, synthetic sleeper bust-outs with ACH float exploitation, Apple Pay "Yellow Path" token provisioning, distributed PAN Enumeration Attacks (PEA additive guessing), triangulation fraud, reverse-proxy vishing, and malicious Android APK SMS stealers.
-* **Bank Decision Engine**:
-  * Multi-tier issuer authorization switch enforcing ISO 8583 response codes (`00` Approved, `05` Do Not Honor, `10` Partial Approval, `14` Invalid Card, `51` Insufficient Funds, `57` Transaction Not Permitted, `59` Suspected Fraud, `63` Security Violation, `65` Activity Limit Exceeded, `82` Invalid CVV).
-  * Visa Account Attack Intelligence (VAAI) defense scoring against distributed card testing.
-  * Real-time pre-authorization ML risk scoring with EMV 3DS 2.x step-up challenges.
+### 4. Shared Client Infrastructure & Anti-Separability (`network.py`)
+To prevent machine learning models from exploiting synthetic artifact shortcuts:
+* **Unified Telecom IP Prefix Pools:** Cardholders and cybercrime botnets share a deterministic consumer IP address space (`ClientAddressSpace`) governed by Zipf popularity distributions over authentic regional telecom allocations (Reliance Jio and Airtel `49.x`, `103.x`, `106.x` in India; Comcast and AT&T `24.x`, `67.x`, `72.x` in the US). Fraud subnets unique to fraud dropped from 131/131 down to 0/105.
+* **Victim-Device Execution:** 70% to 95% of vishing (`IN_ADV_REVERSE_PROXY_VISHING`) and Android malware (`IN_ADV_APK_SMS_STEALER`) attacks execute directly on the cardholder's own mobile device and residential IP connection, eliminating naive device-hash separability.
+* **Card-Present Terminal Telemetry:** Physical POS terminals and ATMs carry no user device hash (`device_canvas_hash = ""`), while legitimate web/mobile users realistically share household computers and secondary devices.
 
-### 3. Four Partitioned Institutional Banking Feeds
-Real financial institutions do not maintain a single flat table with toy column names (`amount`, `is_fraud`). FraudxAI partitions synthetic outputs into the four distinct feeds that production data warehouses actually store:
+### 5. Stepped Underwriting Credit Lines & Attack Diversity
+* **Discrete Credit Limit Steps:** Credit lines round to authentic issuer underwriting steps (`spec/01` and `spec/05`), replacing continuous random floats with discrete financial tiers (e.g., ₹25k, ₹50k, ₹1L; \$100, \$250, \$500, \$5k). Distinct limits across 1,000 cards dropped from 1,000 down to 77.
+* **Attack Channel Diversity:** Attacks realistically span Web (`012`), In-App Mobile (`102`), Chip (`051`), and Contactless NFC (`071`).
+* **Prevalence Pacing:** A trailing 24-hour window re-estimates competing Poisson attack arrival intensity, ensuring small batches (1,000–5,000 rows) accurately hit the requested fraud prevalence.
 
-| Feed File | Schema Standard | Description |
-| :--- | :--- | :--- |
-| `auth_stream.csv` | ISO 8583 / ISO 20022 | Real-time authorization switch feed containing MTI, STAN, RRN, Auth Code, Response Code, POS Entry Mode, ECI, 3DS status, available balances, and minor currency units. |
-| `gateway_telemetry.csv` | Payment Gateway Risk | Network & device telemetry containing Client IP, ASN type, geo risk scores, canvas Murmur3 hashes, AVS codes, CVV match flags, and cross-border flags. |
-| `clearing_settlement.csv` | Dual-Message Settlement | Financial presentment feed (`MTI 0200`) with 24–72h delay windows, actual captured amounts (AFD pump vs hold, dining tips), and interchange fees. |
-| `dispute_recovery.csv` | Scheme & Statutory Disputes | Chargeback logs with reason codes (Visa 10.4, RBI unauthorized debit), Visa CE 3.0 pre-dispute deflection, arbitration fees, RBI Customer Limited Liability Tiers (`RBI/2017-18/15`), and CFCFRMS 1930 golden hour cyber-liens. |
-
-### 4. Ground-Truth Feature Attributions & Baseline Reference Vectors
-* **Cardholder Baseline Difference Vectors**:
-  For every simulated fraudulent transaction, the engine computes the exact feature delta relative to the cardholder's uncompromised 30-day baseline profile:
+### 6. Closed-Form Pearlian Causal Ground Truth ($\phi^*$)
+* **Exact Counterfactual Baseline Twins:** For every simulated fraudulent transaction, the engine computes:
   $$\Delta \mathbf{x} = \mathbf{x}_{\text{fraud}} - \mathbf{x}_{\text{baseline}}$$
-* **Feature Risk Contribution Scoring**:
-  Computes deterministic feature contributions for the simulation's risk scoring function using the Owen multilinear formula in logit space and 128-point path integration (Integrated Gradients / Aumann-Shapley) in probability space, allowing post-hoc explainers (TreeSHAP, KernelSHAP) to be benchmarked against objective ground truth.
-* **Quantitative Evaluator (`GroundTruthXAIEvaluator`)**:
-  Computes Precision@k, Recall@k, Kendall's $\tau_b$, Spearman's $\rho$, and Relative Attribution Error (RAE).
-
-### 5. Physical Transit Invariants
-* **Physical Travel Velocity Limits**: Great-circle Haversine metrics guarantee that card-present transactions never exceed physical commercial transport velocities ($< 900\,\text{km/h}$).
-* **Temporal Monotonicity**: 64-bit microsecond priority queue with stable sequence tie-breaking guarantees strict global chronological order ($t_0 \le t_1 \le \dots \le t_N$).
-* **Online Streaming Ledger**: Strictly point-in-time state updates using Welford's algorithm for online mean and variance tracking, completely eliminating future lookahead bias.
+* **Analytical Shapley Derivation:** Closed-form Owen multilinear extensions in logit space and 128-point path integration in probability space yield exact Shapley values ($\phi^*$).
+* **Quantitative Explainer Benchmarking:** Evaluates post-hoc explainers (TreeSHAP, KernelSHAP, EBMs) against exact ground truth using formal metrics: Precision@k, Recall@k, Kendall's $\tau_b$, Spearman's $\rho$, and Relative Attribution Error (RAE).
 
 ---
 
 ## Architecture Overview
 
 ```
-                           +-------------------------------------+
-                           | DiscreteEventEngine (Priority Queue)|
-                           | 64-bit microsecond monotonic clock  |
-                           +------------------+------------------+
-                                              |
-                     +------------------------+------------------------+
-                     |                                                 |
-                     v                                                 v
-    +--------------------------------+                +--------------------------------+
-    |       Cardholder Profile       |                |     AdaptiveFraudsterAgent     |
-    |  - Fed DCPC Persona Clusters   |                |  - 10 Grounded Playbooks       |
-    |  - 24-hour diurnal schedule    |                |  - Bisection Decay on ISO 51   |
-    |  - Multi-modal discovery curve |                |  - Gateway Hop on 3DS (Tier C) |
-    |  - 900 km/h transit limits     |                |  - Nocturnal window targeting  |
-    +----------------+---------------+                +----------------+---------------+
-                     |                                                 |
-                     +------------------------+------------------------+
-                                              |
-                                              v
-                           +-------------------------------------+
-                           |     StreamingLedger (Point-in-Time) |
-                           |  - Online Welford mean/variance     |
-                           |  - 5-Way geo mismatch scoring       |
-                           |  - Device canvas Murmur3 hash       |
-                           +------------------+------------------+
-                                              |
-                                              v
-                           +-------------------------------------+
-                           |       Risk Attribution Engine       |
-                           |  - Real-time pre-auth scoring       |
-                           |  - Path-integrated feature risk     |
-                           |  - Cardholder baseline deltas       |
-                           +------------------+------------------+
-                                              |
-                                              v
-                           +-------------------------------------+
-                           |      BankDecisionEngine (Switch)    |
-                           |  - ISO 8583 response codes          |
-                           |  - Real-time ML risk thresholds     |
-                           |  - EMV 3DS 2.x step-up challenges   |
-                           |  - RBI AFA / OTP verification       |
-                           |  - Visa VAAI anti-enumeration       |
-                           +------------------+------------------+
-                                              |
-                     +------------------------+------------------------+
-                     |                        |                        |
-                     v                        v                        v
-            [auth_stream.csv]      [gateway_telemetry.csv]  [clearing_settlement.csv]
-            (ISO 8583 Protocol)    (Gateway Risk & Device)   (Dual-Message Presentment)
-                                              |
-                                              v
-                                   [dispute_recovery.csv]
-                                   (Chargebacks & 1930 Liens)
+                                      FRAUDXAI SIMULATION & BENCHMARK ARCHITECTURE
+
+  ┌────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │                                   DISCRETE-EVENT MONOTONIC SIMULATION                                  │
+  │  • 64-bit microsecond priority queue                        • Non-stationary Hawkes Point Processes    │
+  │  • Haversine velocity ceilings (< 900 km/h)                 • Circadian spend & arrival thinning       │
+  └───────────────────────────────────────────────────┬────────────────────────────────────────────────────┘
+                                                      │
+                         ┌────────────────────────────┴────────────────────────────┐
+                         ▼                                                         ▼
+  ┌──────────────────────────────────────────────┐          ┌──────────────────────────────────────────────┐
+  │              CARDHOLDER AGENTS               │          │             ADAPTIVE RED TEAM                │
+  │  • 7 Demographic cohorts (Fed DCPC / RBI)    │          │  • 10 Grounded cybercrime playbooks          │
+  │  • Shared Zipf /24 residential IP prefixes   │          │  • Closed-loop adaptation to ISO declines    │
+  │  • Household and secondary device bindings   │          │  • Victim-device malware / vishing execution │
+  └──────────────────────┬───────────────────────┘          └──────────────────────┬───────────────────────┘
+                         │                                                         │
+                         └────────────────────────────┬────────────────────────────┘
+                                                      ▼
+  ┌────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │                                      DECOUPLED VERIFIER SWITCH & SCM                                   │
+  │  • Dual-message ISO 8583 authorization / clearing           • Structural Causal Model (SCM)            │
+  │  • RBI AFA / OTP, CoFT, and contactless caps                • Closed-form Owen Shapley ground truth φ* │
+  └───────────────────────────────────────────────────┬────────────────────────────────────────────────────┘
+                                                      │
+                                                      ▼
+  ┌────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │                                   SPEC 19: FORMAL DETECTOR CONTRACT                                    │
+  │                               (Machine-Readable Single Source of Truth v1)                             │
+  └───────────────────┬───────────────────────────────┬───────────────────────────────┬────────────────────┘
+                      │                               │                               │
+                      ▼                               ▼                               ▼
+       [Authorisation Request Feed]      [Authorisation Outcome Feed]      [Delayed Label Event Feed]
+       • 35 strictly pre-decision fields • Response code (00, 51, 63)      • Investigator alert (0.5–72h)
+       • Joined auth + gateway telemetry • Approval code (auth_code)       • Chargeback dispute (3–120d)
+       • ZERO target label leakage       • Revealed ONLY after scoring     • Dark fraud never released
+                      │                                                               ▲
+                      ▼                                                               │
+          ┌───────────────────────┐                                                   │
+          │  Detector Under Test  │                                                   │
+          │  (External Model/REST)│                                                   │
+          └───────────┬───────────┘                                                   │
+                      │ answers with risk_score                                       │
+                      ▼                                                               │
+          ┌───────────────────────────────────────────────────────────────────────────┴───┐
+          │                      CLOSED-LOOP OPERATIONAL SUPERVISION                      │
+          │  • Daily top-K review budget prioritizes rows scored by the detector under    │
+          │    test; learned labels dynamically follow the detector's true triage efficacy│
+          └───────────────────────────────────────────────────────────────────────────────┘
 ```
+
+---
+
+## Four Institutional Banking Feeds
+
+Rather than exporting a single flat table with unrealistic columns, FraudxAI partitions synthetic outputs into the four authentic feeds that production banking data warehouses maintain:
+
+| Feed File | Schema Standard | Description |
+| :--- | :--- | :--- |
+| **`auth_stream.csv`** | ISO 8583 / ISO 20022 | Real-time authorization switch feed containing MTI, STAN, RRN, Auth Code, Response Code, POS Entry Mode, ECI, 3DS status, available balances, and minor currency units. |
+| **`gateway_telemetry.csv`** | Gateway Risk Telemetry | Network & device telemetry containing Client IP, ASN type, geo risk scores, device canvas hashes, AVS codes, CVV match flags, and cross-border flags. |
+| **`clearing_settlement.csv`** | Dual-Message Settlement | Financial presentment feed (`MTI 0200`) with 24–72h delay windows, actual captured amounts (AFD pump vs hold, dining tips), and interchange fees. |
+| **`dispute_recovery.csv`** | Scheme & Statutory Disputes | Chargeback logs with reason codes (Visa 10.4, Mastercom), Visa CE 3.0 pre-dispute deflection, arbitration fees, and RBI Limited Liability Customer Tiers (`RBI/2017-18/15`). |
 
 ---
 
@@ -135,15 +162,39 @@ Real financial institutions do not maintain a single flat table with toy column 
 ```bash
 git clone https://github.com/Bhavyashah94/FraudxAI.git
 cd FraudxAI
-pip install -e .
+pip install -e ".[dev,benchmark,gui]"
 ```
+
+Or using **[uv](https://github.com/astral-sh/uv)** for fast installation:
+```bash
+uv pip install -e ".[dev,benchmark,gui]"
+```
+
+---
+
+### Interactive Web GUI (FraudxAI Studio)
+
+FraudxAI includes an interactive web interface built with FastAPI and React (TypeScript + Tailwind CSS):
+
+```bash
+# Launch the interactive web GUI (serves on http://127.0.0.1:8000)
+fraudx gui --open
+```
+
+The interface provides four functional workspaces:
+- **Simulation Generator**: Configure payment rails (US dual-message vs. India RBI AFA), transaction volumes, fraud prevalence, and adversary architectures.
+- **Transaction Ledger & ISO 8583 Inspector**: Searchable and filterable transaction table with a slide-over drawer showing raw ISO 8583 MTI codes, 3DS telemetry, network risk scores, and device fingerprints.
+- **Causal Explainability (XAI)**: Interactive side-by-side bar chart comparing post-hoc TreeSHAP attributions against closed-form SCM ground truth $\phi^*$ and Pearlian counterfactual baseline deltas ($\Delta \mathbf{x}$).
+- **Classifier & XAI Benchmarking**: One-click benchmark evaluating LightGBM or Random Forest on ROC-AUC, PR-AUC, Kendall's $\tau_b$, Spearman's $\rho$, and Relative Attribution Error (RAE).
+
+---
 
 ### Command-Line Interface (CLI)
 
 #### 1. Synthesize US Dual-Message Transactions
 ```bash
 # Generates 5,000 US transactions partitioned into 4 institutional feeds
-python -m fraudx_synthesizer.cli generate \
+fraudx generate \
     -n 5000 \
     --cards 1000 \
     --merchants 150 \
@@ -156,89 +207,45 @@ python -m fraudx_synthesizer.cli generate \
     --export-institutional-views
 ```
 
-#### 2. Synthesize Indian Payment Rail Transactions (RBI AFA / RuPay / CoFT)
+#### 2. Synthesize Indian Rails (RBI AFA / RuPay / CoFT Calibrated)
 ```bash
-# Generates 5,000 Indian transactions with RBI liability tiers and 1930 cyber-liens
-python -m fraudx_synthesizer.cli generate \
+# Calibrated against the RBI Central Payments Fraud Information Registry (July 2026 targets)
+fraudx generate \
     -n 5000 \
-    --cards 1000 \
-    --merchants 150 \
     --region IN \
-    --fraud-rate 0.03 \
-    --days 30 \
+    --calibration rbi-psi-2026-07 \
     --seed 42 \
-    -o data/india_production.csv \
+    -o data/calibrated_india.csv \
     --include-disputes \
     --export-institutional-views
 ```
 
-### Calibrated India mode
-
-`--calibration rbi-psi-2026-07` runs the Indian card stream at the fraud prevalence the RBI's Central Payments Fraud Information Registry reported for July 2026 (one fraud in every 80,847 transactions) and writes `<output>_calibration.json` next to the export, comparing the batch with the public targets in `spec/08_india_calibration_targets.yaml`: mean credit-card ticket (gated against RBI's payment-modes table), the fraud-value concentration thresholds of the RBI discussion paper of 9 April 2026, and the registry's fraud rate and fraud-to-sales ratio (reported, since they scale with the requested rate).
-
+#### 3. Stream Authorization Requests to an External Detector
 ```bash
-# registry rate: 5,000 rows hold 0.06 expected frauds, and the report says so
-python -m fraudx_synthesizer.cli generate -n 5000 --region IN --calibration rbi-psi-2026-07 -o data/calibrated_in.csv
+# Posts authorization requests to an ML endpoint; releases labels on a separate feed
+python -m fraudx_synthesizer.stream \
+    --region IN \
+    --calibration rbi-psi-2026-07 \
+    --duration 600 \
+    --tps 10 \
+    --endpoint http://localhost:8000/api/v1/predict \
+    --label-endpoint http://localhost:8000/api/v1/labels
 
-# demo rate: the report records the requested rate and the boost factor (3 percent is about 2,400 times the registry rate)
-python -m fraudx_synthesizer.cli generate -n 5000 --region IN --calibration rbi-psi-2026-07 --fraud-rate 0.03 -o data/demo_in.csv
+# Inspect decoupled request and label feeds directly on stdout as JSON lines:
+python -m fraudx_synthesizer.stream --region US --duration 10 --tps 5 --stdout
 ```
 
-Every target in the profile carries its source. Targets that the public figure cannot support for a card-only stream (the CPFIR average covers every payment system; the discussion paper's value concentration is dominated by authorised push payments on UPI) are reported next to their observed value with the reason they are not gated. UPI, IMPS and PPI figures are listed as out of scope so that a card export is never read as the Indian retail payment mix.
+---
 
-### Streaming to a detector
-
-`python -m fraudx_synthesizer.stream` posts authorisation requests to a detector and releases the labels on a feed of their own. A request carries the authorisation feed and the gateway telemetry of the export contract minus the authorisation outcome (`REQUEST_FIELDS` in `fraudx_synthesizer/stream.py`): no label, no scenario tag, no syndicate identifier, no reference risk score. A label is released only once the bank would know it: an investigator's verdict hours after the alert, a chargeback weeks after the payment, never for fraud that goes unreported (`spec/16_operational_supervision.yaml`). When the endpoint answers a request with a score (`risk_score`, or the field named by `--score-field`), that score drives the investigation queue, so the labels the bank learns follow the detector under test; an answer without a score leaves the generator's reference score in charge. The request fields, the label fields and the two export views are the ones `spec/19_detector_contract.yaml` lists.
-
-```bash
-# Indian traffic at the registry's fraud prevalence, requests to one endpoint, labels to another
-python -m fraudx_synthesizer.stream --region IN --calibration rbi-psi-2026-07 --duration 600 --tps 5 \
-    --endpoint http://localhost:8000/api/v1/predict --label-endpoint http://localhost:8000/api/v1/labels
-
-# a demo rate, labels appended to a file; --flush-labels releases at the end every label the bank would ever learn
-python -m fraudx_synthesizer.stream --region IN --fraud-rate 0.03 --duration 120 --tps 10 \
-    --endpoint http://localhost:8000/api/v1/predict --label-file data/labels.jsonl --flush-labels
-
-# no endpoint: requests and labels on stdout as {"kind": "request" | "label", "payload": {...}} lines
-python -m fraudx_synthesizer.stream --region US --duration 30 --tps 5 --stdout
-```
-
-### Python API
-
-```python
-from fraudx_synthesizer import SimulationEngine
-
-# Initialize simulation engine for Indian payment ecosystem
-engine = SimulationEngine(
-    n_cards=500,
-    n_merchants=100,
-    region="IN",
-    seed=42,
-)
-
-# Generate batch of 1,000 transactions
-records = engine.generate_batch(
-    n_transactions=1000,
-    fraud_prevalence=0.04,
-    time_span_days=14,
-)
-
-print(f"Synthesized {len(records)} transactions.")
-sample = records[0]
-print(f"TX ID: {sample['transaction_id']} | MTI: {sample['mti']} | ISO Field 39: {sample['response_code']}")
-print(f"Amount: {sample['amount']} {sample['currency']} (Minor Units: {sample['amount_minor']})")
-print(f"Dominant Causal Driver: {sample['dominant_causal_driver']}")
-```
-
-### Benchmarking Post-Hoc Explainers (TreeSHAP) Against Causal Ground Truth
+### Benchmarking Post-Hoc Explainers Against Causal Ground Truth
 
 FraudxAI includes an automated evaluation harness conforming to **Quantus (JMLR 2023)** and **OpenXAI (NeurIPS 2022)** standards:
 
-#### CLI Benchmark:
 ```bash
-python -m fraudx_synthesizer.cli benchmark -n 2000 --model lightgbm --seed 42
+fraudx benchmark -n 2000 --model lightgbm --seed 42
 ```
 
+Sample Benchmark Output:
 ```
 =================================================================
   FRAUDX-AI EMPIRICAL XAI BENCHMARK RESULTS
@@ -251,118 +258,142 @@ python -m fraudx_synthesizer.cli benchmark -n 2000 --model lightgbm --seed 42
 -----------------------------------------------------------------
   Ranking Concordance (Kendall Tau):      0.4439
   Rank Correlation (Spearman Rho):        0.4357
-  Normalized Attribution Dist (L2):       1.1119
-  Top-3 Support Recovery (Precision@3):   0.5333
-  Intervention Precision (P@3):           0.6286
-  Intervention Recall (R@3):              0.5643
-  Relative Attribution Error (Log-Odds):  12.91
+  Normalized Attribution Dist (L2):       1.0808
+  Top-3 Support Recovery (Precision@3):   0.5556
+  Intervention Precision (P@3):           0.7222
+  Intervention Recall (R@3):              0.6944
+  Relative Attribution Error (Log-Odds):  44.01
 =================================================================
 ```
 
-> **Attribution Metric Notes:**
-> * **Intervention Precision & Recall ($P@3$, $R@3$):** Measures whether the top-3 features identified by post-hoc explainers match the actual causal intervention levers injected during simulated adversary attacks.
-> * **Rank Correlations (Kendall $\tau_b$, Spearman $\rho$):** Evaluated with fractional midrank tie-handling on sparse causal vectors, demonstrating genuine monotonic alignment between post-hoc surrogate rankings and causal ground truth.
-> * **Relative Attribution Error & Normalized Distance:** Evaluated in domain-aligned log-odds space and unit-norm simplex representations, eliminating cross-domain scale distortion between raw margin-space TreeSHAP and probability space.
+---
 
-#### Python Programmatic API:
+### Python Programmatic API
+
 ```python
-from fraudx_synthesizer import XAIBenchmarkHarness
+from fraudx_synthesizer import SimulationEngine, XAIBenchmarkHarness
 
-harness = XAIBenchmarkHarness(n_transactions=2000, fraud_prevalence=0.05, seed=42)
-summary = harness.run_benchmark(model_type="lightgbm")
+# 1. Initialize simulation engine for Indian payment ecosystem
+engine = SimulationEngine(
+    n_cards=500,
+    n_merchants=100,
+    region="IN",
+    seed=42,
+)
 
-print(f"Kendall Tau Concordance:     {summary.mean_kendall_tau:.4f}")
-print(f"Intervention Precision (P@3): {summary.mean_intervention_precision_at_3:.4f}")
-print(f"Intervention Recall (R@3):    {summary.mean_intervention_recall_at_3:.4f}")
+# 2. Generate a batch of continuous-time transactions
+records = engine.generate_batch(
+    n_transactions=1000,
+    fraud_prevalence=0.04,
+    time_span_days=14,
+)
+
+sample = records[0]
+print(f"TX: {sample['transaction_id']} | MTI: {sample['mti']} | ISO Field 39: {sample['response_code']}")
+print(f"Amount: {sample['amount']} {sample['currency']} | Credit Limit: {sample['credit_limit']}")
+print(f"Causal Ground Truth Driver: {sample['dominant_causal_driver']}")
+
+# 3. Benchmark TreeSHAP against closed-form SCM ground truth
+harness = XAIBenchmarkHarness(n_transactions=1000, fraud_prevalence=0.05, seed=42)
+benchmark_summary = harness.run_benchmark(model_type="lightgbm")
+print(f"Kendall's Tau Concordance: {benchmark_summary.mean_kendall_tau:.4f}")
+print(f"Intervention Precision@3:  {benchmark_summary.mean_intervention_precision_at_3:.4f}")
 ```
 
 ---
 
-## Repository Structure
+## Living Specification Registry (`spec/`)
 
-```
-FraudxAI/
-├── .github/workflows/ci.yml         # GitHub Actions multi-OS / multi-Python CI matrix
-├── fraudx_synthesizer/              # Core Simulation & Causal Benchmark Engine
-│   ├── agents.py                   # Cardholders, Adaptive Fraudsters & Bank Decision Engine
-│   ├── benchmark.py                # Empirical TreeSHAP benchmark harness & Quantus metrics
-│   ├── causal_scm.py               # BankModel ABC, HeuristicBankScorer & Ground Truth Levers
-│   ├── cli.py                      # Production CLI supporting dual regions & feed exports
-│   ├── engine.py                   # Monotonic Priority Queue Discrete-Event Engine (stream_continuous)
-│   ├── evaluation.py               # GroundTruthXAIEvaluator (P@k, R@k, Kendall Tau, RAE)
-│   ├── experimental/               # Untrained / Experimental flow architectures (RealNVP)
-│   ├── invariants.py               # Antipodal Haversine kinematics & monetary conservation
-│   ├── ledger.py                   # StreamingLedger with point-in-time Welford tracking
-│   ├── spec_loader.py              # Spec loader parsing YAML configurations
-│   ├── syndicates.py               # Shared syndicate botnet & mule ring topologies
-│   └── world.py                    # Spatial merchant topologies & MCC taxonomies
-├── spec/                           # Grounded Living Specifications (Single Source of Truth)
-│   ├── 01_financial_instruments.yaml # 11 Global + 5 Indian card product definitions
-│   ├── 02_human_personas.yaml       # 7 Fed DCPC cohorts & circadian arrival simplexes
-│   ├── 03_payment_rail_gaps.yaml    # AFD holds, tip tolerances, STIP, AVS, Visa CE 3.0
-│   ├── 04_adversarial_playbooks.yaml# 10 Grounded cybercrime attack playbooks
-│   ├── 05_india_payment_rails.yaml  # RBI AFA, RuPay on UPI, CoFT, and 1930 cyber-liens
-│   └── research_notes/              # Subagent census dossiers citing official manuals
-├── scripts/
-│   ├── verify_grounded_invariants.py # 37-Scenario Grounded Verification Engine
-│   ├── audit_fraud_realness.py       # Empirical calibration and forensic sanity audit
-│   └── inspect_generated_data.py    # Statistical inspection of synthesized batches
-├── tests/                           # Deterministic Automated PyTest Suite
-│   └── test_synthesizer/            # 60 Unit tests certifying all engine invariants
-├── AGENTS.md                        # Anti-Astronaut Grounding Mandate
-├── CONTRIBUTING.md                  # Contribution Guidelines & Mandate
-├── LICENSE                          # Apache 2.0 License
-└── pyproject.toml
-```
+The simulation is governed by 19 formal living specification files serving as the single source of truth:
+
+| Specification File | Scope & Technical Mandate |
+| :--- | :--- |
+| **`spec/01_financial_instruments.yaml`** | 11 Global card products, issuer credit limit stepping grids, and interchange schedules. |
+| **`spec/02_human_personas.yaml`** | 7 Fed DCPC demographic cohorts, Dirichlet spend allocations, and circadian simplexes. |
+| **`spec/03_payment_rail_gaps.yaml`** | AFD holds, dining tip tolerances, STIP timeout rules, AVS matrix, and Visa CE 3.0. |
+| **`spec/04_adversarial_playbooks.yaml`** | 10 Grounded cybercrime attack playbooks (ATO, PEA, smurfing, Apple Pay Yellow Path). |
+| **`spec/05_india_payment_rails.yaml`** | RBI AFA/OTP, RuPay on UPI, contactless limits, PMJDY overdraft, and 1930 cyber-liens. |
+| **`spec/06_credential_dossier_tiers.yaml`**| Credential completeness tiers (Fullz, Phished OTP, Session Cookies, Track-2 Dumps). |
+| **`spec/07_export_leakage_gate.yaml`** | Anti-separability gates, shared /24 prefix pools, victim-device rules, and prevalence pacing. |
+| **`spec/08_india_calibration_targets.yaml`**| RBI Central Payments Fraud Information Registry (CPFIR) empirical targets. |
+| **`spec/16_operational_supervision.yaml`**| Operational triage queues, Weibull analyst latencies, and LogNormal chargeback lags. |
+| **`spec/19_detector_contract.yaml`** | **The Detector Contract (v1):** Strict 3-feed schema definitions guaranteeing zero leakage. |
 
 ---
 
-## Verification & Test Results
+## Empirical Verification & Test Results
 
 FraudxAI enforces strict, deterministic verification across the entire stack:
 
-### 1. PyTest Unit & Integration Suite (60 / 60 Passed)
+### 1. PyTest Test Suite (**260 / 260 Passed, 100% Green**)
 ```bash
-python -m pytest tests/ -v
+pytest tests/ -v
 ```
 Certifies:
-* Feature risk attribution efficiency in probability and log-odds spaces.
-* Geodesic antipodal stability and 900 km/h commercial transit velocity limits.
-* Closed-loop multi-agent feedback (ISO 51 amount decay, 3DS gateway hopping, card freezes).
-* Strict global temporal monotonicity under concurrent microsecond arrivals.
-* Zero deterministic target label leakage in AVS and billing/shipping fields.
-* Export-level leakage gate: the authorisation feed joined to the gateway telemetry, written and read back as the CLI exports them, is scored by a gradient-boosted learner on a time-ordered split in both regions and both adversary modes. No single column above 0.95 ROC-AUC, no categorical value that is fraud-only, PR-AUC between 0.20 and 0.97 (`spec/07_export_leakage_gate.yaml`).
-* Dual-region institutional schema conformance (USD cents vs. INR paisa, ISO 8583 syntax, MTI 0200 clearing presentment, Visa CE 3.0 deflection, RBI limited liability tiers).
-* Diurnal Poisson arrival thinning (< 4.5% nocturnal trough, > 70% diurnal peak).
-* Multi-stop shopping trip clustering with short inter-arrival delays ($c_v > 1.40$).
-* Calendar-anchored macroeconomic regimes (payday surges, holiday shopping blitzes).
-* Solvency accounting, pre-auth holds, and non-mutating decline invariants.
-* Shared syndicate topologies (botnet IP subnets and mule account rings).
-* Attackers and cardholders share the consumer address space, and malware and vishing attacks run on the victim's own device; fraud reaches the mobile and contactless channels; credit lines fall on issuer steps; small batches deliver the requested prevalence (`spec/07_export_leakage_gate.yaml` sections 16 to 19, `credit_limit_assignment` in `spec/01` and `spec/05`).
-* The streaming daemon posts request fields only, and the label feed releases each label in discovery order and never before its discovery time (`tests/test_stream_feeds.py`).
+* **Detector Contract Conformance (`spec/19`):** Authorisation request feeds contain strictly pre-decision fields; zero scenario tags, labels, or internal reference scores leak.
+* **Closed-Loop Feedback:** Stream daemon's investigation queue follows the detector under test; labels released in discovery order without temporal lookahead.
+* **Anti-Separability:** Attackers and cardholders share consumer IP space; victim-device malware retains cardholder device bindings; credit lines fall on issuer steps.
+* **Causal Attribution Efficiency:** Owen multilinear extensions and 128-point path integration satisfy the Shapley efficiency axiom.
+* **Kinematics & Invariants:** Antipodal stability, Haversine travel velocities strictly $< 900\,\text{km/h}$, strict temporal monotonicity, and balance conservation across declines.
 
-### 2. Grounded 37-Scenario Invariant Verification (100% Passed)
+### 2. Grounded 37-Scenario Operational Invariant Engine (**100% Passed**)
 ```bash
 python scripts/verify_grounded_invariants.py
 ```
-Validates 37 formal operational scenarios across:
-* **Part A (Adversarial Playbooks)**: Micro-auth probing, 14-day silent ATO baking, sleeper bust-outs, Apple Pay yellow-path tokenization, nocturnal sleep suppression, reverse-proxy vishing, and APK SMS stealers.
-* **Part B (Payment Rail Plumbing)**: AFD \$175 pre-auth nozzle cutoffs, hotel incidental folios, dining 20% tip adjustments, STIP 2.0s SLA outages, AVS matrix adjudication, and India ₹5,000 contactless limits.
-* **Part C (Consumer Dynamics & Quirks)**: Dhanteras gold splitting (Rule 114B ₹2L cap), fuel surcharge waivers, no-cost EMI discounts, forgotten subscription churn, and multi-modal discovery latencies.
-* **Part D (Merchant Risk & Disputes)**: PEA additive guessing, triangulation fraud multipliers, Visa CE 3.0 pre-dispute deflection, \$500 network arbitration veto, RBI Circular `RBI/2017-18/15` limited liability tiers, and CFCFRMS Helpline 1930 golden hour races.
+Validates 37 formal operational scenarios spanning:
+* **Part A (Adversarial Playbooks):** Micro-auth probing, 14-day silent ATO baking, sleeper bust-outs, Apple Pay yellow-path tokenization, nocturnal bursts, reverse-proxy vishing, and APK SMS stealers.
+* **Part B (Payment Rail Plumbing):** AFD \$175 pre-auth nozzle cutoffs, hotel incidental folios, dining 20% tip adjustments, STIP 2.0s SLA outages, AVS matrix adjudication, and India ₹5,000 contactless limits.
+* **Part C (Consumer Dynamics & Quirks):** Dhanteras gold splitting (Rule 114B ₹2L cap), fuel surcharge waivers, no-cost EMI discounts, forgotten subscription churn, and multi-modal discovery latencies.
+* **Part D (Merchant Risk & Disputes):** PEA additive guessing, triangulation fraud multipliers, Visa CE 3.0 pre-dispute deflection, \$500 network arbitration veto, RBI Circular `RBI/2017-18/15` limited liability tiers, and CFCFRMS Helpline 1930 golden hour races.
+
+### 3. Forensic Dataset Realness Audit
+```bash
+python scripts/audit_fraud_realness.py
+```
+* **Benford's Law First-Digit Conformity:** Legitimate transaction amounts conform to Benford's Law (Mean Absolute Deviation $< 0.012$), while fraud spend exhibits anomalous digit manipulation.
+* **Circadian Dynamics:** Diurnal arrival schedule suppresses nocturnal transactions to $< 4.5\%$ while peaking during retail business hours.
+* **Realistic ML Separability:** Logistic Regression PR-AUC falls in the realistic operational range ($0.30 - 0.50$), proving that hard negatives create genuine false alarms and stealthy fraud slips through.
 
 ---
 
-## Grounding Mandate (Anti-Astronaut Policy)
+## Anti-Astronaut Grounding Mandate
 
 This repository adheres strictly to the **Anti-Astronaut Grounding Mandate** codified in [`AGENTS.md`](AGENTS.md):
-1. **Zero Theoretical Buzzwords**: No speculative, non-implementable concepts (no quantum computing, neuromorphic hardware, or zero-knowledge rollups unless backed by executable Python code).
-2. **Physical & Financial Units**: Every parameter has concrete units (USD cents, INR paisa, seconds, km/h, probabilities in $[0.0, 1.0]$).
-3. **Real-World Banking Plumbing**: Models reflect actual payment networks, ISO 8583 response codes, AVS matrices, 3DS 2.x rules, and statutory circulars.
-4. **Specification-First Lifecycle**: `spec/` $\to$ Deterministic Tests $\to$ Minimal Implementation $\to$ Raw Data Inspection.
+1. **Zero Theoretical Buzzwords:** No speculative, non-implementable concepts (no ungrounded quantum algorithms or non-executable claims).
+2. **Physical & Financial Units:** Every parameter has explicit units (USD cents, INR paisa, seconds, km/h, probabilities in $[0.0, 1.0]$).
+3. **Real-World Banking Plumbing:** Models reflect actual payment networks, ISO 8583 response codes, AVS matrices, 3DS 2.x rules, and statutory central bank circulars.
+4. **Specification-First Lifecycle:** `spec/` $\to$ Deterministic Invariant Tests $\to$ Implementation $\to$ Raw Data Inspection.
+
+---
+
+## Citation
+
+If you use FraudxAI in your research or project, please cite:
+
+```bibtex
+@software{shah2026fraudxai,
+  author       = {Bhavya Shah},
+  title        = {FraudxAI: Grounded Multi-Agent Payment Fraud Simulation & Causal XAI Benchmark},
+  year         = {2026},
+  publisher    = {GitHub},
+  journal      = {GitHub repository},
+  howpublished = {\url{https://github.com/Bhavyashah94/FraudxAI}},
+  version      = {0.3.0}
+}
+```
 
 ---
 
 ## License
 
-This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the **Apache License 2.0** - see the [LICENSE](LICENSE) file for details.
+
+```
+Copyright 2024-2026 Bhavya Shah
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+```

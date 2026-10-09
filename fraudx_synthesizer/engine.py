@@ -19,7 +19,7 @@ import math
 import zlib
 from datetime import datetime, timezone
 import time
-from typing import Any, Dict, Iterator, List, Optional, Tuple
+from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple
 
 import numpy as np
 
@@ -418,6 +418,7 @@ class DiscreteEventEngine:
                 last_physical_lat=float(home_lats[i]),
                 last_physical_lon=float(home_lons[i]),
                 last_physical_time=-1.0,
+                last_merchant_id=None,
                 product_id=product_id,
                 cohort_id=cohort_id,
                 region=self.region,
@@ -532,7 +533,7 @@ class DiscreteEventEngine:
 
     def generate_batch(
         self,
-        n_transactions: int = 5000,
+        n_transactions: Optional[int] = 5000,
         fraud_prevalence: float = 0.02,
         time_span_days: int = 30,
         start_time_seconds: float = 1704067200.0,  # 2024-01-01 00:00:00 UTC
@@ -540,7 +541,11 @@ class DiscreteEventEngine:
         active_macro_regime: Optional[str] = None,
         chunk_callback: Optional[Any] = None,
         chunk_size: int = 10000,
-        pace_to_sample_budget: bool = True,
+        pace_to_sample_budget: Optional[bool] = None,
+        progress_callback: Optional[Callable[[int, int, Optional[Dict[str, Any]]], None]] = None,
+        progress_interval: int = 250,
+        simulation_mode: str = "transactions",
+        max_transactions: int = 100000,
     ) -> List[Dict[str, Any]]:
         """Generates transactions via discrete-event priority queue with strict monotonicity."""
         records: List[Dict[str, Any]] = []
@@ -569,11 +574,23 @@ class DiscreteEventEngine:
             c.active_trip_cluster_lat = 0.0
             c.active_trip_cluster_lon = 0.0
             c.relocation_until = -1.0
+            c.last_physical_time = -1.0
+            c.last_merchant_id = None
+            c.last_physical_lat = c.home_lat
+            c.last_physical_lon = c.home_lon
+            c.active_travel_until = -1.0
+            c.travel_transit_until = -1.0
 
         # 1. Compute aggregate arrival rates and pacing
         n_cards = len(self.cards)
-        if pace_to_sample_budget:
-            mean_tx_per_card = n_transactions / max(n_cards, 1)
+        if pace_to_sample_budget is None:
+            effective_pace = (simulation_mode == "transactions")
+        else:
+            effective_pace = bool(pace_to_sample_budget)
+
+        if effective_pace:
+            target_n = n_transactions if n_transactions is not None else 5000
+            mean_tx_per_card = target_n / max(n_cards, 1)
             mean_inter_arrival_sec = (time_span_days * day_seconds) / max(mean_tx_per_card, 1.0)
             agg_routine_rate = n_cards / mean_inter_arrival_sec
         else:
@@ -658,15 +675,27 @@ class DiscreteEventEngine:
         pacing_window_sec = float(self.specs.telemetry.prevalence_window_hours) * 3600.0
         legit_times: collections.deque = collections.deque()
         loop_iterations = 0
-        max_loop_iterations = max(50000, n_transactions * 25)
+        if simulation_mode == "days":
+            end_time_seconds = start_time_seconds + time_span_days * day_seconds
+            tx_target_limit = max_transactions
+            target_total = max(50, int(len(self.cards) * time_span_days * 2.13))
+            max_loop_iterations = max(50000, max_transactions * 25)
+        else:
+            end_time_seconds = float("inf")
+            target_n = n_transactions if n_transactions is not None else 5000
+            tx_target_limit = target_n
+            target_total = target_n
+            max_loop_iterations = max(50000, target_n * 25)
 
-        while self.event_queue and tx_counter < n_transactions:
+        while self.event_queue and tx_counter < tx_target_limit:
             loop_iterations += 1
             if loop_iterations >= max_loop_iterations:
                 break
 
             t_us, _, evt_type, card_id, gen, payload = heapq.heappop(self.event_queue)
             tx_time_sec = t_us / 1_000_000.0
+            if simulation_mode == "days" and tx_time_sec >= end_time_seconds:
+                break
             is_fraud_evt = (evt_type == EVT_FRAUD_ATTACK)
 
             # Dynamically schedule next fraud attack in competing Poisson stream
@@ -1139,9 +1168,13 @@ class DiscreteEventEngine:
                 if channel.startswith("CP") and card.last_physical_time >= 0.0:
                     dt_sec = max(0.0, tx_time_sec - card.last_physical_time)
                     last_mid = card.last_merchant_id
+                    last_plat = card.last_physical_lat
+                    last_plon = card.last_physical_lon
                 else:
                     dt_sec = None
                     last_mid = None
+                    last_plat = None
+                    last_plon = None
 
                 merchant = self.world.route_merchant_by_gravity(
                     agent_lat=curr_lat,
@@ -1151,6 +1184,8 @@ class DiscreteEventEngine:
                     preferred_mcc=preferred_mcc,
                     delta_t_sec=dt_sec,
                     last_merchant_id=last_mid,
+                    last_lat=last_plat,
+                    last_lon=last_plon,
                 )
                 merchant_id = merchant.merchant_id
                 merchant_name = merchant.name
@@ -1538,9 +1573,21 @@ class DiscreteEventEngine:
             else:
                 legit_times.append(tx_time_sec)
 
+            if progress_callback is not None and (tx_counter % progress_interval == 0 or tx_counter == tx_target_limit):
+                try:
+                    progress_callback(tx_counter, target_total, record, records)
+                except TypeError:
+                    progress_callback(tx_counter, target_total, record)
+
             if chunk_callback is not None and len(records) >= chunk_size:
                 chunk_callback(records)
                 records = []
+
+        if progress_callback is not None and (tx_counter % progress_interval != 0 or simulation_mode == "days"):
+            try:
+                progress_callback(tx_counter, tx_counter if simulation_mode == "days" else target_total, records[-1] if records else None, records)
+            except TypeError:
+                progress_callback(tx_counter, tx_counter if simulation_mode == "days" else target_total, records[-1] if records else None)
 
         if chunk_callback is not None and records:
             chunk_callback(records)

@@ -445,6 +445,8 @@ class HeuristicBankScorer(BankModel):
                     min_contrib = phi_p
                     best_driver = feat_name
 
+        currency_sym = "₹" if record.get("currency") == "INR" else "$"
+
         # 5. Narrative Explanation Generation
         narrative = self._generate_narrative(
             scenario_tag=scenario_tag,
@@ -452,6 +454,7 @@ class HeuristicBankScorer(BankModel):
             driver=best_driver,
             active_parents=active_parents,
             amount=amount,
+            currency_sym=currency_sym,
         )
 
         return CausalGroundTruth(
@@ -481,12 +484,13 @@ class HeuristicBankScorer(BankModel):
         driver: str,
         active_parents: List[str],
         amount: float,
+        currency_sym: str = "$",
     ) -> str:
         """Generates clear, analyst-readable causal narrative."""
         if is_fraud == 0:
             if "HARD_NEGATIVE" in scenario_tag:
                 return (
-                    f"Legitimate high-ticket or travel outlier (${amount:.2f}). "
+                    f"Legitimate high-ticket or travel outlier ({currency_sym}{amount:.2f}). "
                     f"Elevated features ({', '.join(active_parents) if active_parents else driver}) "
                     f"are mitigated by authentic EMV cryptographic verification."
                 )
@@ -494,25 +498,25 @@ class HeuristicBankScorer(BankModel):
 
         if scenario_tag == "CARD_TESTING_BURST":
             return (
-                f"Automated card testing probe (${amount:.2f}). Attacker probed card validity "
+                f"Automated card testing probe ({currency_sym}{amount:.2f}). Attacker probed card validity "
                 f"at a low-friction merchant; primary causal driver: {driver}."
             )
         elif scenario_tag == "ACCOUNT_TAKEOVER":
             return (
-                f"Account Takeover exploitation (${amount:.2f}). Transaction initiated from an anomalous "
+                f"Account Takeover exploitation ({currency_sym}{amount:.2f}). Transaction initiated from an anomalous "
                 f"offshore IP; primary causal driver: {driver}."
             )
         elif scenario_tag == "COUNTERFEIT_CLONE" or scenario_tag == "IMPOSSIBLE_TRAVEL":
             return (
-                f"Counterfeit magstripe clone (${amount:.2f}). Terminal swipe executed at remote POS "
+                f"Counterfeit magstripe clone ({currency_sym}{amount:.2f}). Terminal swipe executed at remote POS "
                 f"concurrent with local cardholder activity; primary causal driver: {driver}."
             )
         elif scenario_tag == "SLEEPER_BUST_OUT":
             return (
-                f"Credit line bust-out (${amount:.2f}). High-utilization balance drain; "
+                f"Credit line bust-out ({currency_sym}{amount:.2f}). High-utilization balance drain; "
                 f"primary causal driver: {driver}."
             )
-        return f"Adversarial attack ({scenario_tag}, ${amount:.2f}) driven by {driver}."
+        return f"Adversarial attack ({scenario_tag}, {currency_sym}{amount:.2f}) driven by {driver}."
 
     def score(self, record: Dict[str, Any]) -> float:
         """Computes continuous risk score using the heuristic polynomial."""

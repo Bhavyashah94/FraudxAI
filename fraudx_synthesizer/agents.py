@@ -164,6 +164,7 @@ class CardholderProfile:
     last_physical_lat: float = 0.0
     last_physical_lon: float = 0.0
     last_physical_time: float = -1.0
+    last_merchant_id: Optional[str] = None
 
     # Behavioral state machine
     state: CardholderState = CardholderState.HOMESTEAD

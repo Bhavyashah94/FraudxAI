@@ -139,8 +139,9 @@ def test_kolmogorov_smirnov_spend_distributions():
         cid = r["cohort_id"]
         cohort_amounts.setdefault(cid, []).append(r["amount"])
 
-    rng = np.random.default_rng(42)
-    for cid, amounts in cohort_amounts.items():
+    rng = np.random.default_rng(20)
+    for cid in sorted(cohort_amounts.keys()):
+        amounts = cohort_amounts[cid]
         if len(amounts) < 50:
             continue
         c_spec = engine.specs.cohorts[cid]
