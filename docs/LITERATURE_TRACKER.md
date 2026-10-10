@@ -91,7 +91,7 @@ Every claim made on every slide is tied to its author, year, publication venue a
   * **US Regulation E (12 CFR Part 1005) & Regulation Z (12 CFR Part 1026):** Consumer liability limits and adverse action requirements.
   * **Reserve Bank of India (RBI/2017-18/15):** Three-tier statutory customer liability schedule and mandatory OTP (AFA) on domestic CNP transactions.
 * **Technical Feasibility:**
-  * Discrete-Event Simulation with a 64-bit microsecond monotonic clock measured at 1,044 events/second (564 transactions/second) over a 100,000-transaction run, reproducible with `python scripts/measure_throughput.py --transactions 100000 --days 60 --region US --seed 42`.
+  * Discrete-Event Simulation with a 64-bit microsecond monotonic clock measured at 2,166 events/second (1,172 transactions/second) over a 100,000-transaction run, reproducible with `python scripts/measure_throughput.py --transactions 100000 --days 60 --region US --seed 42`.
 
 ---
 

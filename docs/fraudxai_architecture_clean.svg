@@ -112,7 +112,7 @@
       <text x="24" y="94" class="card-body">8 event lifecycles: tx,</text>
       <text x="24" y="109" class="card-body">attacks, clearing, payroll</text>
       <rect x="12" y="142" width="118" height="24" rx="5" fill="#EFF6FF" stroke="#93C5FD" stroke-width="1.2"/>
-      <text x="18" y="158" font-size="11px" font-weight="700" fill="#1D4ED8">1,044 events/sec (measured)</text>
+      <text x="18" y="158" font-size="11px" font-weight="700" fill="#1D4ED8">2,166 events/sec (measured)</text>
     </g>
 
     <!-- Card 2: Streaming Ledger -->

@@ -538,19 +538,19 @@ The table below contrasts conventional approaches with FraudxAI's architecture a
 ## 6. References & Local Artifact Manifest
 
 ### Downloaded Anchor Papers in Local Repository (`docs/papers/`)
-- [`1707.02640.pdf`](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/1707.02640.pdf): Dal Pozzolo et al. (2018) / Reference anchor on verification latency & prequential modeling. *(Note: Registered in manifest; verified in IEEE TNNLS DOI: 10.1109/TNNLS.2017.2736643)*.
-- [`2211.13358.pdf`](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2211.13358.pdf): Jesus et al. (2022) — *Turning the Tables: Biased, Imbalanced, Dynamic Tabular Datasets for ML Evaluation* (BAF suite).
-- [`1506.06980.pdf`](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/1506.06980.pdf): Hardt et al. (2016) — *Strategic Classification*.
-- [`2002.06673.pdf`](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2002.06673.pdf): Perdomo et al. (2020) — *Performative Prediction*.
-- [`2101.08030.pdf`](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2101.08030.pdf): Cartella et al. (2021) — *Adversarial Attacks for Tabular Data: Application to Fraud Detection and Imbalanced Data*.
-- [`1910.10362.pdf`](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/1910.10362.pdf): Miller, Milli, Hardt (2020) — *Strategic Classification is Causal Modeling in Disguise*.
-- [`2302.06280.pdf`](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2302.06280.pdf): Horowitz & Rosenfeld (2023) — *Causal Strategic Classification: A Tale of Two Shifts*.
-- [`2002.04333.pdf`](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2002.04333.pdf): Tsirtsis & Gomez-Rodriguez (2021) — *Decisions, Counterfactual Explanations and Strategic Behavior*.
+- `1707.02640.pdf` (local copy removed): Dal Pozzolo et al. (2018) / Reference anchor on verification latency & prequential modeling. *(Note: Registered in manifest; verified in IEEE TNNLS DOI: 10.1109/TNNLS.2017.2736643)*.
+- `2211.13358.pdf` (local copy removed): Jesus et al. (2022) — *Turning the Tables: Biased, Imbalanced, Dynamic Tabular Datasets for ML Evaluation* (BAF suite).
+- `1506.06980.pdf` (local copy removed): Hardt et al. (2016) — *Strategic Classification*.
+- `2002.06673.pdf` (local copy removed): Perdomo et al. (2020) — *Performative Prediction*.
+- `2101.08030.pdf` (local copy removed): Cartella et al. (2021) — *Adversarial Attacks for Tabular Data: Application to Fraud Detection and Imbalanced Data*.
+- `1910.10362.pdf` (local copy removed): Miller, Milli, Hardt (2020) — *Strategic Classification is Causal Modeling in Disguise*.
+- `2302.06280.pdf` (local copy removed): Horowitz & Rosenfeld (2023) — *Causal Strategic Classification: A Tale of Two Shifts*.
+- `2002.04333.pdf` (local copy removed): Tsirtsis & Gomez-Rodriguez (2021) — *Decisions, Counterfactual Explanations and Strategic Behavior*.
 
 ### Related Codebase Files
-- [`fraudx_synthesizer/agents.py`](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/fraudx_synthesizer/agents.py): Dynamic adversary FSM, ISO 51 amount decay, 3DS gateway hopping, velocity backoff.
-- [`fraudx_synthesizer/causal_scm.py`](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/fraudx_synthesizer/causal_scm.py): Structural causal risk engine, Owen Shapley log-odds, Gauss-Legendre path integration.
-- [`fraudx_synthesizer/intent.py`](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/fraudx_synthesizer/intent.py): POMDP adversary intent optimizer and 4-hop payment switch routing engine.
-- [`fraudx_synthesizer/ledger.py`](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/fraudx_synthesizer/ledger.py): Double-entry transactional ledger and verification latency tracking.
-- [`scripts/download_arxiv_papers.py`](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/scripts/download_arxiv_papers.py): arXiv paper acquisition and validation utility with SSL fallback.
-- [`docs/papers/manifest.json`](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/manifest.json): Downloaded paper metadata manifest.
+- [`fraudx_synthesizer/agents.py`](../../fraudx_synthesizer/agents.py): Dynamic adversary FSM, ISO 51 amount decay, 3DS gateway hopping, velocity backoff.
+- [`fraudx_synthesizer/causal_scm.py`](../../fraudx_synthesizer/causal_scm.py): Structural causal risk engine, Owen Shapley log-odds, Gauss-Legendre path integration.
+- [`fraudx_synthesizer/intent.py`](../../fraudx_synthesizer/intent.py): POMDP adversary intent optimizer and 4-hop payment switch routing engine.
+- [`fraudx_synthesizer/ledger.py`](../../fraudx_synthesizer/ledger.py): Double-entry transactional ledger and verification latency tracking.
+- [`scripts/download_arxiv_papers.py`](../../scripts/download_arxiv_papers.py): arXiv paper acquisition and validation utility with SSL fallback.
+- [`docs/papers/manifest.json`](../papers/manifest.json): Downloaded paper metadata manifest.

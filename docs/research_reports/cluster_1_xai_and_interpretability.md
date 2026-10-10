@@ -1,8 +1,8 @@
 # Forensic Research Report: Explainable AI (XAI) & Interpretability in Payment Fraud Detection
 
 **Cluster**: Cluster 1 — Explainable AI, Feature Attribution, and Post-Hoc Interpretability  
-**Repository**: [FraudxAI](file:///c:/Users/bhavy/Documents/Projects/FraudxAI)  
-**Target Path**: [`docs/research_reports/cluster_1_xai_and_interpretability.md`](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/docs/research_reports/cluster_1_xai_and_interpretability.md)  
+**Repository**: [FraudxAI](../..)  
+**Target Path**: [`docs/research_reports/cluster_1_xai_and_interpretability.md`](cluster_1_xai_and_interpretability.md)  
 **Author**: Academic Research & Forensic Analysis Agent  
 **Date**: September 2026  
 **Status**: Certified Complete  
@@ -17,7 +17,7 @@ However, a fundamental theoretical and empirical rift divides the machine learni
 1. **The Supporting/Foundational Camp** argues that cooperative game-theoretic formulations (Shapley values, Aumann-Shapley path integrals) provide the only mathematically principled, axiomatic framework for distributing additive feature importance, enabling standardized benchmarking frameworks such as **Quantus** (Hedström et al., JMLR 2023) and **OpenXAI** (Agarwal et al., NeurIPS 2022).
 2. **The Opposing/Critical Camp**—spearheaded by Cynthia Rudin (Nature Machine Intelligence 2019), Kumar et al. (ICML 2020), and Slack et al. (AIES 2020)—demonstrates that post-hoc surrogates are fundamentally unfaithful to the underlying predictor, evaluate models on physically impossible out-of-distribution (OOD) data points, fail to satisfy basic legal requirements for contrastive recourse, and can be actively subverted by adversarial scaffolding.
 
-This report synthesizes a catalog of 30 peer-reviewed papers spanning both paradigms, performs an in-depth forensic dissection of five anchor manuscripts, evaluates how the opposing arguments challenge FraudxAI's benchmarking suite, and details the architectural defenses implemented within [FraudxAI](file:///c:/Users/bhavy/Documents/Projects/FraudxAI) (including exact Owen multilinear decomposition, 128-point Gauss-Legendre quadrature, EMV Bit 55 cryptographic invariants, and normalizing flow counterfactual abduction).
+This report synthesizes a catalog of 30 peer-reviewed papers spanning both paradigms, performs an in-depth forensic dissection of five anchor manuscripts, evaluates how the opposing arguments challenge FraudxAI's benchmarking suite, and details the architectural defenses implemented within [FraudxAI](../..) (including exact Owen multilinear decomposition, 128-point Gauss-Legendre quadrature, EMV Bit 55 cryptographic invariants, and normalizing flow counterfactual abduction).
 
 ---
 
@@ -63,7 +63,7 @@ The following table presents a structured catalog of 30 pivotal research papers 
 ## 3. In-Depth Forensic Reviews of Anchor Papers
 
 ### 3.1 Cynthia Rudin (2019) — *Stop Explaining Black Box Machine Learning Models for High Stakes Decisions*
-*Nature Machine Intelligence*, 1(5):206–215. [arXiv:1811.10154](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/1811.10154.pdf)
+*Nature Machine Intelligence*, 1(5):206–215. arXiv:1811.10154 (local copy removed)
 
 ```
                        THE SURROGATE FIDELITY GAP
@@ -88,7 +88,7 @@ The following table presents a structured catalog of 30 pivotal research papers 
 ---
 
 ### 3.2 Kumar et al. (2020) — *Problems with Shapley-value-based explanations as feature importance measures*
-*ICML 2020*. [arXiv:2002.11097](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2002.11097.pdf)
+*ICML 2020*. arXiv:2002.11097 (local copy removed)
 
 #### Mathematical Dissection of the Characteristic Function $v(S)$
 Shapley-value explainers define a cooperative game where the players are the input features $N = \{1, \dots, d\}$, and the value function $v(S)$ represents the model's prediction when only the subset of features $S \subseteq N$ is known:
@@ -111,7 +111,7 @@ Kumar et al. demonstrate that defining $v(S)$ requires "removing" features in $N
 ---
 
 ### 3.3 Hedström et al. (2023) — *Quantus: An Explainable AI Toolkit for Responsible Evaluation*
-*JMLR*, 24(75):1–11. [arXiv:2202.06861](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2202.06861.pdf)
+*JMLR*, 24(75):1–11. arXiv:2202.06861 (local copy removed)
 
 #### The Six Pillars of Explanation Evaluation
 Hedström et al. formalize a comprehensive taxonomy for evaluating explanation methods across six orthogonal criteria:
@@ -143,7 +143,7 @@ Hedström et al. formalize a comprehensive taxonomy for evaluating explanation m
 ---
 
 ### 3.4 Agarwal et al. (2022) — *OpenXAI: Towards a Transparent Evaluation of Post hoc Model Explanations*
-*NeurIPS 2022*. [arXiv:2206.11104](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2206.11104.pdf)
+*NeurIPS 2022*. arXiv:2206.11104 (local copy removed)
 
 #### Tabular Benchmarking Architecture
 OpenXAI establishes the first systematic benchmark dedicated exclusively to tabular post-hoc explanations. It assesses six explainers (LIME, KernelSHAP, TreeSHAP, Integrated Gradients, SmoothGrad, Vanilla Gradients) across three dimensions:
@@ -160,7 +160,7 @@ OpenXAI establishes the first systematic benchmark dedicated exclusively to tabu
 ---
 
 ### 3.5 Slack et al. (2020) — *Fooling LIME and SHAP: Adversarial Attacks on Post hoc Explanation Methods*
-*AAAI/ACM AIES 2020*. [arXiv:1911.02508](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/1911.02508.pdf)
+*AAAI/ACM AIES 2020*. arXiv:1911.02508 (local copy removed)
 
 ```
                      SLACK ET AL. ADVERSARIAL SCAFFOLDING
@@ -194,7 +194,7 @@ $$e(\mathbf{x}) = \begin{cases} f(\mathbf{x}) & \text{if } \mathbf{x} \in \mathc
 
 ## 4. Direct Analytical Challenges to FraudxAI's XAI Benchmark Harness
 
-FraudxAI includes an automated evaluation harness ([`fraudx_synthesizer/benchmark.py`](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/fraudx_synthesizer/benchmark.py)) that benchmarks tree explainers (TreeSHAP) against structural causal ground-truth vectors across metrics including Kendall's $\tau_b$, Spearman's $\rho$, Directional Cosine Similarity, and Precision@k.
+FraudxAI includes an automated evaluation harness ([`fraudx_synthesizer/benchmark.py`](../../fraudx_synthesizer/benchmark.py)) that benchmarks tree explainers (TreeSHAP) against structural causal ground-truth vectors across metrics including Kendall's $\tau_b$, Spearman's $\rho$, Directional Cosine Similarity, and Precision@k.
 
 The critical academic literature directly challenges this harness across four specific operational vectors:
 
@@ -227,7 +227,7 @@ The critical academic literature directly challenges this harness across four sp
 
 ## 5. FraudxAI's Architectural Defense & Grounded Engineering Adaptations
 
-FraudxAI resolves these fundamental challenges by implementing a multi-layered, grounded architecture codified in [`fraudx_synthesizer/causal_scm.py`](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/fraudx_synthesizer/causal_scm.py), [`fraudx_synthesizer/invariants.py`](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/fraudx_synthesizer/invariants.py), and [`fraudx_synthesizer/benchmark.py`](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/fraudx_synthesizer/benchmark.py).
+FraudxAI resolves these fundamental challenges by implementing a multi-layered, grounded architecture codified in [`fraudx_synthesizer/causal_scm.py`](../../fraudx_synthesizer/causal_scm.py), [`fraudx_synthesizer/invariants.py`](../../fraudx_synthesizer/invariants.py), and [`fraudx_synthesizer/benchmark.py`](../../fraudx_synthesizer/benchmark.py).
 
 ```
                             FRAUDX-AI CAUSAL DEFENSE STACK
@@ -265,7 +265,7 @@ FraudxAI resolves these fundamental challenges by implementing a multi-layered, 
 ```
 
 ### Defense 1: Exact Closed-Form Causal Ground Truth
-Rather than treating a post-hoc explainer's output as ground truth (a circular reasoning trap identified by OpenXAI and Quantus), FraudxAI derives **exact, closed-form game-theoretic attributions** directly from its data-generating Structural Causal Model ([`StructuralCausalEngine`](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/fraudx_synthesizer/causal_scm.py#L61-L360)):
+Rather than treating a post-hoc explainer's output as ground truth (a circular reasoning trap identified by OpenXAI and Quantus), FraudxAI derives **exact, closed-form game-theoretic attributions** directly from its data-generating Structural Causal Model ([`StructuralCausalEngine`](../../fraudx_synthesizer/causal_scm.py)):
 
 1. **Logit-Space Owen Multilinear Decomposition**:
    The log-odds of fraud is modeled as a multilinear expansion containing linear terms $A_{i,0}$, pairwise interaction synergies $A_{i,1}$, and three-way synergies $A_{i,2}$:
@@ -288,7 +288,7 @@ To prevent the off-manifold perturbation failures proven by Kumar et al. and Mol
    Transactions are constrained by great-circle kinematic limits ($v < 900\,\text{km/h}$). Card-present impossible travel is strictly bounded, preventing explainers from generating supersonic perturbation points.
 2. **EMV Bit 55 Cryptographic Dampening**:
    Legitimate high-ticket anomalies (e.g., Indian Dhanteras gold purchases, luxury electronics) carry valid EMV Chip Application Request Cryptograms (`Tag 9F26 ARQC`), Terminal Verification Results (`Tag 95 TVR`), and PIN verification (`Tag 9F34`).
-   In [`causal_scm.py`](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/fraudx_synthesizer/causal_scm.py#L93-L98), these cryptographic tokens apply strong negative log-odds weights:
+   In [`causal_scm.py`](../../fraudx_synthesizer/causal_scm.py), these cryptographic tokens apply strong negative log-odds weights:
    ```python
    "emv_arqc_verified": -3.80,
    "emv_pin_verified":  -1.80,
@@ -297,18 +297,28 @@ To prevent the off-manifold perturbation failures proven by Kumar et al. and Mol
    Furthermore, pairwise synergy between velocity and IP distance is physically suppressed when `emv_arqc_verified == 1.0`, ensuring that physical terminal presence cancels spurious remote-network risk attributions.
 
 ### Defense 3: Pearl's 3-Step Counterfactual Foil via Invertible Flows
-To address Rudin and Laugel et al.'s critique regarding ungrounded counterfactuals, FraudxAI implements Pearl's structural counterfactual pipeline using a Conditional RealNVP Normalizing Flow ([`ConditionalRealNVPFlow`](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/fraudx_synthesizer/causal_scm.py#L141-L145)):
+To address Rudin and Laugel et al.'s critique regarding ungrounded counterfactuals, FraudxAI implements Pearl's structural counterfactual pipeline using a Conditional RealNVP Normalizing Flow ([`ConditionalRealNVPFlow`](../../fraudx_synthesizer/causal_scm.py)):
 1. **Abduction**: For an observed transaction $\mathbf{x}_{\text{obs}}$ under context $C_{\text{obs}}$, infer the cardholder's unique latent noise vector $\mathbf{u}^* = f_{\theta}(\mathbf{x}_{\text{obs}}; C_{\text{obs}})$.
 2. **Action**: Perform an explicit do-calculus intervention setting the fraud indicator to zero: $do(\text{is\_fraud} = 0)$.
 3. **Prediction**: Map back through the inverse flow to obtain the normative counterfactual twin:
    $$\mathbf{x}_{\text{CF}} = f_{\theta}^{-1}(\mathbf{u}^*; C_{\text{normative}})$$
-Because the counterfactual twin is generated along the learned data manifold, counterfactual input deltas $\Delta \mathbf{x} = \mathbf{x}_{\text{obs}} - \mathbf{x}_{\text{CF}}$ represent physically valid, actionable recourse rather than off-manifold artifacts.
+Because the counterfactual twin is produced by inverting the same conditional RealNVP
+that encodes the observation, counterfactual input deltas
+$\Delta \mathbf{x} = \mathbf{x}_{\text{obs}} - \mathbf{x}_{\text{CF}}$ are computed inside the
+simulator's own feature space instead of outside it. Two qualifications apply: the flow's
+weights are drawn once from a fixed seed and never fitted (there is no training loop in the
+repository), and the ground truth being explained is the simulator's own scorer. The deltas
+are therefore actionable recourse *within this model*, not evidence about a real cardholder.
 
 ### Defense 4: The Tripartite Industrial Benchmark Integration
-Rather than evaluating XAI in isolation, FraudxAI incorporates XAI concordance into a master four-dimensional certification framework ([`TripartiteBenchmarkHarness`](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/fraudx_synthesizer/benchmark.py#L689-L750)):
+Rather than evaluating XAI in isolation, FraudxAI incorporates XAI concordance into a master four-dimensional certification framework ([`TripartiteBenchmarkHarness`](../../fraudx_synthesizer/benchmark.py)):
 - **Dimension 1 (Statistical Fidelity)**: Log-Wasserstein-1 ($W_1 \le 0.050$), categorical Jensen-Shannon divergence ($\text{JSD} \le 0.070$), and Spearman correlation Frobenius norm error ($E_F \le 0.160$).
 - **Dimension 2 (ML Utility - TSTR)**: Train on Synthetic, Test on Real relative PR-AUC retention $\ge 80\%$.
-- **Dimension 3 (Adversarial Privacy)**: Distance to Closest Record (5th percentile $DCR > 0.00010$), Nearest Neighbor Distance Ratio ($0.50 \le NNDR \le 0.98$), and Membership Inference Attack resistance ($\text{MIA ROC-AUC} \le 0.58$).
+- **Dimension 3 (Adversarial Privacy)**: Distance to Closest Record measured as a ratio to the
+  real-to-real reference ($DCR_{0.05}(\text{synth}\to\text{real}) / DCR_{0.05}(\text{real}\to\text{real}) \ge 0.500$,
+  `spec/18_benchmark_reporting.yaml`; an absolute floor in normalised space cannot fail a
+  generator that reproduces common records), Nearest Neighbor Distance Ratio ($0.50 \le NNDR \le 0.98$),
+  and Membership Inference Attack resistance ($\text{MIA ROC-AUC} \le 0.58$).
 - **Dimension 4 (Causal XAI Concordance)**: Evaluates TreeSHAP against $\boldsymbol{\phi}^*$ with built-in anti-leak tripwires (PR-AUC $\le 0.985$ and max single-feature attribution share $\le 0.70$).
 
 ---
@@ -336,25 +346,25 @@ Based on the forensic literature synthesis, the following concrete architectural
 ### 1. Integrate Explainable Boosting Machines (EBM) as a Primary Baseline
 *Rationale*: In accordance with Cynthia Rudin's mandate, FraudxAI should benchmark not only black-box GBDTs (LightGBM/XGBoost) with TreeSHAP, but also an inherently interpretable glass-box model using `interpret` (EBM / GA2M).
 *Implementation*:
-- Add `model_type="ebm"` to [`XAIBenchmarkHarness.run_benchmark()`](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/fraudx_synthesizer/benchmark.py#L564).
+- Add `model_type="ebm"` to [`XAIBenchmarkHarness.run_benchmark()`](../../fraudx_synthesizer/benchmark.py).
 - Extract exact additive term contributions $f_i(x_i)$ and interaction contributions $f_{ij}(x_i, x_j)$ directly, comparing their ranking concordance with $\boldsymbol{\phi}^*$.
 
 ### 2. Implement the Slack et al. Adversarial Scaffolding Attack as a Benchmark Test
 *Rationale*: Evaluate whether fraud detection models in the benchmark can be scaffolded to conceal discriminatory bias or malicious rules.
 *Implementation*:
-- Introduce an adversarial test in [`fraudx_synthesizer/benchmark.py`](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/fraudx_synthesizer/benchmark.py) that constructs an OOD perturbation detector.
+- Introduce an adversarial test in [`fraudx_synthesizer/benchmark.py`](../../fraudx_synthesizer/benchmark.py) that constructs an OOD perturbation detector.
 - Verify whether the explainer detects when an adversarial model shifts behavior between authentic card transactions and synthetic explainer probes.
 
 ### 3. Expand Quantus-Conforming Metric Implementations in `evaluation.py`
 *Rationale*: Align FraudxAI's evaluation suite directly with the formal Quantus API.
 *Implementation*:
-- Add **Max-Sensitivity** (Robustness) and **Faithfulness Estimate** (PGI/PGU with in-distribution masking) to [`GroundTruthXAIEvaluator`](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/fraudx_synthesizer/evaluation.py#L84).
+- Add **Max-Sensitivity** (Robustness) and **Faithfulness Estimate** (PGI/PGU with in-distribution masking) to [`GroundTruthXAIEvaluator`](../../fraudx_synthesizer/evaluation.py).
 - Report Kendall's $\tau_b$ across multiple feature subset sizes ($k \in \{2, 3, 5, 8\}$).
 
 ### 4. Implement Contrastive Counterfactual Explanations in the Production CLI
 *Rationale*: Support regulatory adverse action notices under FCRA and RBI mandates.
 *Implementation*:
-- Expose the counterfactual twin generated by [`StructuralCausalEngine`](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/fraudx_synthesizer/causal_scm.py#L331-L403) directly in the CLI export feeds.
+- Expose the counterfactual twin generated by [`StructuralCausalEngine`](../../fraudx_synthesizer/causal_scm.py) directly in the CLI export feeds.
 - Output an adverse action reason code string derived from $\Delta \mathbf{x} = \mathbf{x}_{\text{obs}} - \mathbf{x}_{\text{CF}}$ for every declined transaction.
 
 ---
@@ -375,16 +385,16 @@ FraudxAI provides an objective, scientifically rigorous platform for certifying 
 ## 9. References & Verification Links
 
 - **Repository Source Code**:
-  - [`fraudx_synthesizer/causal_scm.py`](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/fraudx_synthesizer/causal_scm.py): Structural Causal Engine, Owen formula, Gauss-Legendre quadrature, and Normalizing Flows.
-  - [`fraudx_synthesizer/benchmark.py`](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/fraudx_synthesizer/benchmark.py): Empirical XAI and Tripartite Industrial Benchmark Suite.
-  - [`fraudx_synthesizer/evaluation.py`](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/fraudx_synthesizer/evaluation.py): Ground-Truth XAI Evaluator (Kendall tau, Spearman rho, RAE, Precision@k).
-  - [`fraudx_synthesizer/invariants.py`](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/fraudx_synthesizer/invariants.py): Great-circle Haversine metrics and kinematic limits.
-  - [`scripts/download_arxiv_papers.py`](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/scripts/download_arxiv_papers.py): Open-access arXiv paper download utility.
-  - [`docs/papers/manifest.json`](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/manifest.json): Downloaded research papers catalog and checksums.
+  - [`fraudx_synthesizer/causal_scm.py`](../../fraudx_synthesizer/causal_scm.py): Structural Causal Engine, Owen formula, Gauss-Legendre quadrature, and Normalizing Flows.
+  - [`fraudx_synthesizer/benchmark.py`](../../fraudx_synthesizer/benchmark.py): Empirical XAI and Tripartite Industrial Benchmark Suite.
+  - [`fraudx_synthesizer/evaluation.py`](../../fraudx_synthesizer/evaluation.py): Ground-Truth XAI Evaluator (Kendall tau, Spearman rho, RAE, Precision@k).
+  - [`fraudx_synthesizer/invariants.py`](../../fraudx_synthesizer/invariants.py): Great-circle Haversine metrics and kinematic limits.
+  - [`scripts/download_arxiv_papers.py`](../../scripts/download_arxiv_papers.py): Open-access arXiv paper download utility.
+  - [`docs/papers/manifest.json`](../papers/manifest.json): Downloaded research papers catalog and checksums.
 
 - **Downloaded Anchor Papers in `docs/papers/`**:
-  - [Rudin (2019) — `1811.10154.pdf`](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/1811.10154.pdf)
-  - [Kumar et al. (2020) — `2002.11097.pdf`](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2002.11097.pdf)
-  - [Hedström et al. (2023 - Quantus) — `2202.06861.pdf`](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2202.06861.pdf)
-  - [Agarwal et al. (2022 - OpenXAI) — `2206.11104.pdf`](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2206.11104.pdf)
-  - [Slack et al. (2020) — `1911.02508.pdf`](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/1911.02508.pdf)
+  - Rudin (2019) — `1811.10154.pdf` (local copy removed)
+  - Kumar et al. (2020) — `2002.11097.pdf` (local copy removed)
+  - Hedström et al. (2023 - Quantus) — `2202.06861.pdf` (local copy removed)
+  - Agarwal et al. (2022 - OpenXAI) — `2206.11104.pdf` (local copy removed)
+  - Slack et al. (2020) — `1911.02508.pdf` (local copy removed)

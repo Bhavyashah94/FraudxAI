@@ -3,7 +3,7 @@
 [![CI](https://github.com/Bhavyashah94/FraudxAI/actions/workflows/ci.yml/badge.svg)](https://github.com/Bhavyashah94/FraudxAI/actions/workflows/ci.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Python: 3.10 | 3.11 | 3.12 | 3.13](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-3776AB.svg)]()
-[![Tests: 296 Passed](https://img.shields.io/badge/pytest-296%20passed-brightgreen.svg)]()
+[![Tests: 299 Passed](https://img.shields.io/badge/pytest-299%20passed-brightgreen.svg)]()
 [![Invariants: 37/37 Verified](https://img.shields.io/badge/invariants-37%2F37%20verified-brightgreen.svg)]()
 [![Rails: ISO 8583 | RBI AFA | Visa VCR](https://img.shields.io/badge/rails-ISO%208583%20%7C%20RBI%20AFA%20%7C%20Visa%20VCR-orange.svg)]()
 [![Contract: Spec 19 v1](https://img.shields.io/badge/contract-Spec%2019%20v1-purple.svg)](spec/19_detector_contract.yaml)
@@ -327,7 +327,7 @@ The simulation is governed by 13 formal living specification files serving as th
 
 FraudxAI enforces strict, deterministic verification across the entire stack:
 
-### 1. PyTest Test Suite (**296 / 296 Passed, 100% Green**)
+### 1. PyTest Test Suite (**299 / 299 Passed, 100% Green**)
 ```bash
 pytest tests/ -v
 ```

@@ -2,12 +2,12 @@
 
 **Project**: FraudxAI (Grounded Multi-Agent Payment Fraud Simulation & Causal XAI Benchmark)  
 **Corpus Size**: 116 Academic Papers (60 Supporting / Foundational, 56 Opposing / Critical)  
-**Local PDF Manifest**: [`docs/papers/manifest.json`](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/manifest.json) (26 Downloaded Anchor PDFs)  
+**Local PDF Manifest**: [`docs/papers/manifest.json`](../papers/manifest.json) (26 Downloaded Anchor PDFs)  
 **Cluster Reports**:
-1. [Cluster 1: Explainable AI & Interpretability](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/docs/research_reports/cluster_1_xai_and_interpretability.md) (30 Papers)
-2. [Cluster 2: Synthetic Data & Generative Models](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/docs/research_reports/cluster_2_synthetic_data_and_generative_models.md) (28 Papers)
-3. [Cluster 3: Adversarial Dynamics & Drift](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/docs/research_reports/cluster_3_adversarial_dynamics_and_drift.md) (30 Papers)
-4. [Cluster 4: Graph ML & Network Rails](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/docs/research_reports/cluster_4_graph_ml_and_network_rails.md) (28 Papers)
+1. [Cluster 1: Explainable AI & Interpretability](cluster_1_xai_and_interpretability.md) (30 Papers)
+2. [Cluster 2: Synthetic Data & Generative Models](cluster_2_synthetic_data_and_generative_models.md) (28 Papers)
+3. [Cluster 3: Adversarial Dynamics & Drift](cluster_3_adversarial_dynamics_and_drift.md) (30 Papers)
+4. [Cluster 4: Graph ML & Network Rails](cluster_4_graph_ml_and_network_rails.md) (28 Papers)
 
 ---
 
@@ -57,7 +57,7 @@ Rather than merely compiling literature that affirms FraudxAI's design, this eva
 ### FraudxAI Architectural Defense & Synthesis
 * **Analytical Ground Truth via Exact Quadrature**: FraudxAI does not treat post-hoc explainers as ground truth. Instead, FraudxAI implements the **Owen multilinear decomposition** in logit space ($\sum \phi_i^{\text{logit}} = \Delta \text{logit}$) and 128-point Gauss-Legendre path integration in probability space, establishing an objective mathematical ground truth against which post-hoc explainers are evaluated.
 * **Physical Invariant Clamping**: All feature evaluations are clamped to the physical banking manifold: Haversine commercial aviation velocity ($v < 900\,\text{km/h}$), EMV Bit 55 cryptograms, and ISO 8583 state transitions.
-* **Roadmap Enhancement**: Integrate Explainable Boosting Machines (EBM / GA2M) into [`fraudx_synthesizer/benchmark.py`](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/fraudx_synthesizer/benchmark.py) as an inherently interpretable baseline alongside black-box GBDTs.
+* **Roadmap Enhancement**: Integrate Explainable Boosting Machines (EBM / GA2M) into [`fraudx_synthesizer/benchmark.py`](../../fraudx_synthesizer/benchmark.py) as an inherently interpretable baseline alongside black-box GBDTs.
 
 ---
 
@@ -74,8 +74,8 @@ Rather than merely compiling literature that affirms FraudxAI's design, this eva
   4. *The Lucas Critique*: DGMs are observational and collapse under causal policy interventions ($do(X)$).
 
 ### FraudxAI Architectural Defense & Synthesis
-* **Hybrid Two-Layer Architecture**: FraudxAI avoids unconstrained continuous density hallucination by coupling a **Discrete-Event Priority Queue Engine** with a deterministic **Payment Rail Verifier Switch** ([`fraudx_synthesizer/rails.py`](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/fraudx_synthesizer/rails.py)).
-* **Continuous Point-Process Modeling**: Replaces discrete timeGAN slices with multivariate Hawkes point processes ([`fraudx_synthesizer/hawkes.py`](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/fraudx_synthesizer/hawkes.py)) that naturally capture self-exciting transaction bursts.
+* **Hybrid Two-Layer Architecture**: FraudxAI avoids unconstrained continuous density hallucination by coupling a **Discrete-Event Priority Queue Engine** with a deterministic **Payment Rail Verifier Switch** ([`fraudx_synthesizer/rails.py`](../../fraudx_synthesizer/rails.py)).
+* **Continuous Point-Process Modeling**: Replaces discrete timeGAN slices with multivariate Hawkes point processes ([`fraudx_synthesizer/hawkes.py`](../../fraudx_synthesizer/hawkes.py)) that naturally capture self-exciting transaction bursts.
 
 ---
 
@@ -90,7 +90,7 @@ Rather than merely compiling literature that affirms FraudxAI's design, this eva
   3. *Dual Verification Latency*: Real fraud labels have asymmetric arrival schedules—investigator alerts confirm in 24–72h (high selection bias), while customer chargebacks take 30–90 days (60-day concept drift obsolescence).
 
 ### FraudxAI Architectural Defense & Synthesis
-* **Closed-Loop Multi-Agent Feedback**: FraudxAI implements an active dynamical system ([`fraudx_synthesizer/agents.py`](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/fraudx_synthesizer/agents.py)):
+* **Closed-Loop Multi-Agent Feedback**: FraudxAI implements an active dynamical system ([`fraudx_synthesizer/agents.py`](../../fraudx_synthesizer/agents.py)):
   * **ISO 51 (Insufficient Funds)** $\to$ Bisection amount decay ($30\%$ reduction: `amount * 0.70`).
   * **3DS Step-Up Challenge** $\to$ Gateway hopping to Tier C acquirers, switching to digital goods (MCC 5815) under the \$28.00 low-value exemption threshold.
   * **ISO 59 (Suspected Fraud)** $\to$ Exponential velocity backoff ($2.5\times$ interval) and card burning after two consecutive declines.
@@ -109,7 +109,7 @@ Rather than merely compiling literature that affirms FraudxAI's design, this eva
 
 ### FraudxAI Architectural Defense & Synthesis
 * **Lambda Architecture Realism**: Reflects production banking reality where deep heterogeneous GNNs run asynchronously in batch (T+1) to pre-compute node structural embeddings, while the real-time switch evaluates a fast booster (LightGBM) using streaming sliding-window velocity counters and cached embeddings in **< 5 ms**.
-* **Syndicate Infrastructure Synthesis**: [`fraudx_synthesizer/syndicates.py`](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/fraudx_synthesizer/syndicates.py) explicitly generates multi-ASN proxy pools, JA4 TLS hashes, and 3-tier FinCEN money mule layering DAGs (Smurfing $\to$ Shell LLCs $\to$ Crypto Off-Ramps), providing an authentic benchmark for both real-time and post-clearing graph detectors.
+* **Syndicate Infrastructure Synthesis**: [`fraudx_synthesizer/syndicates.py`](../../fraudx_synthesizer/syndicates.py) explicitly generates multi-ASN proxy pools, JA4 TLS hashes, and 3-tier FinCEN money mule layering DAGs (Smurfing $\to$ Shell LLCs $\to$ Crypto Off-Ramps), providing an authentic benchmark for both real-time and post-clearing graph detectors.
 
 ---
 
@@ -128,7 +128,7 @@ Rather than merely compiling literature that affirms FraudxAI's design, this eva
 ## 6. Actionable Roadmap Commitments for FraudxAI
 
 1. **Incorporate Inherently Interpretable Baselines**:
-   Implement Explainable Boosting Machines (EBM / GA2M) in [`fraudx_synthesizer/benchmark.py`](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/fraudx_synthesizer/benchmark.py) to directly compare glass-box models against post-hoc TreeSHAP on GBDTs.
+   Implement Explainable Boosting Machines (EBM / GA2M) in [`fraudx_synthesizer/benchmark.py`](../../fraudx_synthesizer/benchmark.py) to directly compare glass-box models against post-hoc TreeSHAP on GBDTs.
 2. **Implement Adversarial Explainer Scaffolding Tests**:
    Add a test harness evaluating whether post-hoc explainers can be fooled by out-of-distribution adversarial wrappers (Slack et al., 2020).
 3. **Formalize Performative Retraining Loops**:

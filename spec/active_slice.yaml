@@ -8,7 +8,10 @@ current_slice:
   target_spec_files:
     - "spec/18_benchmark_reporting.yaml"
     - "fraudx_synthesizer/benchmark_reporter.py"
+    - "fraudx_synthesizer/benchmark.py"
     - "fraudx_synthesizer/ledger.py"
+    - "fraudx_synthesizer/experimental/invertible_flow.py"
+    - "fraudx_synthesizer/causal_scm.py"
     - "scripts/measure_throughput.py"
     - "gui/backend/app.py"
     - ".github/workflows/ci.yml"
@@ -21,9 +24,18 @@ current_slice:
     - conservation_check_fails_when_unbacked_value_is_injected: true
     - settlement_booked_as_memo_not_as_conserved_value: true
     - faithfulness_is_a_subset_ablation_correlation_not_a_self_comparison: true
+    - privacy_memorisation_is_gated_as_a_ratio_to_the_real_to_real_dcr_reference: true
+    - batched_path_integration_agrees_with_the_scalar_path_row_for_row: true
     - documentation_throughput_and_test_counts_trace_to_a_reproduced_command: true
     - ci_installs_the_gui_extra_so_the_suite_collects_on_a_clean_runner: true
-  verdict: "in testing: 296/296 tests green on this branch; the benchmark grader now grades against spec/18 and every report row carries its own verdict"
+  verdict: >-
+    in testing: 299/299 tests green on this branch; the benchmark grader grades against spec/18 and
+    every report row carries its own verdict; pillar 2 now gates memorisation as
+    DCR_0.05(synth->real) / DCR_0.05(real->real) >= 0.500 (a verbatim copier scores 0, this generator
+    measures 1.04 at n=1000 and 2.14 at n=400) instead of an absolute floor a copier passes; measured
+    generation throughput after batching the flow's quadrature path is 2,166 events/sec
+    (1,172 tx/sec, 1.4 GB peak RSS) over 100,000 transactions with
+    scripts/measure_throughput.py, up from 997 events/sec at the same seed and size
 
 previous_slices:
   - id: "slice-20-shared-infrastructure-channels-and-request-only-stream"
@@ -119,4 +131,4 @@ previous_slices:
     title: "Phase 1: Generative Arrival Pacing via Recursive Circadian Hawkes MTPP Engine"
     status: "verified"
     audited_by: "Subagent V1: MTPP Kinematics & Pacing Auditor"
-    verdict: "PASS (measured: Hawkes arrival pacing subcritical as specified; engine throughput 1,044 events/sec / 564 tx/sec over 100,000 transactions, reproducible with scripts/measure_throughput.py)"
+    verdict: "PASS (measured: Hawkes arrival pacing subcritical as specified; engine throughput 2,166 events/sec / 1,172 tx/sec over 100,000 transactions, reproducible with scripts/measure_throughput.py)"
