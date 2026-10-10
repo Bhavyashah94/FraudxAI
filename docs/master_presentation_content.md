@@ -27,7 +27,7 @@
 18. **Slide 18: Methodology: Ground-Truth Causal Attribution** (Δx Baseline Deltas, Path Integration & Formal XAI Metrics)
 19. **Slide 19: Section Divider — Results and Discussion**
 20. **Slide 20: Results & Discussion: Benchmarking Post-Hoc Explainers** (Quantus Faithfulness Audits & Empirical Divergence)
-21. **Slide 21: Results & Discussion: Invariant Certification & Engine Throughput** (131/131 Tests Green, 37 Invariants, 64K events/sec)
+21. **Slide 21: Results & Discussion: Invariant Certification & Engine Throughput** (296/296 Tests Green, 37 Invariants, ~1.0K events/sec)
 22. **Slide 22: Section Divider — Conclusion & Future Scope**
 23. **Slide 23: Conclusion & Future Scope** (Core Contributions, Multi-Agent RL, ISO 20022 Cross-Border Rails)
 24. **Slide 24: References** (Statutory Circulars, Payment Network Rules & Literature)
@@ -109,7 +109,7 @@
 * **Top Tag:** FEASIBILITY & SCOPE • OPERATIONAL BOUNDARIES
 * **Headline (Serif):** Engineering Feasibility & Precise Project Scope
 * **Left Column (Feasibility Analysis):**
-  * **Technical Feasibility:** Built on Python 3.10+, utilizing Polars and NumPy for memory-efficient streaming operations. Driven by a 64-bit microsecond monotonic discrete-event priority queue benchmarked at **64,850 events/second** with zero out-of-memory leaks.
+  * **Technical Feasibility:** Built on Python 3.10+, utilizing Polars and NumPy for memory-efficient streaming operations. Driven by a 64-bit microsecond monotonic discrete-event priority queue measured at **1,044 events/second** (564 transactions/second, 1.4 GB peak RSS over 100,000 transactions) with `scripts/measure_throughput.py`.
   * **Economic Feasibility:** 100% open-source, zero proprietary data licensing costs, running locally without expensive commercial cloud API dependencies.
   * **Legal & Regulatory Feasibility:** Fully synthetic data eliminates all PCI-DSS and PII data privacy liabilities while strictly observing payment scheme invariants (Visa Core Rules, RBI Master Directions).
 * **Right Column (Project Scope):**
@@ -163,16 +163,16 @@
 #### Slide 17: Empirical XAI Benchmarking & Explainer Audits
 * **Headline (Serif):** Auditing Post-Hoc Explainers Against Mathematical Truth
 * **Core Findings:**
-  * **Post-Hoc Explainer Divergence:** Benchmarking TreeSHAP, KernelSHAP, and EBMs against ground-truth $\Delta \mathbf{x}$ using `GroundTruthXAIEvaluator` revealed that standard post-hoc explainers suffer from significant scale divergence and rank degradation under feature correlation.
+  * **Post-Hoc Explainer Divergence:** Benchmarking TreeSHAP and a counterfactual-twin occlusion baseline against ground-truth $\Delta \mathbf{x}$ using `GroundTruthXAIEvaluator` revealed that standard post-hoc explainers suffer from significant scale divergence and rank degradation under feature correlation.
   * **Metrics Evaluated:** Precision@k, Recall@k, Kendall’s $\tau_b$ rank correlation, Spearman’s $\rho$, and Relative Attribution Error (RAE).
   * **Proving the Quantus Hypothesis:** Confirms empirical findings from Hedström et al. (JMLR 2023) that feature attribution without known causal interventions leads to unfaithful compliance reporting.
 
 #### Slide 18: Invariant Certification & Throughput Benchmarks
 * **Headline (Serif):** Formal Invariant Verification & Engine Performance
 * **Key Achievements:**
-  * **131 / 131 Tests Passed:** 100% automated pytest suite passing across unit and integration rails.
+  * **296 / 296 Tests Passed:** 100% automated pytest suite passing across unit and integration rails.
   * **37 / 37 Certified Invariants:** Formal mathematical verification of double-entry bitwise conservation, strict temporal monotonicity, anti-leak tripwires, and Haversine velocity ceilings.
-  * **Throughput:** Sustained generation velocity of **64,850 events/second**, enabling fast synthesis of millions of transactions without memory degradation.
+  * **Throughput:** Measured generation velocity of **1,044 events/second** (564 transactions/second) over a 100,000-transaction run, sustaining synthesis without memory degradation.
 
 ---
 

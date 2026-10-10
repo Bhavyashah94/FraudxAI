@@ -104,7 +104,7 @@ To achieve authentic industrial grounding, the simulation faithfully replicates 
 
 Crucially, FraudxAI resolves the ground-truth explanation void by coupling each simulated transaction with an underlying Structural Causal Model (SCM). For every fraudulent transaction, the engine computes its exact Pearlian counterfactual baseline twin:
 Δx = x_fraud - x_baseline
-Using closed-form Owen multilinear extensions and 128-point path integration, the architecture derives mathematically exact Shapley attributions (φ*). This provides an objective ground-truth benchmark to audit the faithfulness and rank stability of post-hoc explainers like TreeSHAP and Explainable Boosting Machines under realistic streaming delayed feedback.
+Using closed-form Owen multilinear extensions and 128-point path integration, the architecture derives mathematically exact Shapley attributions (φ*). This provides an objective ground-truth benchmark to audit the faithfulness and rank stability of the post-hoc explainers implemented here (TreeSHAP and a counterfactual-twin occlusion baseline) under realistic streaming delayed feedback.
 ```
 
 ---
@@ -193,7 +193,7 @@ The aim of this project is to develop FraudxAI, an open-source, multi-agent paym
 3. Simulate Adaptive Adversarial Syndicates: Implement 10 grounded cybercrime playbooks (card testing, velocity spikes, account takeover, cooperative smurfing) featuring closed-loop behavioral adaptation in response to bank declines.
 4. Generate Closed-Form Causal XAI Ground Truth: Couple synthetic event generation with a Structural Causal Model (SCM) to compute exact Pearlian counterfactual twins and analytical Shapley attributions for every fraudulent transaction.
 5. Develop an Interactive Telemetry & XAI Dashboard: Build a real-time web interface providing streaming transaction telemetry, risk alerts, and interactive SHAP explanation waterfall visualizations.
-6. Benchmark Post-Hoc Explainers: Systematically evaluate post-hoc XAI methods (TreeSHAP, KernelSHAP, EBMs) against exact causal ground truth using formal metrics (Precision@k, Kendall's τ_b, Relative Attribution Error).
+6. Benchmark Post-Hoc Explainers: Systematically evaluate the implemented post-hoc XAI methods (TreeSHAP on the gradient-boosted detector, plus a counterfactual-twin occlusion baseline) against exact causal ground truth using formal metrics (Precision@k, Kendall's τ_b, Relative Attribution Error).
 ```
 
 ---
@@ -285,7 +285,7 @@ Table 7.1: Hardware and Software Specifications
 | | Data Engine & Vectorization | Polars, NumPy, SciPy | Polars (multithreaded streaming) |
 | | Machine Learning & XAI | LightGBM, XGBoost, InterpretML, SHAP | LightGBM 4.x, InterpretML (EBM), SHAP 0.46+ |
 | | Web Dashboard Frontend | React 18, Vite, Tailwind CSS | React 18, Recharts / D3.js, Lucide Icons |
-| | Verification & Test Suite | Pytest 8.x+ | Pytest (217 automated invariant tests) |
+| | Verification & Test Suite | Pytest 8.x+ | Pytest (296 automated tests) |
 
 ```text
 7.2 User Interface Requirements
@@ -313,7 +313,7 @@ Feasibility Study
 FraudxAI directly addresses operational pain points faced by financial institutions, compliance auditors, and academic researchers. By providing an open-source, reproducible simulation platform with known causal ground truth, organizations can safely validate XAI algorithms and train fraud analysts without handling sensitive customer data.
 
 8.2 Technical Feasibility
-The platform is developed in Python 3.12 leveraging high-performance vectorized libraries (Polars, NumPy, SciPy) and optimized gradient boosted trees (LightGBM, XGBoost). Automated test suites (217 unit and invariant tests) guarantee mathematical correctness and memory safety during large-scale runs.
+The platform is developed in Python 3.12 leveraging high-performance vectorized libraries (Polars, NumPy, SciPy) and gradient boosted trees (LightGBM) and scikit-learn Random Forest. Automated test suites (296 unit and invariant tests) accompany the implementation; memory during a 100,000-transaction run peaks at 1.4 GB.
 
 8.3 Economic Feasibility
 FraudxAI is entirely open-source, eliminating costly commercial software licenses and expensive cloud GPU infrastructure. It runs efficiently on commodity multi-core consumer hardware, ensuring zero barrier to adoption for academic and industrial researchers.
@@ -331,7 +331,7 @@ Table 8.1: Feasibility Study Matrix
 | Dimension | Key Evaluation Criteria | FraudxAI Solution & Mitigation | Status |
 | :--- | :--- | :--- | :---: |
 | **Operational Feasibility** | Adoption by banks, regulators, and academic researchers | Eliminates data sharing barriers by generating 100% synthetic, realistic data; equips fraud investigators with actionable XAI waterfall plots. | **Feasible** |
-| **Technical Feasibility** | 50ms authorization SLA, 64-bit microsecond clock, memory stability | Implemented in Python 3.12 + Polars vectorization; achieved 64,850 events/sec throughput and 100% pass rate across 217 automated test suites. | **Feasible** |
+| **Technical Feasibility** | 50ms authorization SLA, 64-bit microsecond clock, memory stability | Implemented in Python 3.12 + Polars vectorization; measured 1,044 events/sec (564 transactions/sec) over a 100,000-transaction run and a 100% pass rate across the 296-test pytest suite. | **Feasible** |
 | **Economic Feasibility** | Development budget, licensing, cloud infrastructure costs | Built entirely on open-source libraries (Polars, LightGBM, React); runs locally on commodity multi-core laptops with zero commercial API expenses. | **Feasible** |
 | **Legal & Regulatory Feasibility**| PII, PCI-DSS liability, RBI/ECOA Adverse Action compliance | Fully synthetic identities incur zero PII/PCI-DSS liability; generated causal ground truths directly support RBI and ECOA statutory reason code mandates. | **Feasible** |
 
@@ -443,30 +443,30 @@ Implementation Plan
 • Programming Language: Python 3.12 (managed via UV).
 • Core Libraries: Polars, NumPy, SciPy, LightGBM, XGBoost, InterpretML, SHAP.
 • Frontend UI: React 18, Tailwind CSS, Vite.
-• Testing & Build: Pytest (217 automated tests).
+• Testing & Build: Pytest (296 automated tests).
 
 10.3 Experimental Results and Output Screenshots
 
-Table 10.1: Baseline Model Performance and Explanation Fidelity Metrics
+**Table 10.1: Baseline Model Performance and Explanation Fidelity Metrics**
 
-[Insert Table 10.1]
-```
+Every figure below was produced by the commands shown; the two rows are the only
+detector architectures the harness implements (`fraudx benchmark --model {lightgbm,rf}`),
+and every column is emitted by that harness. Run the command to regenerate the row.
 
-*(Copy Table 10.1 into Google Docs)*
-
-| Model Architecture | PR-AUC (Detection) | ROC-AUC | Recall @ 1% FPR | Top-3 Precision (P@3) | Kendall's $\tau_b$ (Rank) | RAE (Attribution Error) | Inference Latency |
+| Model Architecture | PR-AUC (Detection) | ROC-AUC | Top-3 Precision (P@3) | Intervention P@3 | Kendall's $\tau_b$ (Rank) | Spearman $\rho$ | RAE (Attribution Error, log-odds) |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **Logistic Regression (Linear)** | 0.4994 | 0.8842 | 41.2% | 48.2% | 0.3812 | 0.5420 | <1 ms |
-| **Random Forest (Bagged)** | 0.6421 | 0.9418 | 68.4% | 58.6% | 0.4120 | 0.4610 | 12 ms |
-| **XGBoost (Boosted Trees)** | 0.6810 | 0.9632 | 74.8% | 61.4% | 0.4350 | 0.4180 | 18 ms |
-| **LightGBM + TreeSHAP** | **0.6945** | **0.9685** | **76.2%** | **62.8%** | **0.4439** | **0.3950** | **14 ms** |
-| **Explainable Boosting Machine (EBM)** | 0.6720 | 0.9590 | 73.5% | 71.4% | 0.5820 | 0.2840 | 8 ms |
+| **LightGBM + TreeSHAP** (`--model lightgbm`) | 0.8470 | 0.9849 | 0.4533 | 0.6400 | 0.3668 | 0.4209 | 17.5234 |
+| **Random Forest + TreeSHAP** (`--model rf`) | 0.7803 | 0.9774 | 0.4000 | 0.5400 | 0.3628 | 0.4280 | 1.1659 |
+
+Measurement conditions: 2,000 simulated transactions, seed 42, 70/30 chronological
+train/test split, 25 fraud records scored for the explanation columns; inference
+latency and Recall@1%FPR are not reported because the harness does not measure them.
 
 ```text
 Summary of Empirical Findings:
-1. Engine Throughput: Sustained simulation throughput of 64,850 events/second across 1,000,000 transactions with zero memory leakage.
-2. Invariant Certification: Successfully certified 37 formal mathematical invariants with 100% of 217 automated unit and invariant tests passing.
-3. Explainer Divergence: Auditing post-hoc TreeSHAP against SCM ground truth reveals significant rank degradation (Kendall's tau_b = 0.4439), demonstrating that feature multicollinearity causes post-hoc explainers to scramble true causal feature importance.
+1. Engine Throughput: Measured simulation throughput of 1,044 events/second (564 transactions/second, 1.4 GB peak RSS) across 100,000 transactions; reproduce with `python scripts/measure_throughput.py --transactions 100000 --days 60 --region US --seed 42`.
+2. Invariant Certification: Successfully certified 37 formal mathematical invariants with 100% of 296 automated unit and invariant tests passing.
+3. Explainer Divergence: Auditing post-hoc TreeSHAP against SCM ground truth reveals significant rank degradation (Kendall's tau_b = 0.3668, LightGBM, seed 42, n=2000), demonstrating that feature multicollinearity causes post-hoc explainers to scramble true causal feature importance.
 
 [INSERT FIGURE 10.1: Dashboard UI Screenshot showing real-time feeds and SHAP waterfall chart]
 Figure 10.1: FraudxAI Interactive Telemetry and XAI Dashboard

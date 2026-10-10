@@ -112,7 +112,7 @@
       <text x="24" y="94" class="card-body">8 event lifecycles: tx,</text>
       <text x="24" y="109" class="card-body">attacks, clearing, payroll</text>
       <rect x="12" y="142" width="118" height="24" rx="5" fill="#EFF6FF" stroke="#93C5FD" stroke-width="1.2"/>
-      <text x="18" y="158" font-size="11px" font-weight="700" fill="#1D4ED8">64,850 events/sec</text>
+      <text x="18" y="158" font-size="11px" font-weight="700" fill="#1D4ED8">1,044 events/sec (measured)</text>
     </g>
 
     <!-- Card 2: Streaming Ledger -->
@@ -378,7 +378,7 @@
       <text x="436" y="23" text-anchor="middle" fill="#0F172A" class="card-badge">SCORE</text>
       <text x="14" y="24" class="card-title">GroundTruthXAIEvaluator</text>
       <circle cx="18" cy="46" r="2" class="bullet"/>
-      <text x="26" y="50" class="card-body">Benchmark audit: TreeSHAP, KernelSHAP, EBM against ground truth</text>
+      <text x="26" y="50" class="card-body">Benchmark audit: TreeSHAP and an occlusion baseline vs ground truth</text>
       <circle cx="18" cy="66" r="2" class="bullet"/>
       <text x="26" y="70" class="card-body">Rigorous metrics: Precision@k, Recall@k, Kendall's τ-b, RAE</text>
     </g>
