@@ -1,46 +1,70 @@
-# Tracking File for Current Active Vertical Slice
-# Read this file at the start of any new session or task to immediately anchor context.
-
 current_slice:
-  id: "slice-21-certification-honesty-and-verifiable-claims"
-  title: "Spec-Driven Certification Thresholds, Falsifiable Balance Conservation, Measured Documentation Figures"
+  id: "slice-22-external-corpus-validation-of-pillar-1"
+  title: "Grade Real and Third-Party Corpora with the Certification Grader's Own Pillar 1"
   status: "verified"  # [planning, in_progress, testing, verified]
   target_spec_files:
     - "spec/18_benchmark_reporting.yaml"
-    - "fraudx_synthesizer/benchmark_reporter.py"
-    - "fraudx_synthesizer/benchmark.py"
-    - "fraudx_synthesizer/ledger.py"
-    - "fraudx_synthesizer/experimental/invertible_flow.py"
-    - "fraudx_synthesizer/causal_scm.py"
-    - "scripts/measure_throughput.py"
-    - "gui/backend/app.py"
-    - ".github/workflows/ci.yml"
-    - "README.md"
-    - "docs/SYNOPSIS_MASTER_CONTENT.md"
-    - "tests/test_rail_verifier.py"
+    - "scripts/score_external_corpus.py"
+    - "tests/test_score_external_corpus.py"
+    - "reports/pillar1_external_corpus_scorecard.md"
   acceptance_criteria:
-    - grader_and_reporters_read_thresholds_from_spec_18_only: true
-    - every_report_row_is_graded_against_its_own_threshold: true
-    - conservation_check_fails_when_unbacked_value_is_injected: true
-    - settlement_booked_as_memo_not_as_conserved_value: true
-    - faithfulness_is_a_subset_ablation_correlation_not_a_self_comparison: true
-    - privacy_memorisation_is_gated_as_a_ratio_to_the_real_to_real_dcr_reference: true
-    - batched_path_integration_agrees_with_the_scalar_path_row_for_row: true
-    - documentation_throughput_and_test_counts_trace_to_a_reproduced_command: true
-    - ci_installs_the_gui_extra_so_the_suite_collects_on_a_clean_runner: true
+    - external_corpora_are_graded_by_the_graders_own_function_and_spec_18_thresholds: true
+    - a_metric_whose_inputs_the_corpus_lacks_is_excluded_from_the_verdict: true
+    - every_external_corpus_records_its_source_url_and_sha256: true
+    - inter_arrival_scores_are_reported_with_the_corpus_clock_resolution: true
+    - the_real_corpus_result_is_published_next_to_the_threshold_it_fails: true
   verdict: >-
-    verified on main (merge commit fe82480, PR #8): 299/299 tests, 37/37 grounded invariants,
-    and GitHub Actions run 38046972445 green on ubuntu-latest / Python 3.12 -- the first workflow
-    run this repository has had, since the workflow was disabled in the repo settings; the
-    benchmark grader grades against spec/18 and
-    every report row carries its own verdict; pillar 2 now gates memorisation as
-    DCR_0.05(synth->real) / DCR_0.05(real->real) >= 0.500 (a verbatim copier scores 0, this generator
-    measures 1.04 at n=1000 and 2.14 at n=400) instead of an absolute floor a copier passes; measured
-    generation throughput after batching the flow's quadrature path is 2,166 events/sec
-    (1,172 tx/sec, 1.4 GB peak RSS) over 100,000 transactions with
-    scripts/measure_throughput.py, up from 997 events/sec at the same seed and size
+    verified: 302/302 tests green, including tests/test_score_external_corpus.py, which asserts the
+    scorer reproduces the grader's own figures for the same seed and never grades a column the
+    corpus does not carry. Measured at seed 42 against the US reference: the real ULB card corpus
+    (284,807 transactions, OpenML file 1673544, sha256 fdaf1273...) fails log10(1+amount) at 0.3745
+    while this generator fails it at 0.1508, both over the 0.150 limit, and a control drawn straight
+    from the reference passes at 0.0000 -- so that gate ranks resemblance to the hardcoded lognormal,
+    not resemblance to real card traffic. BankSim (594,643 rows, a competing simulator) scores
+    0.2649. The inter-arrival gate is not comparable across clock resolutions (dt_min: BankSim
+    3600 s, ULB 1 s, ours 0.01-0.3 s) and two of this generator's verdicts move with sample size at
+    the grader's default n=1500. Command, provenance, hashes and caveats:
+    reports/pillar1_external_corpus_scorecard.md
 
 previous_slices:
+  - id: "slice-21-certification-honesty-and-verifiable-claims"
+    title: "Spec-Driven Certification Thresholds, Falsifiable Balance Conservation, Measured Documentation Figures"
+    status: "verified"  # [planning, in_progress, testing, verified]
+    target_spec_files:
+      - "spec/18_benchmark_reporting.yaml"
+      - "fraudx_synthesizer/benchmark_reporter.py"
+      - "fraudx_synthesizer/benchmark.py"
+      - "fraudx_synthesizer/ledger.py"
+      - "fraudx_synthesizer/experimental/invertible_flow.py"
+      - "fraudx_synthesizer/causal_scm.py"
+      - "scripts/measure_throughput.py"
+      - "gui/backend/app.py"
+      - ".github/workflows/ci.yml"
+      - "README.md"
+      - "docs/SYNOPSIS_MASTER_CONTENT.md"
+      - "tests/test_rail_verifier.py"
+    acceptance_criteria:
+      - grader_and_reporters_read_thresholds_from_spec_18_only: true
+      - every_report_row_is_graded_against_its_own_threshold: true
+      - conservation_check_fails_when_unbacked_value_is_injected: true
+      - settlement_booked_as_memo_not_as_conserved_value: true
+      - faithfulness_is_a_subset_ablation_correlation_not_a_self_comparison: true
+      - privacy_memorisation_is_gated_as_a_ratio_to_the_real_to_real_dcr_reference: true
+      - batched_path_integration_agrees_with_the_scalar_path_row_for_row: true
+      - documentation_throughput_and_test_counts_trace_to_a_reproduced_command: true
+      - ci_installs_the_gui_extra_so_the_suite_collects_on_a_clean_runner: true
+    verdict: >-
+      verified on main (merge commit fe82480, PR #8): 302/302 tests, 37/37 grounded invariants,
+      and GitHub Actions run 38046972445 green on ubuntu-latest / Python 3.12 -- the first workflow
+      run this repository has had, since the workflow was disabled in the repo settings; the
+      benchmark grader grades against spec/18 and
+      every report row carries its own verdict; pillar 2 now gates memorisation as
+      DCR_0.05(synth->real) / DCR_0.05(real->real) >= 0.500 (a verbatim copier scores 0, this generator
+      measures 1.04 at n=1000 and 2.14 at n=400) instead of an absolute floor a copier passes; measured
+      generation throughput after batching the flow's quadrature path is 2,166 events/sec
+      (1,172 tx/sec, 1.4 GB peak RSS) over 100,000 transactions with
+      scripts/measure_throughput.py, up from 997 events/sec at the same seed and size
+
   - id: "slice-20-shared-infrastructure-channels-and-request-only-stream"
     title: "Shared Client Infrastructure, Attack Channel Mix, Credit Line Steps, Request-Only Stream with a Label Feed, Prevalence Pacing"
     status: "verified"  # [planning, in_progress, testing, verified]

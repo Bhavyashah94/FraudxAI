@@ -285,7 +285,7 @@ Table 7.1: Hardware and Software Specifications
 | | Data Engine & Vectorization | Polars, NumPy, SciPy | Polars (multithreaded streaming) |
 | | Machine Learning & XAI | LightGBM, XGBoost, InterpretML, SHAP | LightGBM 4.x, InterpretML (EBM), SHAP 0.46+ |
 | | Web Dashboard Frontend | React 18, Vite, Tailwind CSS | React 18, Recharts / D3.js, Lucide Icons |
-| | Verification & Test Suite | Pytest 8.x+ | Pytest (299 automated tests) |
+| | Verification & Test Suite | Pytest 8.x+ | Pytest (302 automated tests) |
 
 ```text
 7.2 User Interface Requirements
@@ -313,7 +313,7 @@ Feasibility Study
 FraudxAI directly addresses operational pain points faced by financial institutions, compliance auditors, and academic researchers. By providing an open-source, reproducible simulation platform with known causal ground truth, organizations can safely validate XAI algorithms and train fraud analysts without handling sensitive customer data.
 
 8.2 Technical Feasibility
-The platform is developed in Python 3.12 leveraging high-performance vectorized libraries (Polars, NumPy, SciPy) and gradient boosted trees (LightGBM) and scikit-learn Random Forest. Automated test suites (299 unit and invariant tests) accompany the implementation; memory during a 100,000-transaction run peaks at 1.4 GB.
+The platform is developed in Python 3.12 leveraging high-performance vectorized libraries (Polars, NumPy, SciPy) and gradient boosted trees (LightGBM) and scikit-learn Random Forest. Automated test suites (302 unit and invariant tests) accompany the implementation; memory during a 100,000-transaction run peaks at 1.4 GB.
 
 8.3 Economic Feasibility
 FraudxAI is entirely open-source, eliminating costly commercial software licenses and expensive cloud GPU infrastructure. It runs efficiently on commodity multi-core consumer hardware, ensuring zero barrier to adoption for academic and industrial researchers.
@@ -331,7 +331,7 @@ Table 8.1: Feasibility Study Matrix
 | Dimension | Key Evaluation Criteria | FraudxAI Solution & Mitigation | Status |
 | :--- | :--- | :--- | :---: |
 | **Operational Feasibility** | Adoption by banks, regulators, and academic researchers | Eliminates data sharing barriers by generating 100% synthetic, realistic data; equips fraud investigators with actionable XAI waterfall plots. | **Feasible** |
-| **Technical Feasibility** | 50ms authorization SLA, 64-bit microsecond clock, memory stability | Implemented in Python 3.12 + Polars vectorization; measured 2,166 events/sec (1,172 transactions/sec) over a 100,000-transaction run and a 100% pass rate across the 299-test pytest suite. | **Feasible** |
+| **Technical Feasibility** | 50ms authorization SLA, 64-bit microsecond clock, memory stability | Implemented in Python 3.12 + Polars vectorization; measured 2,166 events/sec (1,172 transactions/sec) over a 100,000-transaction run and a 100% pass rate across the 302-test pytest suite. | **Feasible** |
 | **Economic Feasibility** | Development budget, licensing, cloud infrastructure costs | Built entirely on open-source libraries (Polars, LightGBM, React); runs locally on commodity multi-core laptops with zero commercial API expenses. | **Feasible** |
 | **Legal & Regulatory Feasibility**| PII, PCI-DSS liability, RBI/ECOA Adverse Action compliance | Fully synthetic identities incur zero PII/PCI-DSS liability; generated causal ground truths directly support RBI and ECOA statutory reason code mandates. | **Feasible** |
 
@@ -443,7 +443,7 @@ Implementation Plan
 • Programming Language: Python 3.12 (managed via UV).
 • Core Libraries: Polars, NumPy, SciPy, LightGBM, XGBoost, InterpretML, SHAP.
 • Frontend UI: React 18, Tailwind CSS, Vite.
-• Testing & Build: Pytest (299 automated tests).
+• Testing & Build: Pytest (302 automated tests).
 
 10.3 Experimental Results and Output Screenshots
 
@@ -465,7 +465,7 @@ latency and Recall@1%FPR are not reported because the harness does not measure t
 ```text
 Summary of Empirical Findings:
 1. Engine Throughput: Measured simulation throughput of 2,166 events/second (1,172 transactions/second, 1.4 GB peak RSS) across 100,000 transactions; reproduce with `python scripts/measure_throughput.py --transactions 100000 --days 60 --region US --seed 42`.
-2. Invariant Certification: Successfully certified 37 formal mathematical invariants with 100% of 299 automated unit and invariant tests passing.
+2. Invariant Certification: Successfully certified 37 formal mathematical invariants with 100% of 302 automated unit and invariant tests passing.
 3. Explainer Divergence: Auditing post-hoc TreeSHAP against SCM ground truth reveals significant rank degradation (Kendall's tau_b = 0.3668, LightGBM, seed 42, n=2000), demonstrating that feature multicollinearity causes post-hoc explainers to scramble true causal feature importance.
 
 [INSERT FIGURE 10.1: Dashboard UI Screenshot showing real-time feeds and SHAP waterfall chart]
