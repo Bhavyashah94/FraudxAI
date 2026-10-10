@@ -17,6 +17,28 @@ All counts below are printed by `scripts/report_grade_stability.py`, not transcr
 .venv/bin/python scripts/report_grade_stability.py <each stored benchmark_results.json>
 ```
 
+> **Update, 2026-10-11, commit `beeb668`.** The analysis below was measured at `9895834` and
+> is unchanged as an explanation of *why* the count moves. Two fixes have since landed that
+> shift the numbers it quotes, so re-run before citing a value from this file:
+>
+> - `_get_card_hawkes_params` divided persona volumes by a hard-coded `55.0` rather than the
+>   population mean, so every paced batch ran ~18% hot (the D1 fix).
+> - The inter-arrival gate built its reference renewal process from the *requested* span
+>   rather than the realised one, so it scored the rate error as arrival-shape error (D2).
+>
+> Measured on the pinned protocol, `fraudx benchmark -n 2000 --unified --seed 42`, which runs
+> all five pinned seeds internally:
+>
+> | | `9895834` / `6938da3` | `beeb668` |
+> |---|---|---|
+> | Inter-arrival W₁ | 0.2522 FAIL | 0.2236 FAIL |
+> | Violation count range across seeds | 4 – 9 | 4 – 6 |
+> | Grade | `NON_CERTIFIED_FAIL` ×5 | `NON_CERTIFIED_FAIL` ×5 |
+>
+> The gate moved in the right direction and did **not** flip: at 0.2236 it still exceeds the
+> 0.150 maximum, and the certification verdict is unchanged. Nothing in this report's
+> conclusions depends on the shift.
+
 ## Finding 1 — the grader itself is deterministic
 
 Re-invoking the identical configuration produced byte-identical results in every group:
