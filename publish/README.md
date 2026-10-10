@@ -90,10 +90,29 @@ data to a realistic rate, or reporting metrics computed at 2%, will not transfer
 ### 2. The time span is 46.91 days, not the 30 days requested
 
 The export was generated with `--days 30`, but the measured span is
-`2024-01-01T00:01:06 → 2024-02-16T21:55:23` = **46.91 days**. The generator does not honour
-`--days` exactly at `n=100,000`. **The cause is not understood** — this is recorded as an
-open question in the generating repository, not explained away. If you need a specific
-horizon, measure the span yourself rather than trusting the flag.
+`2024-01-01T00:01:06 → 2024-02-16T21:55:23` = **46.91 days**. This section describes *this
+published file*, whose span is a fixed property of the artefact.
+
+**The cause has since been found and fixed in the generating repository.** `_get_card_hawkes_params`
+divided each persona's transaction volume by a hard-coded constant — `55.0` for US — that
+happened to equal *one persona's* volume rather than the population mean the scale is defined
+relative to. The persona scales therefore averaged **1.1793** over the card population (a
+realised mean volume of 64.86 against the 55.0 divisor), so every paced batch ran **~18% hot**
+and landed well short of the requested span. Regenerating with the fix gives **29.80 days**
+against the same `--days 30` (−0.7%), from 46.91 (+56.4%).
+
+Two consequences for anyone using this file:
+
+- **Reproducing this exact artefact requires the pre-fix commit.** A current checkout will
+  regenerate a *different* stream. This file's checksums are pinned in `SHA256SUMS` and do
+  not change.
+- **Do not treat the span as evidence of a modelling choice.** It was a normalisation bug,
+  not a deliberate horizon, and it is no longer present in the generator.
+
+If you need a specific horizon, measure the span of whatever you generate rather than
+trusting the flag alone — at small batch sizes the per-card first-arrival offset still
+dominates, and fraud-driven card freezing extends the span further (see caveat 1 and the
+repository's defect notes).
 
 ### 3. `dispute_recovery.csv` carries the label — do not join it into features
 

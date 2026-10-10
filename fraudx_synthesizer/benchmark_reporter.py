@@ -1002,8 +1002,19 @@ class UnifiedBenchmarkRunner:
         deltas = deltas[deltas > 0]
         if len(deltas) > 0:
             log_deltas = np.log10(deltas + 1.0)
-            # Reference renewal process baseline: Exp(lambda) where lambda = n_tx / span_seconds
-            expected_delta = (self.time_span_days * 86400.0) / max(1, len(records))
+            # Reference renewal process baseline: Exp(lambda) where lambda = n_tx / span_seconds.
+            #
+            # The span here must be the span the records ACTUALLY cover, not time_span_days.
+            # time_span_days is the requested duration; generate_batch realises something close to
+            # it but not identical -- 9.51-10.79 days against a requested 12 across the five
+            # pinned seeds before the D1 pacing fix, and within a few percent of 12 after it.
+            # Using the requested value made this gate conflate rate error with shape error: the
+            # reference inter-arrival scale was ~14% too long, which pushed W1 up by 0.03-0.09 on
+            # every pinned seed (0.2406 -> 0.1870 at seed 42, 0.2847 -> 0.1914 at seed 2). The gate
+            # is meant to ask "do arrivals look like a renewal process", and answering that
+            # requires the rate the data actually has -- which stays true whatever the pacing does.
+            realised_span_sec = max(times[-1] - times[0], 1.0)
+            expected_delta = realised_span_sec / max(1, len(records))
             ref_deltas = self.rng.exponential(scale=expected_delta, size=len(deltas))
             ref_log_deltas = np.log10(np.maximum(ref_deltas, 0.01) + 1.0)
             w1_arr = float(stats.wasserstein_distance(log_deltas, ref_log_deltas))

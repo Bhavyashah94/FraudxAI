@@ -188,6 +188,36 @@ class DiscreteEventEngine:
         self.card_avail_time_us: Dict[str, int] = {c.card_id: 0 for c in self.cards}
         self.card_generation: Dict[str, int] = {c.card_id: 0 for c in self.cards}
 
+    def _persona_volume_scale_mean(self) -> float:
+        """Card-weighted mean of each persona's volume scale, computed once and cached.
+
+        `generate_batch` budgets `target_n / n_cards` transactions per card, then scales each
+        card by its persona's relative volume. For that budget to be conserved, the scales must
+        average 1.0 over the population that is actually being simulated -- otherwise the
+        aggregate rate is the budget times the mean scale and `time_span_days` is not honoured.
+
+        Divisors here are measured, not assumed: 55.0 and 0.684 were hard-coded constants that
+        happened to equal one persona's volume (C1_HOURLY_GIG_WORKER) and a rounded macro mean.
+        Against spec/02's own population_weight the US mean is 65.50, and against the realised
+        card population 64.86, so every US batch ran ~19% hot; the IN branch ran ~5.8% hot.
+        """
+        cache = getattr(self, "_persona_scale_mean_cache", None)
+        if cache is not None:
+            return cache
+
+        scales: List[float] = []
+        for c in self.cards:
+            if c.region == "IN":
+                p = self._get_card_hawkes_params(c, mean_inter_arrival_sec=None)
+                eta_p = min(0.95, p.alpha / p.beta)
+                scales.append((86400.0 * p.mu_0 * 0.8208) / max(0.05, (1.0 - eta_p)))
+            else:
+                cohort_spec = self.specs.cohorts.get(c.cohort_id)
+                scales.append(cohort_spec.monthly_tx_volume_mean if cohort_spec else 55.0)
+        mean_scale = float(np.mean(scales)) if scales else 1.0
+        self._persona_scale_mean_cache = mean_scale if mean_scale > 0 else 1.0
+        return self._persona_scale_mean_cache
+
     def _get_card_hawkes_params(self, card: CardholderProfile, mean_inter_arrival_sec: Optional[float] = None) -> HawkesParameters:
         """Constructs calibrated persona HawkesParameters, optionally scaled to simulation time span."""
         cohort_spec = self.specs.cohorts.get(card.cohort_id)
@@ -230,12 +260,15 @@ class DiscreteEventEngine:
         if mean_inter_arrival_sec is not None and mean_inter_arrival_sec > 0:
             if card.region == "IN":
                 # Grounded in RBI PSI: compute persona's calibrated expected daily frequency relative to macro mean 0.684 tx/day
+                # The divisor is the population mean of that same quantity (measured, cached), so the
+                # persona scales average 1.0 and the pacing budget is conserved -- see _persona_volume_scale_mean.
                 eta_p = min(0.95, alpha / beta)
                 persona_expected_daily = (86400.0 * base_mu * 0.8208) / max(0.05, (1.0 - eta_p))
-                persona_vol_scale = persona_expected_daily / 0.684
+                persona_vol_scale = persona_expected_daily / self._persona_volume_scale_mean()
             else:
+                # Scaled by the population mean, not by a fixed constant: see _persona_volume_scale_mean.
                 vol_mean = cohort_spec.monthly_tx_volume_mean if cohort_spec else 55.0
-                persona_vol_scale = vol_mean / 55.0
+                persona_vol_scale = vol_mean / self._persona_volume_scale_mean()
             eta = min(0.95, alpha / beta)
             target_lambda = (1.0 / mean_inter_arrival_sec) * persona_vol_scale
             mu_0 = (target_lambda * (1.0 - eta)) / 0.8208

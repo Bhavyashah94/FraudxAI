@@ -1,43 +1,85 @@
 current_slice:
-  id: "slice-24-publish-100k-export-to-hf-and-kaggle"
-  title: "Publish the 100k US Export with a Card That States What Is Wrong with It"
-  status: "verified"  # [planning, in_progress, testing, verified]
+  id: "slice-25-fix-time-span-normalisation-and-unsound-test-invariants"
+  title: "Make --days Mean What It Says, and Replace Test Invariants That Were Already False"
+  status: "testing"  # [planning, in_progress, testing, verified]
   target_spec_files:
+    - "fraudx_synthesizer/engine.py"
+    - "fraudx_synthesizer/benchmark_reporter.py"
+    - "tests/test_time_span_pacing.py"
+    - "tests/test_synthesizer/test_intervention_ground_truth.py"
     - "publish/README.md"
-    - "publish/dataset-metadata.json"
-    - "publish/upload_hf.sh"
-    - "publish/upload_kaggle.sh"
-    - "publish/SHA256SUMS"
-    - "publish/SHA256SUMS_UNCOMPRESSED.txt"
   acceptance_criteria:
-    - the_card_states_boosted_prevalence_against_a_measured_reference: true
-    - the_card_states_the_measured_span_not_the_requested_one: true
-    - the_card_flags_the_label_carrying_view_before_any_join: true
-    - the_card_carries_the_pinned_certification_verdict_not_one_runs_count: true
-    - every_number_in_the_card_comes_from_a_command_that_has_been_rerun: true
-    - uploaded_bytes_are_verified_against_a_committed_manifest: true
-    - the_upload_scripts_carry_no_credentials: true
+    - time_span_days_controls_the_realised_span: true
+    - the_inter_arrival_gate_measures_shape_not_the_span_error: true
+    - no_test_assertion_is_weakened_to_make_a_change_pass: true
+    - every_replacement_invariant_is_validated_on_the_baseline_too: true
+    - canonical_data_sample_csv_is_preserved_per_gitignore: true
+    - the_dataset_card_no_longer_says_the_cause_is_unknown: true
   verdict: >-
-    verified: published to https://huggingface.co/datasets/bshah123/fraudxai-us-100k-seed42
-    (public, apache-2.0, 10 files) and
-    https://www.kaggle.com/datasets/bhavyashah7645/fraudxai-us-100k-seed42 (public,
-    apache-2.0, 9 files). Verified by reading the hosts back, not by trusting the upload
-    message: all six Hugging Face LFS object ids equal publish/SHA256SUMS, usedStorage is
-    60,878,078 bytes -- the exact staged total -- and the Kaggle manifest plus two data files
-    were downloaded and checksummed against SHA256SUMS_UNCOMPRESSED.txt. Both hosts serve the
-    same card; Kaggle's is the front matter stripped, checked by diff. The card leads with the
-    caveats: 2.009% fraud against the measured 0.1727% of the real ULB corpus, a 46.91-day span
-    although --days 30 was requested (cause not understood, said so), dispute_recovery.csv
-    carrying is_fraud so it must never be joined into features, NON_CERTIFIED_FAIL in 5/5
-    pinned seeds with 6 of 9 failing gates flipping with the seed, and the amount gate failing
-    real data (0.3745) while this export passes (0.1312). Verification found two defects now
-    handled in code: Kaggle decompresses .csv.gz on ingest, which made the single manifest
-    unrunnable there (hence SHA256SUMS_UNCOMPRESSED.txt), and `kaggle datasets create` exits 0
-    while refusing the upload, so upload_kaggle.sh inspects the message and re-lists the files
-    before claiming success. The ungrounded "~0.105% Federal Reserve prevalence" figure was
-    dropped rather than printed -- no source for it exists in this repository.
+    testing: D1 fixed -- _get_card_hawkes_params divided each persona's volume by a hard-coded
+    55.0 (US) / 0.684 (IN) that equalled ONE persona's volume rather than the population mean,
+    so scales averaged 1.1793 and every paced batch ran ~18% hot. Replaced by
+    _persona_volume_scale_mean(), a cached card-weighted region-aware measurement. The
+    published shape (cards=1000, n=100000, days=30) moved from 46.91 d (+56.4%) to 29.80 d
+    (-0.7%); the benchmark path (80 cards, 2000 rows, 12 d, 5% fraud) lands at 12.50 d (+4.1%).
+    A feedback controller that also steered the span was built, measured and REVERTED: it
+    overshot wherever card freezes depleted the pool (100000 rows at 2% fraud, 44.8 d became
+    48.5 d) because frozen cards emit nothing that any rate correction can reach. D2 fixed --
+    the inter-arrival W1 gate built its reference renewal process from the REQUESTED span, so
+    it measured the D1 rate error as arrival-shape error and inflated W1 by 0.03-0.09 on all
+    five pinned seeds; it now uses the realised span. D9 -- test_zero_synthetic_ip_distance_leak
+    asserted a minimum fraud ip_distance of 1.5 km and that 0.5 km captured zero frauds; BOTH
+    were already failing on the untouched baseline 6938da3 over seeds 1-40 (4/40 and 1/40).
+    spec/07 section 12 makes the legitimate geolocation error lognormal and so unbounded below
+    (measured legit minima 0.600 / 0.850 / 0.990 km) and section 17 routes victim-device
+    attacks through that same distribution, so enforcing a 1.5 km fraud floor would have
+    MANUFACTURED the leak -- a rule reading "below 1.5 km means legitimate" would have become
+    perfect. Replaced with three distributional invariants validated on 40/40 seeds with the
+    fix and 20/20 on the baseline, so they encode a generator property rather than a code
+    state. D4 was flagged as 12 MB of dead data and is CLEARED: .gitignore line 61 records
+    "preserve canonical data/sample_*.csv", so the samples were restored rather than
+    overridden. D5 -- ten dead one-off deliverable generators (~5,600 lines) removed;
+    inspect_generated_data.py kept as the inspector for those canonical samples. Suite 324/324.
 
 previous_slices:
+  - id: "slice-24-publish-100k-export-to-hf-and-kaggle"
+    title: "Publish the 100k US Export with a Card That States What Is Wrong with It"
+    status: "verified"  # [planning, in_progress, testing, verified]
+    target_spec_files:
+      - "publish/README.md"
+      - "publish/dataset-metadata.json"
+      - "publish/upload_hf.sh"
+      - "publish/upload_kaggle.sh"
+      - "publish/SHA256SUMS"
+      - "publish/SHA256SUMS_UNCOMPRESSED.txt"
+    acceptance_criteria:
+      - the_card_states_boosted_prevalence_against_a_measured_reference: true
+      - the_card_states_the_measured_span_not_the_requested_one: true
+      - the_card_flags_the_label_carrying_view_before_any_join: true
+      - the_card_carries_the_pinned_certification_verdict_not_one_runs_count: true
+      - every_number_in_the_card_comes_from_a_command_that_has_been_rerun: true
+      - uploaded_bytes_are_verified_against_a_committed_manifest: true
+      - the_upload_scripts_carry_no_credentials: true
+    verdict: >-
+      verified: published to https://huggingface.co/datasets/bshah123/fraudxai-us-100k-seed42
+      (public, apache-2.0, 10 files) and
+      https://www.kaggle.com/datasets/bhavyashah7645/fraudxai-us-100k-seed42 (public,
+      apache-2.0, 9 files). Verified by reading the hosts back, not by trusting the upload
+      message: all six Hugging Face LFS object ids equal publish/SHA256SUMS, usedStorage is
+      60,878,078 bytes -- the exact staged total -- and the Kaggle manifest plus two data files
+      were downloaded and checksummed against SHA256SUMS_UNCOMPRESSED.txt. Both hosts serve the
+      same card; Kaggle's is the front matter stripped, checked by diff. The card leads with the
+      caveats: 2.009% fraud against the measured 0.1727% of the real ULB corpus, a 46.91-day span
+      although --days 30 was requested (cause not understood at publish time, said so; found
+      and fixed in slice-25, and the card was corrected to say so), dispute_recovery.csv
+      carrying is_fraud so it must never be joined into features, NON_CERTIFIED_FAIL in 5/5
+      pinned seeds with 6 of 9 failing gates flipping with the seed, and the amount gate failing
+      real data (0.3745) while this export passes (0.1312). Verification found two defects now
+      handled in code: Kaggle decompresses .csv.gz on ingest, which made the single manifest
+      unrunnable there (hence SHA256SUMS_UNCOMPRESSED.txt), and `kaggle datasets create` exits 0
+      while refusing the upload, so upload_kaggle.sh inspects the message and re-lists the files
+      before claiming success. The ungrounded "~0.105% Federal Reserve prevalence" figure was
+      dropped rather than printed -- no source for it exists in this repository.
   - id: "slice-23-pinned-evaluation-protocol-and-grade-stability"
     title: "Pin the Run a Certification Grade Is Defined Over, and Report Stability Instead of One Violation Count"
     status: "verified"  # [planning, in_progress, testing, verified]
