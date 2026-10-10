@@ -193,7 +193,41 @@ def download_csv():
     )
 
 
-# Mount static production build if compiled
+# Mount static production build if compiled; otherwise serve a placeholder page that
+# explains how to build it, so "/" never answers an unexplained 404 (and a fresh clone
+# or CI run without `gui/frontend/dist` still passes the API test suite).
 dist_dir = Path(__file__).resolve().parent.parent / "frontend" / "dist"
 if dist_dir.exists():
     app.mount("/", StaticFiles(directory=str(dist_dir), html=True), name="frontend")
+else:
+    _FRONTEND_BUILD_PLACEHOLDER = """<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>FraudxAI Studio</title>
+  <style>
+    body { font-family: ui-sans-serif, system-ui, sans-serif; margin: 0; padding: 3rem;
+           background: #0f172a; color: #e2e8f0; line-height: 1.6; }
+    code { background: #1e293b; padding: .15rem .4rem; border-radius: 4px; }
+    pre { background: #1e293b; padding: 1rem; border-radius: 8px; overflow-x: auto; }
+    h1 { margin-top: 0; }
+    a { color: #7dd3fc; }
+  </style>
+</head>
+<body>
+  <h1>FraudxAI Studio</h1>
+  <p>The API is running, but the frontend bundle has not been built yet.</p>
+  <pre>cd gui/frontend
+npm install
+npm run build</pre>
+  <p>Or run the Vite dev server against this API:</p>
+  <pre>cd gui/frontend
+npm run dev</pre>
+  <p>The API itself is available at <a href="/docs">/docs</a>.</p>
+</body>
+</html>
+"""
+
+    @app.get("/", include_in_schema=False)
+    def frontend_placeholder() -> Response:
+        return Response(content=_FRONTEND_BUILD_PLACEHOLDER, media_type="text/html")
