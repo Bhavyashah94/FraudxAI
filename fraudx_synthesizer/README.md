@@ -2,8 +2,8 @@
 
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![CI](https://github.com/Bhavyashah94/FraudxAI/actions/workflows/ci.yml/badge.svg)](https://github.com/Bhavyashah94/FraudxAI/actions/workflows/ci.yml)
-[![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue.svg)]()
-[![Tests](https://img.shields.io/badge/tests-60%20passed-brightgreen.svg)]()
+[![Python](https://img.shields.io/badge/python-3.12-blue.svg)](../pyproject.toml)
+[![Tests](https://img.shields.io/badge/tests-140-brightgreen.svg)]()
 
 **FraudX-Synthesizer** is a high-performance, discrete-event payment simulation framework that generates realistic card transaction feeds, banking authorization protocol fields, and ground-truth feature risk attributions for evaluating machine learning models.
 
@@ -81,7 +81,7 @@ print("Kendall Tau:", result.kendall_tau)
 
 ## 🧪 Verification & Test Suite
 
-Run the complete 22-test automated verification suite:
+Run the synthesizer suite -- 140 tests here, 299 in the repository as a whole:
 ```bash
 python -m pytest tests/test_synthesizer/ -v
 ```

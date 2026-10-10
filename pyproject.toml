@@ -11,18 +11,18 @@ license = { text = "Apache-2.0" }
 authors = [
     { name = "Bhavya Shah", email = "bhavyashah04122005@gmail.com" }
 ]
-requires-python = ">=3.9"
+# The floor is set by the dependency set this project resolves to, not by preference:
+# numpy 2.5, scipy 1.18 and shap 0.52 all require >=3.12, and 3.12 is the interpreter
+# CI exercises (.github/workflows/ci.yml). Older interpreters would need older
+# dependency pins that nothing here tests.
+requires-python = ">=3.12"
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Financial and Insurance Industry",
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
     "Topic :: Office/Business :: Financial",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: Security",

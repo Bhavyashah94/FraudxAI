@@ -109,7 +109,7 @@
 * **Top Tag:** FEASIBILITY & SCOPE • OPERATIONAL BOUNDARIES
 * **Headline (Serif):** Engineering Feasibility & Precise Project Scope
 * **Left Column (Feasibility Analysis):**
-  * **Technical Feasibility:** Built on Python 3.10+, utilizing Polars and NumPy for memory-efficient streaming operations. Driven by a 64-bit microsecond monotonic discrete-event priority queue measured at **2,166 events/second** (1,172 transactions/second, 1.4 GB peak RSS over 100,000 transactions) with `scripts/measure_throughput.py`.
+  * **Technical Feasibility:** Built on Python 3.12, utilizing Polars and NumPy for memory-efficient streaming operations. Driven by a 64-bit microsecond monotonic discrete-event priority queue measured at **2,166 events/second** (1,172 transactions/second, 1.4 GB peak RSS over 100,000 transactions) with `scripts/measure_throughput.py`.
   * **Economic Feasibility:** 100% open-source, zero proprietary data licensing costs, running locally without expensive commercial cloud API dependencies.
   * **Legal & Regulatory Feasibility:** Fully synthetic data eliminates all PCI-DSS and PII data privacy liabilities while strictly observing payment scheme invariants (Visa Core Rules, RBI Master Directions).
 * **Right Column (Project Scope):**

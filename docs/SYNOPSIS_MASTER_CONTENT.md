@@ -281,7 +281,7 @@ Table 7.1: Hardware and Software Specifications
 | | Storage | 2 GB free SSD space | 10 GB NVMe SSD (for multi-million logs) |
 | | Display | 1366 x 768 resolution | 1920 x 1080 Full HD (for Dashboard UI) |
 | **Software** | Operating System | Linux (Ubuntu 22.04+) or Windows 10/11 | Linux (Ubuntu 22.04 LTS / CachyOS) |
-| | Runtime Environment | Python 3.10+ | Python 3.12 (via UV package manager) |
+| | Runtime Environment | Python 3.12+ | Python 3.12 (via UV package manager) |
 | | Data Engine & Vectorization | Polars, NumPy, SciPy | Polars (multithreaded streaming) |
 | | Machine Learning & XAI | LightGBM, XGBoost, InterpretML, SHAP | LightGBM 4.x, InterpretML (EBM), SHAP 0.46+ |
 | | Web Dashboard Frontend | React 18, Vite, Tailwind CSS | React 18, Recharts / D3.js, Lucide Icons |
