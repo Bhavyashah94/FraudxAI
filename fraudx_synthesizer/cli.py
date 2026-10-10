@@ -208,6 +208,8 @@ def cmd_benchmark(args: argparse.Namespace) -> None:
             BenchmarkReportCompiler,
             PublicationPlotter,
             UnifiedBenchmarkRunner,
+            load_evaluation_protocol,
+            summarize_stability,
         )
 
         runner = UnifiedBenchmarkRunner(
@@ -221,6 +223,58 @@ def cmd_benchmark(args: argparse.Namespace) -> None:
         )
         print(f"Executing Unified Four-Pillar Benchmark on {args.samples} transactions ({args.region})...", file=sys.stderr)
         report_data = runner.run_benchmark()
+
+        mismatches = report_data.metadata.get("protocol_mismatches") or []
+        if mismatches:
+            # A deviating run is still graded -- it is useful for exploration -- but its
+            # number of violations is not comparable to anything, so say so where the
+            # reader is about to copy the number from.
+            print("OFF-PROTOCOL: this run deviates from spec/18 evaluation_protocol,", file=sys.stderr)
+            print("so its violation count is NOT comparable to the pinned certification:", file=sys.stderr)
+            for line in mismatches:
+                print(f"  - {line}", file=sys.stderr)
+        else:
+            # On-protocol: one seed's violation count is not a result. Re-run the pinned
+            # seeds and record how many runs each gate actually failed in.
+            protocol, protocol_source = load_evaluation_protocol()
+            seeds = list(protocol["stability_seeds"])
+            requested_seeds = getattr(args, "stability_seeds", None)
+            if requested_seeds is not None:
+                seeds = seeds[: max(1, int(requested_seeds))]
+            extra_seeds = [s for s in seeds if s != report_data.metadata.get("seed")]
+            if len(seeds) > 1 and extra_seeds:
+                print(
+                    f"Measuring grade stability across {len(seeds)} pinned seeds "
+                    f"({', '.join(str(s) for s in seeds)})...",
+                    file=sys.stderr,
+                )
+                runs: List[Dict[str, Any]] = [
+                    {
+                        "seed": report_data.metadata["seed"],
+                        "grade": report_data.certification_grade,
+                        "violations": report_data.violations,
+                    }
+                ]
+                for stability_seed in extra_seeds:
+                    stability_runner = UnifiedBenchmarkRunner(
+                        region=runner.region,
+                        n_transactions=runner.n_transactions,
+                        time_span_days=runner.time_span_days,
+                        k_daily=runner.k_daily,
+                        w_train_days=runner.w_train_days,
+                        w_test_days=runner.w_test_days,
+                        delta_delay_days=runner.delta_delay_days,
+                        seed=stability_seed,
+                    )
+                    stability_report = stability_runner.run_benchmark()
+                    runs.append(
+                        {
+                            "seed": stability_seed,
+                            "grade": stability_report.certification_grade,
+                            "violations": stability_report.violations,
+                        }
+                    )
+                report_data.stability = summarize_stability(runs, protocol_source)
 
         out_dir = Path(getattr(args, "output_dir", "reports/benchmark"))
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -635,6 +689,15 @@ def main() -> None:
     p_bench.add_argument("--k-daily", type=int, default=15, help="Daily analyst investigation capacity budget")
     p_bench.add_argument("--output-report", type=str, default=None, help="Path to write Markdown certification report")
     p_bench.add_argument("--json", action="store_true", help="Output benchmark metrics in JSON format")
+    p_bench.add_argument(
+        "--stability-seeds",
+        type=int,
+        default=None,
+        metavar="K",
+        help="K of spec/18 evaluation_protocol.stability_seeds to repeat the run over for the "
+        "grade-stability table (default: all of them; 1 reports a single run; ignored when "
+        "the run is OFF-PROTOCOL)",
+    )
     p_bench.set_defaults(func=cmd_benchmark)
 
     # Report subcommand

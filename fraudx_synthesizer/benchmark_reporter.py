@@ -16,12 +16,14 @@ import json
 import math
 import os
 import platform
+import re
 import sys
 import time
+from collections import Counter
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
+from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import scipy.stats as stats
@@ -98,6 +100,94 @@ def load_certification_thresholds() -> Tuple[Dict[str, Dict[str, float]], str]:
         return thresholds, str(spec_path)
     except (FileNotFoundError, KeyError, TypeError, ValueError, yaml.YAMLError):
         return {k: dict(v) for k, v in _EMBEDDED_CERTIFICATION_THRESHOLD_FALLBACK.items()}, "embedded fallback"
+
+
+# The evaluation protocol is likewise owned by spec/18: it names the exact run a
+# certification grade is defined over. Thresholds without a pinned sample define no
+# grade at all, because several gates rest on small denominators -- 2 to 8 streaming
+# test days, and pillar-2 attack simulations whose macro mean moves in steps of ~0.06.
+# Measured 2026-10-10: eleven runs differing only in --seed reported 4 to 9 violations.
+_EVALUATION_PROTOCOL_KEYS: Tuple[str, ...] = (
+    "region",
+    "n_transactions",
+    "seed",
+    "time_span_days",
+    "w_train_days",
+    "w_test_days",
+    "delta_delay_days",
+    "k_daily",
+)
+
+# Mirrors spec/18 `evaluation_protocol`, used only when spec/ is not installed next to
+# the package. Byte-for-byte identical to the spec so a fallback run pins the same run.
+_EMBEDDED_EVALUATION_PROTOCOL: Dict[str, Any] = {
+    "region": "US",
+    "n_transactions": 2000,
+    "seed": 42,
+    "stability_seeds": [42, 0, 1, 2, 3],
+    "time_span_days": 12,
+    "w_train_days": 3.0,
+    "w_test_days": 1.0,
+    "delta_delay_days": 1.5,
+    "k_daily": 15,
+}
+
+
+@functools.lru_cache(maxsize=1)
+def load_evaluation_protocol() -> Tuple[Dict[str, Any], str]:
+    """The pinned evaluation protocol and where it came from.
+
+    Returns `(protocol, source)`. `source` is the resolved spec path, or
+    `"embedded fallback"` when `spec/` is unavailable (packaged install). Treat the
+    returned mapping as read-only: like the threshold loader, the cached mapping is
+    shared between callers.
+    """
+    try:
+        spec_path = _find_spec_dir() / CERTIFICATION_SPEC_FILE
+        raw = yaml.safe_load(spec_path.read_text(encoding="utf-8"))
+        body = raw["evaluation_protocol"]
+        protocol: Dict[str, Any] = {"stability_seeds": [int(s) for s in body["stability_seeds"]]}
+        if not protocol["stability_seeds"]:
+            raise KeyError("spec/18 evaluation_protocol.stability_seeds must not be empty")
+        for key in _EVALUATION_PROTOCOL_KEYS:
+            if key not in body:
+                raise KeyError(f"spec/18 evaluation_protocol is missing {key}")
+            value = body[key]
+            if key == "region":
+                protocol[key] = str(value)
+            elif key in ("n_transactions", "seed", "k_daily"):
+                protocol[key] = int(value)
+            else:
+                protocol[key] = float(value)
+        return protocol, str(spec_path)
+    except (FileNotFoundError, KeyError, TypeError, ValueError, yaml.YAMLError):
+        fallback = dict(_EMBEDDED_EVALUATION_PROTOCOL)
+        fallback["stability_seeds"] = list(_EMBEDDED_EVALUATION_PROTOCOL["stability_seeds"])
+        return fallback, "embedded fallback"
+
+
+def protocol_mismatches(protocol: Mapping[str, Any], actual: Mapping[str, Any]) -> List[str]:
+    """Every way a run deviates from the pinned protocol, one line per deviation.
+
+    An empty list means the grade is comparable to the one spec/18 defines. Numbers are
+    compared to 1e-9 so day-valued windows accept `3` and `3.0` as the same window,
+    while `region` is compared as text.
+    """
+    found: List[str] = []
+    for key in _EVALUATION_PROTOCOL_KEYS:
+        if key not in protocol or key not in actual:
+            continue
+        expected, got = protocol[key], actual[key]
+        both_numeric = all(
+            isinstance(v, (int, float)) and not isinstance(v, bool) for v in (expected, got)
+        )
+        if both_numeric:
+            if abs(float(expected) - float(got)) > 1e-9:
+                found.append(f"{key}: this run {got}, spec/18 pins {expected}")
+        elif str(expected) != str(got):
+            found.append(f"{key}: this run {got}, spec/18 pins {expected}")
+    return found
+
 
 # Enforce headless matplotlib backend strictly before pyplot imports
 try:
@@ -532,6 +622,137 @@ class UnifiedBenchmarkReportData:
     feature_attributions: Dict[str, float]
     ground_truth_phi: Dict[str, float]
     triage_curves: Dict[str, Any] = field(default_factory=dict)
+    stability: Optional[StabilitySummary] = None
+    """Per-gate fail counts across the pinned protocol seeds, or `None` when the run was
+    OFF-PROTOCOL (a deviation from spec/18's `evaluation_protocol` is reported instead of
+    a stability range, since the range would describe a run nobody pinned)."""
+
+
+_NUMERIC_IN_VIOLATION = re.compile(r"-?\d+(?:\.\d+)?")
+
+
+def _gate_key(violation: str) -> str:
+    """Names *which* gate a violation is about, ignoring the numbers in it.
+
+    Violation strings embed the observed value and the limit ("MCC Jensen-Shannon
+    divergence 0.1092 exceeds the 0.0500 maximum"), so two runs failing the same gate
+    produce two different strings. Stripping the numbers lets the stability summary count
+    them as one gate; the pillar prefix is kept, because two pillars may name a metric
+    alike.
+    """
+    pillar, sep, body = str(violation).partition(": ")
+    body = _NUMERIC_IN_VIOLATION.sub("#", body)
+    body = re.sub(r"(exceeds|falls below) the # (maximum|minimum)", r"\1 the \2", body)
+    body = re.sub(r"\s+", " ", body).strip()
+    return f"{pillar}: {body}" if sep else body
+
+
+@dataclass
+class StabilitySummary:
+    """How the grade moved across the pinned protocol seeds.
+
+    `gate_failures` maps a gate to the number of runs that failed it. A gate at `runs`
+    is a solid failure; a gate between 1 and `runs - 1` flips with the seed and cannot be
+    quoted as a result on its own -- which is the whole point of measuring it: eleven
+    runs differing only in seed produced 4 to 9 violations before this was recorded.
+    """
+
+    seeds: List[int]
+    runs: int
+    grades: Dict[str, int]
+    violation_counts: List[int]
+    gate_failures: Dict[str, int]
+    grade_stable: bool
+    unstable_gates: List[str]
+
+
+def summarize_stability(
+    runs: Sequence[Mapping[str, Any]],
+    protocol_source: str,
+) -> StabilitySummary:
+    """Aggregates ``{"seed", "grade", "violations"}`` runs into one stability summary.
+
+    Pure arithmetic over already-computed runs, so it is testable without simulating a
+    stream: `protocol_source` is recorded only so the summary can say which spec the
+    gates it counts came from.
+    """
+    materialized = list(runs)
+    if not materialized:
+        raise ValueError("stability summary needs at least one run")
+
+    grades: Counter = Counter()
+    gate_failures: Counter = Counter()
+    violation_counts: List[int] = []
+    for run in materialized:
+        violations = list(run.get("violations") or [])
+        grades[str(run.get("grade", "UNKNOWN"))] += 1
+        violation_counts.append(len(violations))
+        for violation in violations:
+            gate_failures[_gate_key(violation)] += 1
+
+    total = len(materialized)
+    return StabilitySummary(
+        seeds=[int(run.get("seed", -1)) for run in materialized],
+        runs=total,
+        grades=dict(sorted(grades.items())),
+        violation_counts=violation_counts,
+        gate_failures=dict(sorted(gate_failures.items(), key=lambda kv: (-kv[1], kv[0]))),
+        grade_stable=len(grades) == 1,
+        unstable_gates=sorted(
+            gate for gate, count in gate_failures.items() if 0 < count < total
+        ),
+    )
+
+
+def protocol_status_markdown(mismatches: Sequence[str]) -> str:
+    """The report's line stating whether this grade is comparable to spec/18's."""
+    if not mismatches:
+        return (
+            "- **Evaluation Protocol:** matches `spec/18 evaluation_protocol` "
+            "-- this grade is comparable to the pinned certification.\n"
+        )
+    lines = [
+        "- **Evaluation Protocol: OFF-PROTOCOL** -- this grade is **not** comparable to "
+        "the pinned certification in `spec/18`:\n"
+    ]
+    lines += [f"  - {m}\n" for m in mismatches]
+    return "".join(lines)
+
+
+def stability_markdown(summary: StabilitySummary, protocol_source: str) -> str:
+    """The report section that replaces a single seed's violation count with a range."""
+    grade_text = ", ".join(f"`{grade}` x{count}" for grade, count in summary.grades.items())
+    counts = summary.violation_counts
+    lines = [
+        "",
+        "## Grade Stability Across the Pinned Protocol Seeds",
+        "",
+        f"Over {summary.runs} runs at the seeds pinned by `{protocol_source}`: "
+        f"grades {grade_text}; violation counts {min(counts)}-{max(counts)}.",
+        "",
+        f"Grade {'is' if summary.grade_stable else 'IS NOT'} stable across seeds.",
+        "",
+        "| gate | failed in | reading |",
+        "|---|---|---|",
+    ]
+    for gate, count in summary.gate_failures.items():
+        reading = "solid failure" if count == summary.runs else "FLIPS WITH SEED"
+        lines.append(f"| {gate} | {count}/{summary.runs} | {reading} |")
+    if not summary.gate_failures:
+        lines.append("| (no gate failed) | 0/{} | - |".format(summary.runs))
+    lines.append("")
+    if summary.unstable_gates:
+        lines.append(
+            f"**{len(summary.unstable_gates)} gate(s) flip with the seed.** A count of "
+            "violations from one run is therefore not a result: quote the seed with it, "
+            "or read this table."
+        )
+    else:
+        lines.append("Every gate that failed did so in every run; the violation set is reproducible.")
+    lines.append("")
+    # Two trailing newlines so the section ends with a blank line: the report template
+    # appends its next `##` heading directly after this string.
+    return "\n".join(lines) + "\n"
 
 
 def _threshold_violations(
@@ -703,6 +924,22 @@ class UnifiedBenchmarkRunner:
         grade = "TIER-1_GOLD" if all_passed else ("TIER-2_SILVER" if len(violations) == 1 else "NON_CERTIFIED_FAIL")
         runtime_sec = time.perf_counter() - t_start
 
+        # Record the run against the protocol it would have to match to be citable. The
+        # grade above is computed either way; the mismatches say whether it means what
+        # spec/18 says it means.
+        run_protocol: Dict[str, Any] = {
+            "region": self.region,
+            "n_transactions": self.n_transactions,
+            "seed": self.seed,
+            "time_span_days": self.time_span_days,
+            "w_train_days": self.w_train_days,
+            "w_test_days": self.w_test_days,
+            "delta_delay_days": self.delta_delay_days,
+            "k_daily": self.k_daily,
+        }
+        pinned_protocol, protocol_source = load_evaluation_protocol()
+        mismatches = protocol_mismatches(pinned_protocol, run_protocol)
+
         return UnifiedBenchmarkReportData(
             schema_version="1.0.0",
             metadata={
@@ -714,6 +951,10 @@ class UnifiedBenchmarkRunner:
                 "model_architecture": "HistGradientBoostingClassifier",
                 "explainer_type": "counterfactual_twin_occlusion_vs_SCM_ground_truth",
                 "threshold_source": threshold_source,
+                "protocol_source": protocol_source,
+                "pinned_protocol": dict(pinned_protocol),
+                "run_protocol": run_protocol,
+                "protocol_mismatches": mismatches,
             },
             system_provenance={
                 "python_version": sys.version.split()[0],
@@ -1252,11 +1493,23 @@ class BenchmarkReportCompiler:
                  report.xai.mean_causal_faithfulness >= p4["min_causal_faithfulness"]),
         ])
 
+        mismatches = list(report.metadata.get("protocol_mismatches") or [])
+        protocol_badge = "matches `spec/18 evaluation_protocol`" if not mismatches else "**OFF-PROTOCOL** -- see Certification Status"
+        stability_section = (
+            stability_markdown(
+                report.stability,
+                report.metadata.get("protocol_source", "spec/18_benchmark_reporting.yaml"),
+            )
+            if report.stability is not None
+            else ""
+        )
+
         md = f"""# FraudxAI Benchmark Certification Report
 
 **Ecosystem:** {report.metadata['region']} ({report.metadata['currency']}) | **Status:** {status_badge} ({grade_badge})  
 **Evaluation Date:** {report.metadata['timestamp_utc']} | **Transactions:** {report.metadata['n_transactions']} | **Engine Seed:** {report.metadata['seed']}  
-**Threshold Source:** `{report.metadata.get('threshold_source', threshold_source)}`
+**Threshold Source:** `{report.metadata.get('threshold_source', threshold_source)}`  
+**Evaluation Protocol:** {protocol_badge}
 
 ---
 
@@ -1331,11 +1584,11 @@ Stated so that no score above is read as more than it measures:
 
 ---
 
-## Certification Status & Governance
+{stability_section}## Certification Status & Governance
 - **Overall Certification:** `{report.certification_grade}`
 - **Threshold Source:** `{report.metadata.get('threshold_source', threshold_source)}`
 - **Violations Logged:** {len(report.violations)}
-"""
+{protocol_status_markdown(mismatches)}"""
         if report.violations:
             for v in report.violations:
                 md += f"\n  - [VIOLATION] {v}"
@@ -1378,6 +1631,31 @@ Stated so that no score above is read as more than it measures:
         hp2 = html_thresholds["pillar_2_adversarial_privacy"]
         hp3 = html_thresholds["pillar_3_operational_streaming"]
         hp4 = html_thresholds["pillar_4_causal_xai_fidelity"]
+        html_mismatches = list(report.metadata.get("protocol_mismatches") or [])
+        if html_mismatches:
+            html_protocol = (
+                "<strong>OFF-PROTOCOL</strong> -- this run deviates from "
+                "<code>spec/18 evaluation_protocol</code> (" + "; ".join(html_mismatches) + "), "
+                "so its violation count is <strong>not</strong> comparable to the pinned certification."
+            )
+        else:
+            html_protocol = (
+                "This run matches <code>spec/18 evaluation_protocol</code>, so its grade is "
+                "comparable to the pinned certification."
+            )
+        html_stability = ""
+        if report.stability is not None:
+            stability = report.stability
+            grade_text = ", ".join(
+                f"{grade} &times; {count}" for grade, count in stability.grades.items()
+            )
+            html_stability = (
+                '<p style="font-size: 13px; color: #666;">'
+                f"Grade stability across {stability.runs} pinned seeds: {grade_text}; "
+                f"{len(stability.unstable_gates)} of {len(stability.gate_failures)} failing gates "
+                "flip with the seed and must not be quoted without it."
+                "</p>"
+            )
 
         def _hrow(pillar: str, metric: str, observed: float, target: str, ok: bool) -> str:
             return (
@@ -1608,6 +1886,12 @@ Stated so that no score above is read as more than it measures:
     Every verdict above was computed from <code>{report.metadata.get('threshold_source', html_threshold_source)}</code>,
     the same thresholds the certification grader applied to this run.
   </p>
+
+  <h2>Evaluation Protocol</h2>
+  <p style="font-size: 13px; color: #666;">
+    {html_protocol}
+  </p>
+  {html_stability}
 
   <h2>Method Limitations</h2>
   <ul style="font-size: 13px; color: #444; line-height: 1.6;">

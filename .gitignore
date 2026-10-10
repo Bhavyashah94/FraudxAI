@@ -65,7 +65,11 @@ data/test_*.csv
 data/*_production.csv
 data/*simulation*/
 data/smoke_test_parallel/
-reports/
+# Generated benchmark output stays out of the repo. The curated markdown findings under
+# reports/ are a different thing: spec/active_slice.yaml and README.md cite them, and an
+# ignored report is a dead link for anyone who clones -- so track the .md files only.
+reports/*
+!reports/*.md
 .licenses/
 
 # Ad-hoc scratch scripts and presentation binaries

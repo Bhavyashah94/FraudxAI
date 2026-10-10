@@ -1,32 +1,72 @@
 current_slice:
-  id: "slice-22-external-corpus-validation-of-pillar-1"
-  title: "Grade Real and Third-Party Corpora with the Certification Grader's Own Pillar 1"
+  id: "slice-23-pinned-evaluation-protocol-and-grade-stability"
+  title: "Pin the Run a Certification Grade Is Defined Over, and Report Stability Instead of One Violation Count"
   status: "verified"  # [planning, in_progress, testing, verified]
   target_spec_files:
     - "spec/18_benchmark_reporting.yaml"
-    - "scripts/score_external_corpus.py"
-    - "tests/test_score_external_corpus.py"
-    - "reports/pillar1_external_corpus_scorecard.md"
+    - "fraudx_synthesizer/benchmark_reporter.py"
+    - "fraudx_synthesizer/cli.py"
+    - "scripts/report_grade_stability.py"
+    - "tests/test_evaluation_protocol.py"
+    - "tests/test_report_grade_stability_script.py"
+    - "reports/certification_grade_stability.md"
+    - ".github/workflows/ci.yml"
+    - "README.md"
   acceptance_criteria:
-    - external_corpora_are_graded_by_the_graders_own_function_and_spec_18_thresholds: true
-    - a_metric_whose_inputs_the_corpus_lacks_is_excluded_from_the_verdict: true
-    - every_external_corpus_records_its_source_url_and_sha256: true
-    - inter_arrival_scores_are_reported_with_the_corpus_clock_resolution: true
-    - the_real_corpus_result_is_published_next_to_the_threshold_it_fails: true
+    - the_evaluation_protocol_is_read_from_spec_18_not_rested_in_code: true
+    - a_run_that_deviates_is_marked_off_protocol_with_every_deviation_named: true
+    - an_on_protocol_run_publishes_a_per_gate_stability_table: true
+    - gate_identity_ignores_observed_values_so_different_seeds_group_as_one_gate: true
+    - every_quoted_count_comes_from_a_rerunnable_script_not_a_transcription: true
+    - ci_asserts_the_documented_command_is_on_protocol_and_reports_5_seeds: true
+    - the_certification_command_and_its_limits_are_documented_in_the_readme: true
   verdict: >-
-    verified: 302/302 tests green, including tests/test_score_external_corpus.py, which asserts the
-    scorer reproduces the grader's own figures for the same seed and never grades a column the
-    corpus does not carry. Measured at seed 42 against the US reference: the real ULB card corpus
-    (284,807 transactions, OpenML file 1673544, sha256 fdaf1273...) fails log10(1+amount) at 0.3745
-    while this generator fails it at 0.1508, both over the 0.150 limit, and a control drawn straight
-    from the reference passes at 0.0000 -- so that gate ranks resemblance to the hardcoded lognormal,
-    not resemblance to real card traffic. BankSim (594,643 rows, a competing simulator) scores
-    0.2649. The inter-arrival gate is not comparable across clock resolutions (dt_min: BankSim
-    3600 s, ULB 1 s, ours 0.01-0.3 s) and two of this generator's verdicts move with sample size at
-    the grader's default n=1500. Command, provenance, hashes and caveats:
-    reports/pillar1_external_corpus_scorecard.md
+    verified: 313/313 tests green (11 new: tests/test_evaluation_protocol.py,
+    tests/test_report_grade_stability_script.py), 37/37 grounded invariants. Measured across 17
+    stored runs of the same command with -n and --seed left free, the violation count moved between
+    4 and 9 while the grade stayed NON_CERTIFIED_FAIL in 17/17, because spec/18 pinned the
+    thresholds but never the run they were applied to. The grader itself is deterministic: three
+    repeat invocations at n=400/seed 42, two at n=1000/seed 42 and three at n=2000/seed 42 each
+    produced byte-identical results. spec/18 now carries evaluation_protocol (region, n_transactions
+    2000, seed 42, 12-day stream, the four streaming windows, stability_seeds [42,0,1,2,3]);
+    reports record pinned_protocol/run_protocol/protocol_mismatches and mark a deviating run
+    OFF-PROTOCOL in both Markdown and HTML; an on-protocol run re-executes every pinned seed and
+    prints a per-gate table, under which 3 of 9 failing gates are solid (5/5) and 6 flip with the
+    seed. Every table in reports/certification_grade_stability.md is printed by
+    scripts/report_grade_stability.py, and CI now asserts the documented command stays on-protocol
+    with 5 seeds. Open and deliberately unresolved: the streaming floor is still
+    min_days_evaluated 2 with 2-8 test days observed, and spec/17's window defaults (30/14/50)
+    cannot run on a 12-day stream -- both need the stream lengthened first.
 
 previous_slices:
+  - id: "slice-22-external-corpus-validation-of-pillar-1"
+    title: "Grade Real and Third-Party Corpora with the Certification Grader's Own Pillar 1"
+    status: "verified"  # [planning, in_progress, testing, verified]
+    target_spec_files:
+      - "spec/18_benchmark_reporting.yaml"
+      - "scripts/score_external_corpus.py"
+      - "tests/test_score_external_corpus.py"
+      - "reports/pillar1_external_corpus_scorecard.md"
+    acceptance_criteria:
+      - external_corpora_are_graded_by_the_graders_own_function_and_spec_18_thresholds: true
+      - a_metric_whose_inputs_the_corpus_lacks_is_excluded_from_the_verdict: true
+      - every_external_corpus_records_its_source_url_and_sha256: true
+      - inter_arrival_scores_are_reported_with_the_corpus_clock_resolution: true
+      - the_real_corpus_result_is_published_next_to_the_threshold_it_fails: true
+    verdict: >-
+      verified on main at commit 9895834: 302/302 tests green at that commit, including
+      tests/test_score_external_corpus.py, which asserts the
+      scorer reproduces the grader's own figures for the same seed and never grades a column the
+      corpus does not carry. Measured at seed 42 against the US reference: the real ULB card corpus
+      (284,807 transactions, OpenML file 1673544, sha256 fdaf1273...) fails log10(1+amount) at 0.3745
+      while this generator fails it at 0.1508, both over the 0.150 limit, and a control drawn straight
+      from the reference passes at 0.0000 -- so that gate ranks resemblance to the hardcoded lognormal,
+      not resemblance to real card traffic. BankSim (594,643 rows, a competing simulator) scores
+      0.2649. The inter-arrival gate is not comparable across clock resolutions (dt_min: BankSim
+      3600 s, ULB 1 s, ours 0.01-0.3 s) and two of this generator's verdicts move with sample size at
+      the grader's default n=1500. Command, provenance, hashes and caveats:
+      reports/pillar1_external_corpus_scorecard.md
+
   - id: "slice-21-certification-honesty-and-verifiable-claims"
     title: "Spec-Driven Certification Thresholds, Falsifiable Balance Conservation, Measured Documentation Figures"
     status: "verified"  # [planning, in_progress, testing, verified]

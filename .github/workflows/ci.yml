@@ -44,3 +44,34 @@ jobs:
       - name: Verify Empirical XAI Benchmark Harness
         run: |
           python -m fraudx_synthesizer.cli benchmark -n 500 --json
+
+      # Guards the command the README tells people to run for a grade. It fails if the
+      # pinned protocol drifts (a changed default, a changed spec/18 pin) or if an
+      # on-protocol run stops publishing the stability summary that replaces a single
+      # seed's violation count. See reports/certification_grade_stability.md.
+      - name: Verify Pinned Certification Protocol
+        run: |
+          python -m fraudx_synthesizer.cli benchmark -n 2000 --unified --seed 42 \
+            --output-dir "$RUNNER_TEMP/benchmark"
+          python - <<'PY'
+          import json
+          import os
+
+          with open(os.path.join(os.environ["RUNNER_TEMP"], "benchmark", "benchmark_results.json")) as handle:
+              report = json.load(handle)
+
+          mismatches = report["metadata"]["protocol_mismatches"]
+          assert not mismatches, f"pinned certification command is OFF-PROTOCOL: {mismatches}"
+
+          stability = report.get("stability")
+          assert stability, "on-protocol run published no stability summary"
+          assert stability["runs"] == 5, f"expected 5 pinned seeds, got {stability['runs']}"
+          assert stability["seeds"] == [42, 0, 1, 2, 3], f"unexpected seeds: {stability['seeds']}"
+
+          print(
+              f"on-protocol {report['certification_grade']}: "
+              f"main run {len(report['violations'])} violations; "
+              f"{min(stability['violation_counts'])}-{max(stability['violation_counts'])} across "
+              f"{stability['runs']} seeds; {len(stability['unstable_gates'])} gates flip with the seed"
+          )
+          PY

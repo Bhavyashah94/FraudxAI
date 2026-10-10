@@ -266,6 +266,44 @@ Sample Benchmark Output (`fraudx benchmark -n 2000 --model lightgbm --seed 42`, 
 
 ---
 
+### Four-Pillar Certification Benchmark (the graded run)
+
+The explainer harness above measures XAI only. The **certification** benchmark grades all
+four pillars of `spec/18_benchmark_reporting.yaml` and issues the verdict:
+
+```bash
+fraudx benchmark -n 2000 --unified --seed 42 --output-dir reports/benchmark
+```
+
+`-n 2000` and `--seed 42` are not suggestions: `spec/18` pins them under
+`evaluation_protocol`, together with the region, stream length and streaming windows, and a
+list of seeds to repeat the run over. A run that deviates is reported as **OFF-PROTOCOL**
+with each deviation named, so its violation count cannot be mistaken for the pinned one.
+
+Because several gates rest on small denominators (2–8 streaming test days; a handful of
+attack simulations), **one seed's violation count is not a result.** On-protocol runs
+therefore re-execute every pinned seed and print a per-gate table instead. Verbatim from
+the run above (the `#` is where the observed value and the limit are stripped, so the same
+gate groups across seeds; 9 gates failed, 5 shown):
+
+```
+| gate                                                                       | failed in | reading          |
+|---                                                                         |---        |---               |
+| Pillar 1 (Data Fidelity): MCC Jensen-Shannon divergence # exceeds the maximum | 5/5     | solid failure    |
+| Pillar 1 (Data Fidelity): inter-arrival Wasserstein # exceeds the maximum   | 5/5      | solid failure    |
+| Pillar 4 (Causal XAI Fidelity): relative attribution error # exceeds the maximum | 5/5 | solid failure    |
+| Pillar 3 (Operational Streaming): prequential PR-AUC # falls below the minimum | 4/5   | FLIPS WITH SEED  |
+| Pillar 1 (Data Fidelity): log-amount Wasserstein # exceeds the maximum      | 3/5      | FLIPS WITH SEED  |
+```
+
+Measured 2026-10-10, that is what the three gates that were believed to "always fail" look
+like under the pinned protocol: three **solid** failures in 5/5 seeds, and 6 of the 9
+failing gates flip with the seed. Current verdict: **`NON_CERTIFIED_FAIL` in 5/5 seeds**,
+stable across seeds. The full measurement and its reproducing command are in
+[`reports/certification_grade_stability.md`](reports/certification_grade_stability.md).
+
+---
+
 ### Python Programmatic API
 
 ```python
@@ -326,7 +364,7 @@ The simulation is governed by 13 formal living specification files serving as th
 
 FraudxAI enforces strict, deterministic verification across the entire stack:
 
-### 1. PyTest Test Suite (**302 / 302 Passed, 100% Green**)
+### 1. PyTest Test Suite (**313 / 313 Passed, 100% Green**)
 ```bash
 pytest tests/ -v
 ```

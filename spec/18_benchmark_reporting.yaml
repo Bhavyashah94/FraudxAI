@@ -112,3 +112,42 @@ certification_thresholds:
     min_top_3_precision: 0.600              # Precision@3 against true causal support set
     max_relative_attribution_error: 0.450   # Normalized L2 attribution error ceiling
     min_causal_faithfulness: 0.500          # Score decay correlation under counterfactual replacement
+
+# ------------------------------------------------------------------------------
+# 4. Evaluation Protocol: the exact run a certification grade is defined over
+# ------------------------------------------------------------------------------
+# Measured 2026-10-10 over eleven runs of `benchmark --unified` that differed only
+# in --seed: the same command reported between 4 and 9 violations (reports/
+# certification_grade_stability.md). Thresholds alone do not define a grade when
+# several gates rest on small denominators -- 2 to 8 streaming test days, and
+# pillar-2 attack simulations whose macro mean moves in steps of roughly 0.06. The
+# protocol below pins the run so a grade can be reproduced and compared; a run that
+# deviates from it is reported as OFF-PROTOCOL instead of producing a grade that
+# looks comparable.
+evaluation_protocol:
+  region: "US"
+  n_transactions: 2000
+  seed: 42
+  # Seeds the stability summary averages over: the protocol seed plus four
+  # consecutive offsets. Five runs is a maintainer choice (category (b) in
+  # spec/07's taxonomy), made because each run costs about 3 seconds, so the range
+  # is cheap to report and impossible to mistake for a single-seed result.
+  stability_seeds: [42, 0, 1, 2, 3]
+
+  # As-run stream shape. Grounding: region, n_transactions and seed are the
+  # command README documents (`fraudx benchmark -n 2000 --model lightgbm --seed 42`).
+  time_span_days: 12
+
+  # As-run streaming windows (UnifiedBenchmarkRunner and the `benchmark`
+  # subcommand defaults).
+  # OPEN DIVERGENCE -- recorded, not harmonised: spec/17
+  # prequential_evaluation.window_parameters specifies default_w_train_days 30.0,
+  # default_delta_delay_days 14.0 and default_k_daily 50, none of which this grader
+  # uses. Those values cannot run on the 12-day stream pinned above (a 30-day
+  # training window leaves no test windows at all), so adopting spec/17 requires
+  # lengthening the stream and re-measuring every pillar. Resolving it is a
+  # separate slice; picking a side silently here would make the spec lie.
+  w_train_days: 3.0
+  w_test_days: 1.0
+  delta_delay_days: 1.5
+  k_daily: 15

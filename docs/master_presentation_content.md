@@ -27,7 +27,7 @@
 18. **Slide 18: Methodology: Ground-Truth Causal Attribution** (Δx Baseline Deltas, Path Integration & Formal XAI Metrics)
 19. **Slide 19: Section Divider — Results and Discussion**
 20. **Slide 20: Results & Discussion: Benchmarking Post-Hoc Explainers** (Quantus Faithfulness Audits & Empirical Divergence)
-21. **Slide 21: Results & Discussion: Invariant Certification & Engine Throughput** (302/302 Tests Green, 37 Invariants, ~2.2K events/sec)
+21. **Slide 21: Results & Discussion: Invariant Certification & Engine Throughput** (313/313 Tests Green, 37 Invariants, ~2.2K events/sec)
 22. **Slide 22: Section Divider — Conclusion & Future Scope**
 23. **Slide 23: Conclusion & Future Scope** (Core Contributions, Multi-Agent RL, ISO 20022 Cross-Border Rails)
 24. **Slide 24: References** (Statutory Circulars, Payment Network Rules & Literature)
@@ -170,7 +170,7 @@
 #### Slide 18: Invariant Certification & Throughput Benchmarks
 * **Headline (Serif):** Formal Invariant Verification & Engine Performance
 * **Key Achievements:**
-  * **302 / 302 Tests Passed:** 100% automated pytest suite passing across unit and integration rails.
+  * **313 / 313 Tests Passed:** 100% automated pytest suite passing across unit and integration rails.
   * **37 / 37 Certified Invariants:** Formal mathematical verification of double-entry bitwise conservation, strict temporal monotonicity, anti-leak tripwires, and Haversine velocity ceilings.
   * **Throughput:** Measured generation velocity of **2,166 events/second** (1,172 transactions/second) over a 100,000-transaction run, sustaining synthesis without memory degradation.
 

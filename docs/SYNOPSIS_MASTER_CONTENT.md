@@ -465,7 +465,7 @@ latency and Recall@1%FPR are not reported because the harness does not measure t
 ```text
 Summary of Empirical Findings:
 1. Engine Throughput: Measured simulation throughput of 2,166 events/second (1,172 transactions/second, 1.4 GB peak RSS) across 100,000 transactions; reproduce with `python scripts/measure_throughput.py --transactions 100000 --days 60 --region US --seed 42`.
-2. Invariant Certification: Successfully certified 37 formal mathematical invariants with 100% of 302 automated unit and invariant tests passing.
+2. Invariant Certification: Successfully certified 37 formal mathematical invariants with 100% of 313 automated unit and invariant tests passing.
 3. Explainer Divergence: Auditing post-hoc TreeSHAP against SCM ground truth reveals significant rank degradation (Kendall's tau_b = 0.3668, LightGBM, seed 42, n=2000), demonstrating that feature multicollinearity causes post-hoc explainers to scramble true causal feature importance.
 
 [INSERT FIGURE 10.1: Dashboard UI Screenshot showing real-time feeds and SHAP waterfall chart]
