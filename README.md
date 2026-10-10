@@ -427,7 +427,7 @@ If you use FraudxAI in your research or project, please cite:
 
 This project's source code, tests, specifications and original documentation are licensed under the **Apache License 2.0** - see the [LICENSE](LICENSE) file for details.
 
-The research papers under [`docs/papers/`](docs/papers/INDEX.md) are **third-party copyrighted works and are *not* covered by that licence**; they are held as private citation copies. The `LICENSE` file states this exception explicitly. If you redistribute this repository, remove `docs/papers/` first.
+The research papers under [`docs/papers/`](docs/papers/INDEX.md) are **third-party copyrighted works and are *not* covered by that licence**; they are kept as unlicensed citation copies. The repository is public, so those files are publicly readable — retaining them there is a deliberate decision, not an oversight, and it grants nobody, including this project, a right to redistribute them. The `LICENSE` file states this exception explicitly. If you redistribute this repository, remove `docs/papers/` first.
 
 ```
 Copyright 2024-2026 Bhavya Shah
