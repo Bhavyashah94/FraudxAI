@@ -4,7 +4,7 @@
 current_slice:
   id: "slice-21-certification-honesty-and-verifiable-claims"
   title: "Spec-Driven Certification Thresholds, Falsifiable Balance Conservation, Measured Documentation Figures"
-  status: "testing"  # [planning, in_progress, testing, verified]
+  status: "verified"  # [planning, in_progress, testing, verified]
   target_spec_files:
     - "spec/18_benchmark_reporting.yaml"
     - "fraudx_synthesizer/benchmark_reporter.py"
@@ -29,7 +29,10 @@ current_slice:
     - documentation_throughput_and_test_counts_trace_to_a_reproduced_command: true
     - ci_installs_the_gui_extra_so_the_suite_collects_on_a_clean_runner: true
   verdict: >-
-    in testing: 299/299 tests green on this branch; the benchmark grader grades against spec/18 and
+    verified on main (merge commit fe82480, PR #8): 299/299 tests, 37/37 grounded invariants,
+    and GitHub Actions run 38046972445 green on ubuntu-latest / Python 3.12 -- the first workflow
+    run this repository has had, since the workflow was disabled in the repo settings; the
+    benchmark grader grades against spec/18 and
     every report row carries its own verdict; pillar 2 now gates memorisation as
     DCR_0.05(synth->real) / DCR_0.05(real->real) >= 0.500 (a verbatim copier scores 0, this generator
     measures 1.04 at n=1000 and 2.14 at n=400) instead of an absolute floor a copier passes; measured
