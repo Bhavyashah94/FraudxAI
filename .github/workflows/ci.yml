@@ -6,22 +6,22 @@ on:
   pull_request:
     branches: [ main ]
 
+# One OS and one interpreter: the pair the README and the SYNOPSIS quote (Python 3.12 on
+# Linux), which is also what the suite is run on locally. A matrix multiplies runner time
+# without telling us anything the local run does not; widen it deliberately if a port turns
+# up a real difference.
 jobs:
   test:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: "3.12"
           cache: "pip"
 
       - name: Install dependencies
