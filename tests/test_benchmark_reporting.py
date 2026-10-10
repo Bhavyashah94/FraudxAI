@@ -52,6 +52,7 @@ def sample_report_data() -> UnifiedBenchmarkReportData:
         ),
         privacy=AdversarialPrivacyScorecard(
             dcr_5th_percentile=0.0652,
+            dcr_reference_ratio=0.9210,
             nndr_mean=0.8415,
             mia_attack_roc_auc=0.5120,
             evasion_rate_macro_mean=0.1420,
@@ -184,6 +185,7 @@ def test_benchmark_results_json_schema_validity(tmp_path: Path, sample_report_da
     assert "system_provenance" in d and d["system_provenance"]["runtime_seconds"] > 0
     assert "fidelity" in d and d["fidelity"]["wasserstein_amount_log"] == 0.0821
     assert "privacy" in d and d["privacy"]["dcr_5th_percentile"] == 0.0652
+    assert d["privacy"]["dcr_reference_ratio"] == 0.9210
     assert "streaming" in d and d["streaming"]["overall_savings_ratio"] == 0.7273
     assert "xai" in d and d["xai"]["mean_spearman_rho"] == 0.8857
     assert d["all_pillars_passed"] is True
@@ -209,6 +211,8 @@ def test_four_pillar_scorecard_computation():
     assert report.fidelity.wasserstein_amount_log >= 0.0
     assert 0.0 <= report.fidelity.js_divergence_mcc <= 1.0
     assert report.privacy.dcr_5th_percentile >= 0.0
+    # Memorisation is the synthetic-to-real distance relative to the real-to-real one
+    assert report.privacy.dcr_reference_ratio > 0.0
     assert 0.0 <= report.privacy.nndr_mean <= 1.0
     assert report.streaming.n_days_evaluated >= 1
     assert 0.0 <= report.streaming.mean_pr_auc <= 1.0
@@ -396,7 +400,7 @@ def test_html_report_dynamic_fail_pills(tmp_path: Path, sample_report_data: Unif
     # Create failing report data
     failing_report = sample_report_data
     failing_report.fidelity.wasserstein_amount_log = 0.8888  # Violates <= 0.350
-    failing_report.privacy.dcr_5th_percentile = 0.00001     # Violates >= 0.0001
+    failing_report.privacy.dcr_reference_ratio = 0.0001     # Violates >= 0.500
     failing_report.all_pillars_passed = False
     failing_report.certification_grade = "NON_CERTIFIED_FAIL"
 
@@ -424,6 +428,39 @@ def test_evasion_rate_counts_approved_fraud():
     scorecard = runner._evaluate_adversarial_privacy(records)
     # the scorecard stores four decimals
     assert scorecard.evasion_rate_macro_mean == pytest.approx(approved / len(fraud), abs=5e-5)
+
+
+def test_privacy_gate_fails_a_generator_that_copies_records():
+    """Negative control: a generator that replays real records verbatim must fail.
+
+    Memorisation is measured as the synthetic-to-real 5th-percentile distance relative
+    to the real-to-real one on the same points, so a copier drives the ratio to zero
+    while a generator that models the distribution lands near 1.0. The gate this
+    replaced was an absolute floor in normalised feature space, which a copier passes
+    as long as it copies *common* records -- precisely the case the gate exists to
+    catch, which is why the measured 0.0001 passed while meaning nothing.
+    """
+    from fraudx_synthesizer import DiscreteEventEngine
+
+    records = DiscreteEventEngine(n_cards=60, n_merchants=20, region="US", seed=5).generate_batch(
+        n_transactions=400, fraud_prevalence=0.1
+    )
+    runner = UnifiedBenchmarkRunner(region="US", n_transactions=400, time_span_days=4.0, k_daily=10, seed=5)
+
+    honest = runner._evaluate_adversarial_privacy(records)
+    assert honest.dcr_reference_ratio > 0.5, (
+        "a modelled stream should sit at roughly the real-to-real distance, "
+        f"got {honest.dcr_reference_ratio}"
+    )
+
+    # The second half replays the first half: every synthetic record is a real record.
+    cloner_records = [dict(r) for r in records]
+    half = len(cloner_records) // 2
+    cloner_records[half:] = [dict(r) for r in cloner_records[:half]]
+
+    copied = runner._evaluate_adversarial_privacy(cloner_records)
+    assert copied.dcr_reference_ratio < 0.5, "a verbatim copier must be caught by the DCR ratio"
+    assert copied.passed is False
 
 
 def test_causal_scorecard_without_ground_truth_does_not_pass():

@@ -51,7 +51,7 @@ _EMBEDDED_CERTIFICATION_THRESHOLD_FALLBACK: Dict[str, Dict[str, float]] = {
         "spearman_frobenius_error_max": 1.250,
     },
     "pillar_2_adversarial_privacy": {
-        "dcr_5th_percentile_min": 0.0001,
+        "dcr_reference_ratio_min": 0.500,
         "nndr_mean_min": 0.500,
         "nndr_mean_max": 0.980,
         "mia_attack_roc_auc_max": 0.580,
@@ -474,6 +474,12 @@ class DataFidelityScorecard:
 @dataclass
 class AdversarialPrivacyScorecard:
     dcr_5th_percentile: float
+    """5th percentile synthetic-to-real nearest-neighbour distance, normalised feature space."""
+
+    dcr_reference_ratio: float
+    """Same statistic divided by the real-to-real 5th percentile: 1.0 = as far apart as
+    real records are from each other, 0.0 = copies. This is what pillar 2 gates on."""
+
     nndr_mean: float
     mia_attack_roc_auc: float
     evasion_rate_macro_mean: float
@@ -671,7 +677,7 @@ class UnifiedBenchmarkRunner:
             ]))
         if not privacy_scorecard.passed:
             violations.extend(_threshold_violations("Pillar 2 (Privacy & Robustness)", [
-                ("DCR 5th percentile", privacy_scorecard.dcr_5th_percentile, "min", thresholds["pillar_2_adversarial_privacy"]["dcr_5th_percentile_min"]),
+                ("DCR ratio to real-to-real reference", privacy_scorecard.dcr_reference_ratio, "min", thresholds["pillar_2_adversarial_privacy"]["dcr_reference_ratio_min"]),
                 ("NNDR mean", privacy_scorecard.nndr_mean, "min", thresholds["pillar_2_adversarial_privacy"]["nndr_mean_min"]),
                 ("NNDR mean", privacy_scorecard.nndr_mean, "max", thresholds["pillar_2_adversarial_privacy"]["nndr_mean_max"]),
                 ("macro evasion rate", privacy_scorecard.evasion_rate_macro_mean, "max", thresholds["pillar_2_adversarial_privacy"]["evasion_rate_macro_mean_max"]),
@@ -811,7 +817,13 @@ class UnifiedBenchmarkRunner:
         )
 
     def _evaluate_adversarial_privacy(self, records: List[Dict[str, Any]]) -> AdversarialPrivacyScorecard:
-        """Evaluates non-memorization via Distance to Closest Record (DCR), NNDR, and shadow MIA."""
+        """Evaluates non-memorization via Distance to Closest Record (DCR), NNDR, and shadow MIA.
+
+        DCR is reported twice: as the raw synthetic-to-real 5th percentile, and as a ratio
+        to the real-to-real 5th percentile computed on the same points. Pillar 2 gates on
+        the ratio, because an absolute floor on a min-max normalised distance is both
+        unit-dependent and unable to fail a generator that reproduces common records.
+        """
         th = load_certification_thresholds()[0]["pillar_2_adversarial_privacy"]
         feat_rows = []
         for r in records:
@@ -843,8 +855,20 @@ class UnifiedBenchmarkRunner:
             d2 = np.maximum(distances[:, 1] if distances.shape[1] > 1 else d1, 1e-9)
             dcr_5th = float(np.percentile(d1, 5))
             nndr_mean = float(np.mean(d1 / d2))
+
+            # Reference: how close real records are to *each other*, measured the same way.
+            # Memorisation is the synthetic distance relative to this, since an absolute
+            # floor in normalised space cannot fail for a stream that contains duplicates.
+            # A zero reference means the reference half holds duplicate rows, where a
+            # synthetic duplicate is not distinguishable from a real one, so the ratio
+            # cannot fail there either (1e-9 keeps the division finite).
+            real_nbrs = NearestNeighbors(n_neighbors=2, algorithm="kd_tree").fit(train_pts)
+            real_distances, _ = real_nbrs.kneighbors(train_pts)
+            real_dcr_5th = float(np.percentile(real_distances[:, 1], 5))
+            dcr_ratio = float(dcr_5th / max(real_dcr_5th, 1e-9))
         else:
             dcr_5th = 0.05
+            dcr_ratio = 1.0
             nndr_mean = 0.85
 
         # Evasion rate under adversarial tactics
@@ -882,7 +906,7 @@ class UnifiedBenchmarkRunner:
             mia_auc = 0.50
 
         passed = (
-            dcr_5th >= th["dcr_5th_percentile_min"]
+            dcr_ratio >= th["dcr_reference_ratio_min"]
             and th["nndr_mean_min"] <= nndr_mean <= th["nndr_mean_max"]
             and evasion_mean <= th["evasion_rate_macro_mean_max"]
             and mia_auc <= th["mia_attack_roc_auc_max"]
@@ -890,6 +914,7 @@ class UnifiedBenchmarkRunner:
 
         return AdversarialPrivacyScorecard(
             dcr_5th_percentile=round(dcr_5th, 4),
+            dcr_reference_ratio=round(dcr_ratio, 4),
             nndr_mean=round(nndr_mean, 4),
             mia_attack_roc_auc=round(mia_auc, 4),
             evasion_rate_macro_mean=round(evasion_mean, 4),
@@ -1173,10 +1198,10 @@ class BenchmarkReportCompiler:
                  report.fidelity.js_divergence_channel,
                  f"$\\le {p1['js_divergence_channel_max']:.3f}$",
                  report.fidelity.js_divergence_channel <= p1["js_divergence_channel_max"]),
-            _row("**2. Privacy & Robustness**", "DCR 5th Percentile ($DCR_{0.05}$)",
-                 report.privacy.dcr_5th_percentile,
-                 f"$\\ge {p2['dcr_5th_percentile_min']:.4f}$",
-                 report.privacy.dcr_5th_percentile >= p2["dcr_5th_percentile_min"]),
+            _row("**2. Privacy & Robustness**", "DCR ratio to real reference ($DCR_{0.05}$ synth / real)",
+                 report.privacy.dcr_reference_ratio,
+                 f"$\\ge {p2['dcr_reference_ratio_min']:.3f}$",
+                 report.privacy.dcr_reference_ratio >= p2["dcr_reference_ratio_min"]),
             _row("", "Nearest Neighbor Ratio ($NNDR$)",
                  report.privacy.nndr_mean,
                  f"$\\in [{p2['nndr_mean_min']:.3f}, {p2['nndr_mean_max']:.3f}]$",
@@ -1256,7 +1281,7 @@ carries a violation raised by a different row of the same pillar.
 - **Correlation Frobenius Error:** `{report.fidelity.spearman_frobenius_error:.4f}`
 
 ### 2. Adversarial Privacy & Non-Memorization
-- **DCR 5th Percentile:** `{report.privacy.dcr_5th_percentile:.4f}`
+- **DCR 5th Percentile (synthetic -> real):** `{report.privacy.dcr_5th_percentile:.4f}`, against a real-to-real reference of the same statistic; **ratio `{report.privacy.dcr_reference_ratio:.4f}`** (1.0 = synthetic records sit as far from real ones as real ones sit from each other).
 - **NNDR Mean:** `{report.privacy.nndr_mean:.4f}`
 - **Shadow MIA Attack ROC-AUC:** `{report.privacy.mia_attack_roc_auc:.4f}` (chance $\\approx 0.500$; members and non-members are two halves of the same generated batch)
 - **Macro Evasion Rate:** `{report.privacy.evasion_rate_macro_mean * 100.0:.1f}\\%`
@@ -1296,6 +1321,11 @@ Stated so that no score above is read as more than it measures:
 - **Faithfulness is model-relative.** It correlates attribution mass with score drops of
   the fitted classifier under subset ablation; it says nothing about the data-generating
   process.
+- **The counterfactual flow is structural, not fitted.** The conditional RealNVP that
+  performs abduction and produces each counterfactual twin is initialised from a fixed
+  seed; there is no training loop anywhere in the repository, so its weights are drawn
+  once and never updated. A twin is therefore a counterfactual inside this simulator's
+  own feature space, not a claim about how a real cardholder would have behaved.
 - **Sample size.** At most 40 fraud records are scored per run, so the pillar-4 figures
   move noticeably with the seed.
 
@@ -1373,9 +1403,9 @@ Stated so that no score above is read as more than it measures:
             _hrow("", "Channel Jensen-Shannon ($D_{JS}$)",
                   report.fidelity.js_divergence_channel, f"&le; {hp1['js_divergence_channel_max']:.3f}",
                   report.fidelity.js_divergence_channel <= hp1["js_divergence_channel_max"]),
-            _hrow("<strong>2. Privacy &amp; Robustness</strong>", "Distance to Closest Record ($DCR_{0.05}$)",
-                  report.privacy.dcr_5th_percentile, f"&ge; {hp2['dcr_5th_percentile_min']:.4f}",
-                  report.privacy.dcr_5th_percentile >= hp2["dcr_5th_percentile_min"]),
+            _hrow("<strong>2. Privacy &amp; Robustness</strong>", "DCR ratio to real reference ($DCR_{0.05}$ synth / real)",
+                  report.privacy.dcr_reference_ratio, f"&ge; {hp2['dcr_reference_ratio_min']:.3f}",
+                  report.privacy.dcr_reference_ratio >= hp2["dcr_reference_ratio_min"]),
             _hrow("", "Nearest Neighbor Ratio ($NNDR$)",
                   report.privacy.nndr_mean, f"[{hp2['nndr_mean_min']:.3f}, {hp2['nndr_mean_max']:.3f}]",
                   hp2["nndr_mean_min"] <= report.privacy.nndr_mean <= hp2["nndr_mean_max"]),
@@ -1588,6 +1618,10 @@ Stated so that no score above is read as more than it measures:
     <li><strong>The XAI ground truth is the simulator's own structural scorer.</strong> &phi;* is the
       exact decomposition of the heuristic that also produced each record's risk score, so the
       concordance metrics measure recovery of <em>this simulator's</em> assumptions.</li>
+    <li><strong>The counterfactual flow is structural, not fitted.</strong> The conditional RealNVP
+      behind abduction and the counterfactual twins is seeded once and never trained &mdash; the
+      repository has no training loop for it &mdash; so a twin is a counterfactual inside this
+      simulator's own feature space, not a claim about a real cardholder.</li>
     <li><strong>Sample size.</strong> At most 40 fraud records are scored for pillar 4, so those
       figures move with the seed.</li>
   </ul>
