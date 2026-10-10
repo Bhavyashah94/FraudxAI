@@ -102,6 +102,8 @@ class MLUtilitySummary:
 class AdversarialPrivacySummary:
     """Summary metrics for Dimension 3: Adversarial Privacy & Non-Memorization."""
     dcr_5th_percentile: float
+    dcr_reference_5th_percentile: float
+    dcr_reference_ratio: float
     dcr_median: float
     dcr_min: float
     nndr_mean: float
@@ -566,6 +568,18 @@ class AdversarialPrivacyEvaluator:
         nndr_mean = float(np.mean(nndr))
         nndr_median = float(np.median(nndr))
 
+        # Reference: how far the reference records sit from *each other*, measured with
+        # the same neighbours and the same normalisation. Memorisation is the synthetic
+        # distance relative to that reference instead of an absolute floor: a floor in
+        # min-max normalised space is unit-dependent and passes any generator that
+        # reproduces common records, which is exactly what a non-memorising gate must
+        # fail. Same construction as spec/18 pillar 2 (dcr_reference_ratio_min).
+        ref_nn = NearestNeighbors(n_neighbors=2, metric="euclidean")
+        ref_nn.fit(X_ref_norm)
+        ref_dist, _ = ref_nn.kneighbors(X_ref_norm)
+        real_dcr_5th = float(np.percentile(ref_dist[:, 1], 5))
+        dcr_ratio = float(dcr_5th / max(real_dcr_5th, 1e-9))
+
         # 3. Membership Inference Attack (MIA)
         n_eval = min(len(X_ref_norm), len(X_test_norm), 400)
         members = X_ref_norm[:n_eval]
@@ -589,13 +603,15 @@ class AdversarialPrivacyEvaluator:
         mia_roc = float(roc_auc_score(y_attack, mia_probs)) if len(np.unique(y_attack)) > 1 else 0.50
 
         # Grounded Acceptance Gates
-        dcr_pass = bool(dcr_5th > 0.00010)
+        dcr_pass = bool(dcr_ratio >= 0.500)  # dimensionless DCR ratio to the real-to-real reference
         nndr_pass = bool(0.50 <= nndr_mean <= 0.98)
         mia_pass = bool(mia_roc <= 0.58)
         privacy_pass = bool(dcr_pass and nndr_pass and mia_pass)
 
         return AdversarialPrivacySummary(
             dcr_5th_percentile=dcr_5th,
+            dcr_reference_5th_percentile=real_dcr_5th,
+            dcr_reference_ratio=dcr_ratio,
             dcr_median=dcr_median,
             dcr_min=dcr_min,
             nndr_mean=nndr_mean,
@@ -1132,7 +1148,8 @@ def generate_tripartite_markdown_report(summary: TripartiteBenchmarkSummary) -> 
         "",
         "| Metric | Empirical Value | Safety Bound | Privacy Protection Mechanism | Status |",
         "| :--- | :--- | :--- | :--- | :--- |",
-        f"| **5th Percentile DCR (DCR_0.05)** | `{summary.privacy.dcr_5th_percentile:.4f}` | > 0.0001 | Asserts 95% of synthetic points are distinct from training data | {'PASS' if summary.privacy.dcr_passed else 'FAIL'} |",
+        f"| **5th Percentile DCR (DCR_0.05)** | `{summary.privacy.dcr_5th_percentile:.4f}` | Informational | Synthetic-to-nearest-reference distance, normalised feature space | Informational |",
+        f"| **DCR ratio to real reference** | `{summary.privacy.dcr_reference_ratio:.4f}` (reference `{summary.privacy.dcr_reference_5th_percentile:.4f}`) | >= 0.500 | Synthetic records must sit at least half as far from the reference as reference records sit from each other; a verbatim copier scores 0 | {'PASS' if summary.privacy.dcr_passed else 'FAIL'} |",
         f"| **Median DCR** | `{summary.privacy.dcr_median:.4f}` | Informational | Median distance to nearest reference transaction | Informational |",
         f"| **Mean NNDR (d1 / d2)** | `{summary.privacy.nndr_mean:.4f}` | [0.50, 0.98] | Nearest Neighbor Distance Ratio: proves diffuse distribution | {'PASS' if summary.privacy.nndr_passed else 'FAIL'} |",
         f"| **MIA Attack ROC-AUC** | `{summary.privacy.mia_attack_roc_auc:.4f}` | <= 0.580 | Membership Inference Attack: ~0.50 proves zero leakage | {'PASS' if summary.privacy.mia_passed else 'FAIL'} |",

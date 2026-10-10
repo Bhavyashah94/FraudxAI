@@ -2,35 +2,70 @@
 # Read this file at the start of any new session or task to immediately anchor context.
 
 current_slice:
-  id: "slice-20-shared-infrastructure-channels-and-request-only-stream"
-  title: "Shared Client Infrastructure, Attack Channel Mix, Credit Line Steps, Request-Only Stream with a Label Feed, Prevalence Pacing"
-  status: "verified"  # [planning, in_progress, testing, verified]
+  id: "slice-21-certification-honesty-and-verifiable-claims"
+  title: "Spec-Driven Certification Thresholds, Falsifiable Balance Conservation, Measured Documentation Figures"
+  status: "testing"  # [planning, in_progress, testing, verified]
   target_spec_files:
-    - "spec/07_export_leakage_gate.yaml"
-    - "spec/01_financial_instruments.yaml"
-    - "spec/05_india_payment_rails.yaml"
-    - "fraudx_synthesizer/network.py"
+    - "spec/18_benchmark_reporting.yaml"
+    - "fraudx_synthesizer/benchmark_reporter.py"
+    - "fraudx_synthesizer/benchmark.py"
     - "fraudx_synthesizer/ledger.py"
-    - "fraudx_synthesizer/syndicates.py"
-    - "fraudx_synthesizer/intent.py"
-    - "fraudx_synthesizer/agents.py"
-    - "fraudx_synthesizer/engine.py"
-    - "fraudx_synthesizer/stream.py"
-    - "tests/test_synthesizer/test_shared_infrastructure.py"
-    - "tests/test_synthesizer/test_attack_channels.py"
-    - "tests/test_synthesizer/test_credit_limit_assignment.py"
-    - "tests/test_synthesizer/test_prevalence_pacing.py"
-    - "tests/test_stream_feeds.py"
+    - "fraudx_synthesizer/experimental/invertible_flow.py"
+    - "fraudx_synthesizer/causal_scm.py"
+    - "scripts/measure_throughput.py"
+    - "gui/backend/app.py"
+    - ".github/workflows/ci.yml"
+    - "README.md"
+    - "docs/SYNOPSIS_MASTER_CONTENT.md"
+    - "tests/test_rail_verifier.py"
   acceptance_criteria:
-    - fraud_prefixes_also_carry_legitimate_traffic: true
-    - victim_device_fraud_and_household_devices_present: true
-    - intent_and_playbook_fraud_reach_mobile_and_contactless: true
-    - credit_lines_on_issuer_steps: true
-    - stream_posts_request_fields_only_and_labels_on_their_own_feed: true
-    - small_batches_deliver_requested_prevalence: true
-  verdict: "measured on this branch: see the pull request that carries it"
+    - grader_and_reporters_read_thresholds_from_spec_18_only: true
+    - every_report_row_is_graded_against_its_own_threshold: true
+    - conservation_check_fails_when_unbacked_value_is_injected: true
+    - settlement_booked_as_memo_not_as_conserved_value: true
+    - faithfulness_is_a_subset_ablation_correlation_not_a_self_comparison: true
+    - privacy_memorisation_is_gated_as_a_ratio_to_the_real_to_real_dcr_reference: true
+    - batched_path_integration_agrees_with_the_scalar_path_row_for_row: true
+    - documentation_throughput_and_test_counts_trace_to_a_reproduced_command: true
+    - ci_installs_the_gui_extra_so_the_suite_collects_on_a_clean_runner: true
+  verdict: >-
+    in testing: 299/299 tests green on this branch; the benchmark grader grades against spec/18 and
+    every report row carries its own verdict; pillar 2 now gates memorisation as
+    DCR_0.05(synth->real) / DCR_0.05(real->real) >= 0.500 (a verbatim copier scores 0, this generator
+    measures 1.04 at n=1000 and 2.14 at n=400) instead of an absolute floor a copier passes; measured
+    generation throughput after batching the flow's quadrature path is 2,166 events/sec
+    (1,172 tx/sec, 1.4 GB peak RSS) over 100,000 transactions with
+    scripts/measure_throughput.py, up from 997 events/sec at the same seed and size
 
 previous_slices:
+  - id: "slice-20-shared-infrastructure-channels-and-request-only-stream"
+    title: "Shared Client Infrastructure, Attack Channel Mix, Credit Line Steps, Request-Only Stream with a Label Feed, Prevalence Pacing"
+    status: "verified"  # [planning, in_progress, testing, verified]
+    target_spec_files:
+      - "spec/07_export_leakage_gate.yaml"
+      - "spec/01_financial_instruments.yaml"
+      - "spec/05_india_payment_rails.yaml"
+      - "fraudx_synthesizer/network.py"
+      - "fraudx_synthesizer/ledger.py"
+      - "fraudx_synthesizer/syndicates.py"
+      - "fraudx_synthesizer/intent.py"
+      - "fraudx_synthesizer/agents.py"
+      - "fraudx_synthesizer/engine.py"
+      - "fraudx_synthesizer/stream.py"
+      - "tests/test_synthesizer/test_shared_infrastructure.py"
+      - "tests/test_synthesizer/test_attack_channels.py"
+      - "tests/test_synthesizer/test_credit_limit_assignment.py"
+      - "tests/test_synthesizer/test_prevalence_pacing.py"
+      - "tests/test_stream_feeds.py"
+    acceptance_criteria:
+      - fraud_prefixes_also_carry_legitimate_traffic: true
+      - victim_device_fraud_and_household_devices_present: true
+      - intent_and_playbook_fraud_reach_mobile_and_contactless: true
+      - credit_lines_on_issuer_steps: true
+      - stream_posts_request_fields_only_and_labels_on_their_own_feed: true
+      - small_batches_deliver_requested_prevalence: true
+    verdict: "measured on this branch: see the pull request that carries it"
+
   - id: "slice-19-realism-calibration-and-priorities-1-to-5"
     title: "Realism Calibration & Anti-Separability Remediation (Priorities 1 to 5)"
     status: "verified"
@@ -62,7 +97,7 @@ previous_slices:
   - id: "slice-13-payment-rail-authorization-calibration"
     title: "Payment Rail Authorization Calibration, Channel-Differentiated Velocity & Single Switch Unification"
     status: "verified"
-    verdict: "PASS (CERTIFIED, Approval 88.25%, ISO 51 leading decline at 74.1%, 131/131 tests green)"
+    verdict: "PASS (CERTIFIED, Approval 88.25%, ISO 51 leading decline at 74.1%, 131/131 tests green at the time of that slice)"
   - id: "slice-12-adversarial-syndicate-ecology-and-forensic-graph"
     title: "Adversarial Syndicate Ecology, Forensic Graph Rollup & Multi-Focal Orbital D3 Engine"
     status: "verified"
@@ -96,4 +131,4 @@ previous_slices:
     title: "Phase 1: Generative Arrival Pacing via Recursive Circadian Hawkes MTPP Engine"
     status: "verified"
     audited_by: "Subagent V1: MTPP Kinematics & Pacing Auditor"
-    verdict: "PASS (CERTIFIED, 64,850 events/sec)"
+    verdict: "PASS (measured: Hawkes arrival pacing subcritical as specified; engine throughput 2,166 events/sec / 1,172 tx/sec over 100,000 transactions, reproducible with scripts/measure_throughput.py)"

@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import pytest
-from fastapi.testclient import TestClient
 
-from gui.backend.app import app
-from gui.backend.services import sim_state
+pytest.importorskip("fastapi", reason="GUI backend needs the 'gui' extra: pip install '.[gui]'")
+
+from fastapi.testclient import TestClient  # noqa: E402
+
+from gui.backend.app import app  # noqa: E402
+from gui.backend.services import sim_state  # noqa: E402
 
 
 @pytest.fixture
@@ -84,7 +87,8 @@ def test_generate_and_transactions_flow(client):
 
 
 def test_static_html_served(client):
-    # The dist directory is compiled, verify that root serves index.html
+    # Root serves index.html when the frontend bundle is built, and a build
+    # placeholder page (still HTML, still titled FraudxAI Studio) when it is not.
     response = client.get("/")
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]

@@ -102,6 +102,111 @@ def test_double_entry_balance_conservation():
     assert discrepancy < 1e-5
 
 
+def test_conservation_check_detects_unbacked_value():
+    """Negative control: money that nobody paid for must break the invariant.
+
+    A conservation check that returns True for a ledger holding unbacked value
+    proves nothing, so the check is exercised against a ledger that has been fed
+    $1,000.00 outside of any posting.
+    """
+    ledger = DoubleEntryWorldLedger()
+    ledger.place_pre_auth_hold(
+        tx_id="TX_MINT_001",
+        card_id="CARD_MINT_001",
+        hold_amount=100.0,
+        sim_time_sec=1.0,
+    )
+    assert ledger.verify_global_balance_conservation()[0]
+
+    # $1,000.00 in cents, credited to a merchant with no counterparty leg
+    ledger.accounts["merchant_settlement:M_MINTED"] += 100000
+
+    is_conserved, discrepancy = ledger.verify_global_balance_conservation()
+    assert not is_conserved, "Unbacked value must fail the conservation check!"
+    assert discrepancy == pytest.approx(1000.0)
+
+
+def test_conservation_check_detects_tampered_journal_entry():
+    """Negative control: an entry whose legs disagree must fail even if accounts look fine."""
+    ledger = DoubleEntryWorldLedger()
+    ledger.place_pre_auth_hold(
+        tx_id="TX_TAMPER_001",
+        card_id="CARD_TAMPER_001",
+        hold_amount=75.0,
+        sim_time_sec=1.0,
+    )
+
+    # Credit $50.00 more than the entry debits
+    ledger.journal[-1]["credits"]["escrow_hold:CARD_TAMPER_001"] += 50.0
+
+    is_conserved, discrepancy = ledger.verify_global_balance_conservation()
+    assert not is_conserved, "A journal entry with unequal legs must fail verification!"
+    assert discrepancy == pytest.approx(50.0)
+
+
+def test_conservation_check_fails_on_stored_state_it_cannot_account_for():
+    """A stored amount that is not a whole minor unit fails the check instead of raising."""
+    ledger = DoubleEntryWorldLedger()
+    ledger.place_pre_auth_hold(
+        tx_id="TX_BADUNIT_001",
+        card_id="CARD_BADUNIT_001",
+        hold_amount=20.0,
+        sim_time_sec=1.0,
+    )
+
+    # 12.345 cannot be represented in cents; tampering with a journal leg that way
+    # must be reported as a conservation failure, not blow up the checker.
+    ledger.journal[-1]["debits"]["card_available:CARD_BADUNIT_001"] = 12.345
+
+    is_conserved, discrepancy = ledger.verify_global_balance_conservation()
+    assert not is_conserved
+    assert discrepancy == float("inf")
+
+
+def test_unbalanced_posting_is_rejected_before_it_is_written():
+    """The posting primitive refuses legs that do not balance, leaving no trace."""
+    ledger = DoubleEntryWorldLedger()
+    with pytest.raises(ValueError, match="Unbalanced double-entry posting"):
+        ledger._post(
+            tx_id="TX_BAD_001",
+            action="TEST_POSTING",
+            sim_time_sec=1.0,
+            debits={"card_available:CARD_BAD": 10.0},
+            credits={"escrow_hold:CARD_BAD": 9.0},
+        )
+
+    assert not ledger.accounts, "A rejected posting must not mutate any account"
+    assert not ledger.journal, "A rejected posting must not be journaled"
+
+
+def test_card_posted_spend_is_a_memo_not_conserved_value():
+    """Settlement must not mint value: posted spend is reported, not conserved."""
+    ledger = DoubleEntryWorldLedger()
+    ledger.place_pre_auth_hold(tx_id="TX_SET_001", card_id="CARD_SET_001", hold_amount=250.0, sim_time_sec=100.0)
+    merchant_net, interchange, network_fee = ledger.settle_hold(
+        tx_id="TX_SET_001",
+        card_id="CARD_SET_001",
+        merchant_id="M_SET_001",
+        settled_amount=245.0,
+        sim_time_sec=200.0,
+    )
+
+    is_conserved, discrepancy = ledger.verify_global_balance_conservation()
+    assert is_conserved, f"Settlement minted value! Discrepancy: {discrepancy}"
+    assert sum(ledger.accounts.values()) == 0, "Conservation accounts must sum to zero after settlement"
+
+    # The posted balance is tracked for reporting, outside the conserved set
+    assert ledger.memo_accounts["card_posted:CARD_SET_001"] == 24500  # 245.00 in cents
+    assert "card_posted:CARD_SET_001" not in ledger.accounts
+
+    # Escrow drained, unused $5.00 reservation returned, payees credited the settlement
+    assert ledger.accounts["escrow_hold:CARD_SET_001"] == 0
+    assert ledger.accounts["card_available:CARD_SET_001"] == -24500  # -250.00 + 5.00
+    assert ledger.accounts["merchant_settlement:M_SET_001"] == round(merchant_net * 100)
+    assert ledger.accounts["issuer_interchange"] == round(interchange * 100)
+    assert ledger.accounts["network_assessment"] == round(network_fee * 100)
+
+
 def test_rbi_contactless_regulations():
     """Verify RBI ₹5,000 PIN-free ceiling and 5 consecutive PINless transaction cap."""
     switch = RailVerifierSwitch(region="IN", seed=42)

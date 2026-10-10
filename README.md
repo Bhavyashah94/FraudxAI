@@ -3,7 +3,7 @@
 [![CI](https://github.com/Bhavyashah94/FraudxAI/actions/workflows/ci.yml/badge.svg)](https://github.com/Bhavyashah94/FraudxAI/actions/workflows/ci.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Python: 3.10 | 3.11 | 3.12 | 3.13](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-3776AB.svg)]()
-[![Tests: 260 Passed](https://img.shields.io/badge/pytest-260%20passed-brightgreen.svg)]()
+[![Tests: 299 Passed](https://img.shields.io/badge/pytest-299%20passed-brightgreen.svg)]()
 [![Invariants: 37/37 Verified](https://img.shields.io/badge/invariants-37%2F37%20verified-brightgreen.svg)]()
 [![Rails: ISO 8583 | RBI AFA | Visa VCR](https://img.shields.io/badge/rails-ISO%208583%20%7C%20RBI%20AFA%20%7C%20Visa%20VCR-orange.svg)]()
 [![Contract: Spec 19 v1](https://img.shields.io/badge/contract-Spec%2019%20v1-purple.svg)](spec/19_detector_contract.yaml)
@@ -11,7 +11,7 @@
 
 **FraudxAI** is an open-source, publication-grade multi-agent payment fraud simulation framework and causal explainable AI (XAI) benchmarking platform. It models high-throughput financial switches under continuous physical time, authentic dual-region banking rails (**United States** and **India**), and adaptive cybercrime syndicates.
 
-Unlike legacy synthetic datasets that rely on static, ungrounded tabular distributions (such as PaySim or 2013 PCA benchmarks), FraudxAI couples event synthesis with a closed-form **Structural Causal Model (SCM)** to generate mathematically exact Pearlian counterfactual twins ($\Delta \mathbf{x} = \mathbf{x}_{\text{fraud}} - \mathbf{x}_{\text{baseline}}$) and analytical Shapley attributions ($\phi^*$). This provides an objective, auditable ground-truth baseline to benchmark post-hoc explainers (TreeSHAP, KernelSHAP, Explainable Boosting Machines) under realistic streaming delayed feedback.
+Unlike legacy synthetic datasets that rely on static, ungrounded tabular distributions (such as PaySim or 2013 PCA benchmarks), FraudxAI couples event synthesis with a closed-form **Structural Causal Model (SCM)** to generate mathematically exact Pearlian counterfactual twins ($\Delta \mathbf{x} = \mathbf{x}_{\text{fraud}} - \mathbf{x}_{\text{baseline}}$) and analytical Shapley attributions ($\phi^*$). This provides an objective, auditable ground-truth baseline to benchmark post-hoc explainers (TreeSHAP and a counterfactual-twin occlusion baseline) under realistic streaming delayed feedback.
 
 ---
 
@@ -31,7 +31,7 @@ Unlike legacy synthetic datasets that rely on static, ungrounded tabular distrib
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
 │                               2. THE REALISM & SUPERVISION LATENCY GAP                           │
 │  Real transaction logs are confidential under PCI-DSS. Meanwhile, real fraud supervision is      │
-│  severely delayed: chargeback disputes lag by 30 to 90 days, investigator queues have finite     │
+│  severely delayed: chargeback disputes lag by 3 to 120 days, investigator queues have finite     │
 │  daily capacities (Top-K alerts), and small-ticket fraud goes unreported (dark fraud).           │
 │  Models trained on stale, static tabular snapshots suffer catastrophic concept drift.            │
 └──────────────────────────────────────────────────────────────────────────────────────────────────┘
@@ -52,7 +52,7 @@ All CLI exports, storage formats, and streaming daemons take their columns direc
 ### 2. Closed-Loop Streaming Daemon & Active Learning
 `python -m fraudx_synthesizer.stream` posts authorization requests to an external REST endpoint and releases labels on a dedicated feed as the bank would naturally discover them.
 * **Detector-Driven Supervision Queue:** When an endpoint responds with a prediction score (`risk_score` or `--score-field`), that score directly determines which transactions enter the bank's daily investigator review budget (top-$K$ alerts).
-* **Operational Feedback Loop:** If the detector under test achieves high precision, true frauds are verified and added to the bank's training pool within hours. If the detector has blind spots, fraudulent transactions escape into the 30–90 day chargeback delay or dark fraud pool. The training stream dynamically mirrors the operational performance of the detector under test.
+* **Operational Feedback Loop:** If the detector under test achieves high precision, true frauds are verified and added to the bank's training pool within hours. If the detector has blind spots, fraudulent transactions escape into the 3–120 day chargeback delay or dark fraud pool. The training stream dynamically mirrors the operational performance of the detector under test.
 
 ### 3. Dual-Region Payment Rail Kinematics
 * **United States Payment Infrastructure (USD Cents):**
@@ -69,12 +69,12 @@ All CLI exports, storage formats, and streaming daemons take their columns direc
 
 ### 4. Shared Client Infrastructure & Anti-Separability (`network.py`)
 To prevent machine learning models from exploiting synthetic artifact shortcuts:
-* **Unified Telecom IP Prefix Pools:** Cardholders and cybercrime botnets share a deterministic consumer IP address space (`ClientAddressSpace`) governed by Zipf popularity distributions over authentic regional telecom allocations (Reliance Jio and Airtel `49.x`, `103.x`, `106.x` in India; Comcast and AT&T `24.x`, `67.x`, `72.x` in the US). Fraud subnets unique to fraud dropped from 131/131 down to 0/105.
+* **Unified Telecom IP Prefix Pools:** Cardholders and cybercrime botnets share a deterministic consumer IP address space (`ClientAddressSpace`) governed by Zipf popularity distributions over authentic regional telecom allocations (Reliance Jio and Airtel `49.x`, `103.x`, `106.x` in India; Comcast and AT&T `24.x`, `67.x`, `72.x` in the US). Measured on a 4,000-transaction US batch at 5% fraud (seeds 42 / 7 / 123), 84% / 95% / 100% of fraud records arrived from a `/24` that also carried legitimate traffic, so an address prefix alone does not separate the classes. The prefix field itself (`ip_subnet_prefix`) is populated from syndicate telemetry only, and is exported to the labelled threat-intel enclave rather than to the detector's inference feed (`spec/19`).
 * **Victim-Device Execution:** 70% to 95% of vishing (`IN_ADV_REVERSE_PROXY_VISHING`) and Android malware (`IN_ADV_APK_SMS_STEALER`) attacks execute directly on the cardholder's own mobile device and residential IP connection, eliminating naive device-hash separability.
 * **Card-Present Terminal Telemetry:** Physical POS terminals and ATMs carry no user device hash (`device_canvas_hash = ""`), while legitimate web/mobile users realistically share household computers and secondary devices.
 
 ### 5. Stepped Underwriting Credit Lines & Attack Diversity
-* **Discrete Credit Limit Steps:** Credit lines round to authentic issuer underwriting steps (`spec/01` and `spec/05`), replacing continuous random floats with discrete financial tiers (e.g., ₹25k, ₹50k, ₹1L; \$100, \$250, \$500, \$5k). Distinct limits across 1,000 cards dropped from 1,000 down to 77.
+* **Discrete Credit Limit Steps:** Credit lines round to authentic issuer underwriting steps (`spec/01` and `spec/05`), replacing continuous random floats with discrete financial tiers (e.g., ₹25k, ₹50k, ₹1L; \$100, \$250, \$500, \$5k). Measured across 1,000 cards: 77 distinct limits in the IN ecosystem and 88 in the US (seed 42), instead of 1,000 distinct random floats.
 * **Attack Channel Diversity:** Attacks realistically span Web (`012`), In-App Mobile (`102`), Chip (`051`), and Contactless NFC (`071`).
 * **Prevalence Pacing:** A trailing 24-hour window re-estimates competing Poisson attack arrival intensity, ensuring small batches (1,000–5,000 rows) accurately hit the requested fraud prevalence.
 
@@ -82,7 +82,7 @@ To prevent machine learning models from exploiting synthetic artifact shortcuts:
 * **Exact Counterfactual Baseline Twins:** For every simulated fraudulent transaction, the engine computes:
   $$\Delta \mathbf{x} = \mathbf{x}_{\text{fraud}} - \mathbf{x}_{\text{baseline}}$$
 * **Analytical Shapley Derivation:** Closed-form Owen multilinear extensions in logit space and 128-point path integration in probability space yield exact Shapley values ($\phi^*$).
-* **Quantitative Explainer Benchmarking:** Evaluates post-hoc explainers (TreeSHAP, KernelSHAP, EBMs) against exact ground truth using formal metrics: Precision@k, Recall@k, Kendall's $\tau_b$, Spearman's $\rho$, and Relative Attribution Error (RAE).
+* **Quantitative Explainer Benchmarking:** Evaluates post-hoc explainers (TreeSHAP on the gradient-boosted detector, plus a counterfactual-twin occlusion baseline) against exact ground truth using formal metrics: Precision@k, Recall@k, Kendall's $\tau_b$, Spearman's $\rho$, and Relative Attribution Error (RAE).
 
 ---
 
@@ -245,24 +245,23 @@ FraudxAI includes an automated evaluation harness conforming to **Quantus (JMLR 
 fraudx benchmark -n 2000 --model lightgbm --seed 42
 ```
 
-Sample Benchmark Output:
+Sample Benchmark Output (`fraudx benchmark -n 2000 --model lightgbm --seed 42`, reproduced locally; run the same command to regenerate):
 ```
 =================================================================
   FRAUDX-AI EMPIRICAL XAI BENCHMARK RESULTS
 =================================================================
   Model Architecture:           LIGHTGBM
   Explainer Method:             TreeSHAP (Interventional)
-  Evaluated Fraud Samples:      35
-  Classifier ROC-AUC:           0.9685
-  Classifier PR-AUC:            0.7955
+  Evaluated Fraud Samples:      25
+  Classifier ROC-AUC:           0.9849
+  Classifier PR-AUC:            0.8470
 -----------------------------------------------------------------
-  Ranking Concordance (Kendall Tau):      0.4439
-  Rank Correlation (Spearman Rho):        0.4357
-  Normalized Attribution Dist (L2):       1.0808
-  Top-3 Support Recovery (Precision@3):   0.5556
-  Intervention Precision (P@3):           0.7222
-  Intervention Recall (R@3):              0.6944
-  Relative Attribution Error (Log-Odds):  44.01
+  Ranking Concordance (Kendall Tau):      0.3668
+  Rank Correlation (Spearman Rho):        0.4209
+  Top-3 Support Recovery (Precision@3):   0.4533
+  Intervention Precision (P@3):           0.6400
+  Intervention Recall (R@3):              0.5600
+  Relative Attribution Error (RAE):       17.5234
 =================================================================
 ```
 
@@ -304,19 +303,22 @@ print(f"Intervention Precision@3:  {benchmark_summary.mean_intervention_precisio
 
 ## Living Specification Registry (`spec/`)
 
-The simulation is governed by 19 formal living specification files serving as the single source of truth:
+The simulation is governed by 13 formal living specification files serving as the single source of truth (the active slice is tracked in `spec/active_slice.yaml`):
 
 | Specification File | Scope & Technical Mandate |
 | :--- | :--- |
 | **`spec/01_financial_instruments.yaml`** | 11 Global card products, issuer credit limit stepping grids, and interchange schedules. |
 | **`spec/02_human_personas.yaml`** | 7 Fed DCPC demographic cohorts, Dirichlet spend allocations, and circadian simplexes. |
 | **`spec/03_payment_rail_gaps.yaml`** | AFD holds, dining tip tolerances, STIP timeout rules, AVS matrix, and Visa CE 3.0. |
-| **`spec/04_adversarial_playbooks.yaml`** | 10 Grounded cybercrime attack playbooks (ATO, PEA, smurfing, Apple Pay Yellow Path). |
+| **`spec/04_adversarial_playbooks.yaml`** | 13 grounded cybercrime playbooks (8 US: micro-auth probing, ATO silent baking, sleeper bust-out, Apple Pay Yellow Path, nocturnal burst, BIN enumeration, triangulation, collusive bust-out; 5 India: reverse-proxy vishing, APK SMS stealer, non-3DS bypass, rent-portal cashout, SIM-swap/eSIM hijack), liquidation channels, and the mule pipeline. |
 | **`spec/05_india_payment_rails.yaml`** | RBI AFA/OTP, RuPay on UPI, contactless limits, PMJDY overdraft, and 1930 cyber-liens. |
-| **`spec/06_credential_dossier_tiers.yaml`**| Credential completeness tiers (Fullz, Phished OTP, Session Cookies, Track-2 Dumps). |
+| **`spec/06_adversarial_intent_mesh.yaml`** | Credential completeness tiers (Fullz, Phished OTP, Session Cookies, Track-2 Dumps), information supply chains, syndicate roles, and multi-hop switch topology. |
 | **`spec/07_export_leakage_gate.yaml`** | Anti-separability gates, shared /24 prefix pools, victim-device rules, and prevalence pacing. |
 | **`spec/08_india_calibration_targets.yaml`**| RBI Central Payments Fraud Information Registry (CPFIR) empirical targets. |
+| **`spec/09_us_calibration_targets.yaml`** | Federal Reserve Payments Study, Visa Q3 FY25 approval rate, and DCPC 2023 ticket distributions. |
 | **`spec/16_operational_supervision.yaml`**| Operational triage queues, Weibull analyst latencies, and LogNormal chargeback lags. |
+| **`spec/17_prequential_evaluation.yaml`** | Prequential time-ordered evaluation, rolling retraining, and streaming drift auditing under delayed supervision. |
+| **`spec/18_benchmark_reporting.yaml`** | Camera-ready figure typography and the four-pillar certification thresholds read by the benchmark grader. |
 | **`spec/19_detector_contract.yaml`** | **The Detector Contract (v1):** Strict 3-feed schema definitions guaranteeing zero leakage. |
 
 ---
@@ -325,7 +327,7 @@ The simulation is governed by 19 formal living specification files serving as th
 
 FraudxAI enforces strict, deterministic verification across the entire stack:
 
-### 1. PyTest Test Suite (**260 / 260 Passed, 100% Green**)
+### 1. PyTest Test Suite (**299 / 299 Passed, 100% Green**)
 ```bash
 pytest tests/ -v
 ```
@@ -386,7 +388,9 @@ If you use FraudxAI in your research or project, please cite:
 
 ## License
 
-This project is licensed under the **Apache License 2.0** - see the [LICENSE](LICENSE) file for details.
+This project's source code, tests, specifications and original documentation are licensed under the **Apache License 2.0** - see the [LICENSE](LICENSE) file for details.
+
+The research papers under [`docs/papers/`](docs/papers/INDEX.md) are **third-party copyrighted works and are *not* covered by that licence**; they are held as private citation copies. The `LICENSE` file states this exception explicitly. If you redistribute this repository, remove `docs/papers/` first.
 
 ```
 Copyright 2024-2026 Bhavya Shah

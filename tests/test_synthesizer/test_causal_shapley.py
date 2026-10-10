@@ -120,3 +120,78 @@ def test_nonlinear_synergies_and_owen_partition():
     expected_delta_prob = gt.risk_score - gt.base_risk
     assert abs(sum_prob - expected_delta_prob) < 1e-4
 
+
+
+def test_batched_flow_scorer_agrees_row_for_row_with_the_scalar_one():
+    """The path integral scores its two endpoints one call at a time and every
+    quadrature node in a single batched call. If those two scorers ever disagree, the
+    reported attribution would depend on which code path computed it, so they are
+    pinned to each other here, including at the clip boundaries."""
+    import numpy as np
+    from fraudx_synthesizer import StructuralCausalEngine
+
+    causal_engine = StructuralCausalEngine(base_prevalence=0.0020)
+    rows = np.array([
+        [-5.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],          # lower clips
+        [15.0, 900.0, 9.0, 40.0, 5.0, 1.0, 1.0, 3.5],        # upper clips
+        [float(np.log(1850.0)), 650.0, 3.2, 4.0, 1.5, -1.0, 1.0, 0.0],
+        [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    ])
+
+    for mean_30d in (1.0, 40.0, 1_000_000.0):
+        scalar = np.array([causal_engine._flow_scorer(r, mean_30d) for r in rows])
+        batched = causal_engine._flow_scorer_batch(rows, mean_30d)
+        np.testing.assert_allclose(batched, scalar, rtol=1e-12, atol=1e-15)
+
+
+def test_batched_path_integration_matches_the_scalar_one():
+    """`attribute` keeps the original per-row scorer loop behind a flag and takes a
+    batched scorer otherwise; `evaluate` supplies the batched one, so both paths must
+    return the same attribution for the same observation. The same holds for passing
+    the already-computed abduction `u_obs` instead of recomputing it."""
+    import numpy as np
+    from fraudx_synthesizer import StructuralCausalEngine
+    from fraudx_synthesizer.experimental.invertible_flow import (
+        LatentAumannShapleyAttributor,
+        TransactionFlowFeatureCodec,
+    )
+
+    causal_engine = StructuralCausalEngine(base_prevalence=0.0020)
+    record = {
+        "amount": 1850.0,
+        "user_avg_tx_amount_30d": 35.0,
+        "haversine_velocity_kph": 650.0,
+        "channel_type": "CP_POS_CHIP",
+        "tx_count_1h": 4,
+        "tx_count_24h": 9,
+        "tx_amount_sum_24h": 2200.0,
+        "credit_limit": 5000.0,
+        "ip_distance_from_home_km": 1200.0,
+        "is_cross_border": True,
+        "avs_match_code": "N",
+        "billing_shipping_match": 0,
+        "cvv_match_flag": 1,
+        "mcc": 5094,
+        "hour_of_day": 3,
+        "is_fraud": 1,
+    }
+    x_obs, ctx = TransactionFlowFeatureCodec.encode(record)
+    mean_30d = 35.0
+    scorer = lambda v: causal_engine._flow_scorer(v, mean_30d)          # noqa: E731
+    batched_scorer = lambda X: causal_engine._flow_scorer_batch(X, mean_30d)  # noqa: E731
+
+    attributor = LatentAumannShapleyAttributor(causal_engine.flow)
+    reference = attributor.attribute(x_obs, ctx, scorer)
+
+    assert set(reference) == set(TransactionFlowFeatureCodec.FEATURE_NAMES)
+    assert any(abs(v) > 0.0 for v in reference.values()), (
+        "an all-zero attribution vector would make any two implementations agree vacuously"
+    )
+
+    fast = attributor.attribute(x_obs, ctx, scorer, scorer_batch_fn=batched_scorer)
+    u_obs, _ = causal_engine.flow.forward(x_obs, ctx)
+    reused = attributor.attribute(x_obs, ctx, scorer, u_obs=u_obs, scorer_batch_fn=batched_scorer)
+
+    for name, value in reference.items():
+        assert fast[name] == pytest.approx(value, rel=1e-9, abs=1e-15), name
+        assert reused[name] == pytest.approx(value, rel=1e-9, abs=1e-15), name

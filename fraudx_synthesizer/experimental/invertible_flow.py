@@ -51,9 +51,26 @@ class AffineCouplingLayer:
         self.W2_t = rng.normal(0.0, scale_w2, size=(hidden_dim, out_dim)).astype(np.float64)
         self.b2_t = np.zeros(out_dim, dtype=np.float64)
 
-    def _compute_st(self, x_masked: np.ndarray, context: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-        """Computes scale (s) and translation (t) vectors from conditioning features without concatenation."""
-        z1 = np.dot(x_masked, self.W1_x) + np.dot(context, self.W1_c) + self.b1
+        # Float mask: multiplying by 0/1 reproduces np.where(mask, ...) for the finite
+        # values the codec emits, and saves an allocation per coupling evaluation. The
+        # flow is evaluated per transaction, so this is not a micro-optimisation.
+        self._mask_f = self.mask.astype(np.float64)
+
+    def _context_term(self, context: np.ndarray) -> np.ndarray:
+        """Context contribution (b1 + C W1_c), hoisted out of the per-sample work.
+
+        A caller that reuses one context across many rows -- path integration over the
+        quadrature nodes does exactly this -- computes it once instead of once per row.
+        """
+        return np.dot(context, self.W1_c) + self.b1
+
+    def _compute_st(self, x_masked: np.ndarray, context_term: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        """Computes scale (s) and translation (t) from pre-masked x and a precomputed context term.
+
+        Accepts a single row (dim,) or a stack of rows (B, dim); the mask and the bias
+        broadcast over the leading dimension.
+        """
+        z1 = np.dot(x_masked, self.W1_x) + context_term
         h1 = np.where(z1 > 0.0, z1, z1 * 0.1)
 
         raw_s = np.dot(h1, self.W2_s) + self.b2_s
@@ -68,21 +85,29 @@ class AffineCouplingLayer:
 
     def forward(self, x: np.ndarray, context: np.ndarray) -> Tuple[np.ndarray, float]:
         """Forward mapping y = F(x; C) and log-determinant."""
-        x_masked = np.where(self.mask, x, 0.0)
-        s, t = self._compute_st(x_masked, context)
-
-        y = np.where(self.mask, x, x * np.exp(s) + t)
+        s, t = self._compute_st(x * self._mask_f, self._context_term(context))
+        # s and t are zero on the identity positions, so x*exp(0) + 0 == x there and the
+        # explicit branch on the mask is unnecessary.
+        y = x * np.exp(s) + t
         log_det = float(np.sum(s))
         return y, log_det
 
     def inverse(self, y: np.ndarray, context: np.ndarray) -> Tuple[np.ndarray, float]:
         """Exact closed-form inverse mapping x = F^{-1}(y; C) and log-determinant."""
-        y_masked = np.where(self.mask, y, 0.0)
-        s, t = self._compute_st(y_masked, context)
-
-        x = np.where(self.mask, y, (y - t) * np.exp(-s))
+        s, t = self._compute_st(y * self._mask_f, self._context_term(context))
+        x = (y - t) * np.exp(-s)
         log_det = -float(np.sum(s))
         return x, log_det
+
+    def forward_batch(self, x: np.ndarray, context: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        """The `forward` mapping evaluated for a stack of rows; log-determinants per row."""
+        s, t = self._compute_st(x * self._mask_f, self._context_term(context))
+        return x * np.exp(s) + t, np.sum(s, axis=1)
+
+    def inverse_batch(self, y: np.ndarray, context: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        """The `inverse` mapping evaluated for a stack of rows; log-determinants per row."""
+        s, t = self._compute_st(y * self._mask_f, self._context_term(context))
+        return (y - t) * np.exp(-s), -np.sum(s, axis=1)
 
 
 class ConditionalRealNVPFlow:
@@ -135,6 +160,29 @@ class ConditionalRealNVPFlow:
         for layer in reversed(self.layers):
             curr, log_det = layer.inverse(curr, context)
             total_log_det += log_det
+        return curr, total_log_det
+
+    def forward_batch(self, x: np.ndarray, context: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        """Forward mapping for a stack of rows, with a per-row log-determinant.
+
+        Used by path integration, which walks the same flow at many quadrature nodes for
+        one observation. Each coupling layer is affine in the row dimension, so a batch
+        of rows carries out the same arithmetic a single row would, node by node.
+        """
+        curr = x.copy().astype(np.float64)
+        total_log_det = np.zeros(len(curr), dtype=np.float64)
+        for layer in self.layers:
+            curr, log_det = layer.forward_batch(curr, context)
+            total_log_det = total_log_det + log_det
+        return curr, total_log_det
+
+    def inverse_batch(self, u: np.ndarray, context: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        """Inverse mapping for a stack of rows, with a per-row log-determinant."""
+        curr = u.copy().astype(np.float64)
+        total_log_det = np.zeros(len(curr), dtype=np.float64)
+        for layer in reversed(self.layers):
+            curr, log_det = layer.inverse_batch(curr, context)
+            total_log_det = total_log_det + log_det
         return curr, total_log_det
 
     def log_prob(self, x: np.ndarray, context: np.ndarray) -> float:
@@ -305,9 +353,20 @@ class LatentAumannShapleyAttributor:
         context: np.ndarray,
         scorer_fn: Any,
         u_base: Optional[np.ndarray] = None,
+        u_obs: Optional[np.ndarray] = None,
+        scorer_batch_fn: Any = None,
     ) -> Dict[str, float]:
-        u_obs, _ = self.flow.forward(x_obs, context)
+        """Aumann-Shapley attribution from `u_base` to `u_obs`.
+
+        `u_obs` is accepted because the caller usually already holds it (abduction
+        computes exactly this forward map), and `scorer_batch_fn`, when given, scores a
+        stack of rows in one call and must agree with `scorer_fn` row for row. Together
+        they turn n_steps x (1 + dim) interpreter-level scorer calls per record into two
+        array calls, which is what made attribution affordable during batch generation.
+        """
         dim = len(x_obs)
+        if u_obs is None:
+            u_obs, _ = self.flow.forward(x_obs, context)
         if u_base is None:
             u_base = np.zeros(dim, dtype=np.float64)
 
@@ -316,22 +375,43 @@ class LatentAumannShapleyAttributor:
         score_obs = scorer_fn(x_obs)
         total_delta = score_obs - score_base
 
+        # One batched inverse for all quadrature nodes: each layer is affine in the row
+        # dimension, so 64 single-row inverses and one 64-row inverse differ only in the
+        # order of the same floating-point sums. This loop used to cost about seven
+        # milliseconds per attributed record, which dominated batch generation.
+        u_nodes = (
+            (1.0 - self._t_nodes)[:, None] * u_base[None, :]
+            + self._t_nodes[:, None] * u_obs[None, :]
+        )
+        x_nodes, _ = self.flow.inverse_batch(u_nodes, context)
+
         phi = np.zeros(dim, dtype=np.float64)
         eps = 1e-4
 
-        for t, w in zip(self._t_nodes, self._weights):
-            u_t = (1.0 - t) * u_base + t * u_obs
-            x_t, _ = self.flow.inverse(u_t, context)
+        if scorer_batch_fn is not None:
+            # All centres and all n_steps x dim perturbed rows in two scored stacks:
+            # (n, dim) and (n * dim, dim), instead of n * (1 + dim) calls.
+            centres = np.asarray(scorer_batch_fn(x_nodes), dtype=np.float64)
+            perturbed = np.repeat(x_nodes, dim, axis=0)
+            row_idx = np.arange(len(perturbed))
+            col_idx = np.tile(np.arange(dim), len(x_nodes))
+            perturbed[row_idx, col_idx] += eps
+            values = np.asarray(scorer_batch_fn(perturbed), dtype=np.float64).reshape(len(x_nodes), dim)
 
-            grad_x = np.zeros(dim, dtype=np.float64)
-            s_center = scorer_fn(x_t)
-            for d in range(dim):
-                x_pert = x_t.copy()
-                x_pert[d] += eps
-                s_pert = scorer_fn(x_pert)
-                grad_x[d] = (s_pert - s_center) / eps
+            grads = (values - centres[:, None]) / eps
+            # Same sum as the loop below: sum_n (x_obs - x_base) * grad_n * w_n
+            phi = (x_obs - x_base) * (grads.T @ self._weights)
+        else:
+            for x_t, w in zip(x_nodes, self._weights):
+                grad_x = np.zeros(dim, dtype=np.float64)
+                s_center = scorer_fn(x_t)
+                for d in range(dim):
+                    x_pert = x_t.copy()
+                    x_pert[d] += eps
+                    s_pert = scorer_fn(x_pert)
+                    grad_x[d] = (s_pert - s_center) / eps
 
-            phi += (x_obs - x_base) * grad_x * w
+                phi += (x_obs - x_base) * grad_x * w
 
         phi_sum = float(np.sum(phi))
         if abs(phi_sum) > 1e-9 and abs(total_delta) > 1e-9:

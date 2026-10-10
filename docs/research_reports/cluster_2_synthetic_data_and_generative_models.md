@@ -2,8 +2,8 @@
 
 **Author:** Academic Literature Research & Forensic Fraud Analysis Agent  
 **Date:** September 19, 2026  
-**Repository:** [Bhavyashah94/FraudxAI](file:///c:/Users/bhavy/Documents/Projects/FraudxAI)  
-**Target File:** [`docs/research_reports/cluster_2_synthetic_data_and_generative_models.md`](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/docs/research_reports/cluster_2_synthetic_data_and_generative_models.md)
+**Repository:** [Bhavyashah94/FraudxAI](../..)  
+**Target File:** [`docs/research_reports/cluster_2_synthetic_data_and_generative_models.md`](cluster_2_synthetic_data_and_generative_models.md)
 
 ---
 
@@ -19,7 +19,7 @@ We then present a rigorous forensic counter-critique and the **FraudxAI architec
 3. **Space-Time Kinematic Velocity Limits:** Emitting consecutive in-person card-present transactions exceeding the $900\text{ km/h}$ commercial aviation ceiling (often implying hypersonic travel speeds $> 20,000\text{ km/h}$);
 4. **Asynchronous Temporal Dynamics:** Inability to capture heavy-tailed, self-exciting transaction bursts (brute-force carding, cash-out runs) that naturally obey Hawkes point processes rather than fixed-interval sequential models.
 
-Finally, we detail how FraudxAI resolves this tension through a hybrid architecture: pairing expressive agent-based behavioral intent generation with a deterministic, institutional **Payment Rail Verifier Switch** ([`fraudx_synthesizer/rails.py`](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/fraudx_synthesizer/rails.py)), a strict double-entry core ledger ([`fraudx_synthesizer/ledger.py`](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/fraudx_synthesizer/ledger.py)), and an invariant verification engine ([`fraudx_synthesizer/invariants.py`](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/fraudx_synthesizer/invariants.py)).
+Finally, we detail how FraudxAI resolves this tension through a hybrid architecture: pairing expressive agent-based behavioral intent generation with a deterministic, institutional **Payment Rail Verifier Switch** ([`fraudx_synthesizer/rails.py`](../../fraudx_synthesizer/rails.py)), a strict double-entry core ledger ([`fraudx_synthesizer/ledger.py`](../../fraudx_synthesizer/ledger.py)), and an invariant verification engine ([`fraudx_synthesizer/invariants.py`](../../fraudx_synthesizer/invariants.py)).
 
 ---
 
@@ -277,7 +277,7 @@ Because DGMs treat tabular columns as conditionally independent given latent vec
 3. **3DS 2.x State Machine Incoherence:** A generated row may specify `channel_type = "CNP_WEB"`, `trans_status_3ds = "N"` (Authentication Rejected by Access Control Server), yet emit `approved = True` and `iso_response_code = "00"`. Under Visa 3DS 2.2 Core Specifications, an issuer cannot authorize an e-commerce transaction that failed 3DS authentication without a catastrophic liability shift.
 
 #### FraudxAI Architectural Defense: The Deterministic Rail Verifier Switch
-FraudxAI prevents these hallucinations by establishing an unyielding **Boundary Layer 1: Deterministic Rail Verifier Switch** ([`fraudx_synthesizer/rails.py`](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/fraudx_synthesizer/rails.py)):
+FraudxAI prevents these hallucinations by establishing an unyielding **Boundary Layer 1: Deterministic Rail Verifier Switch** ([`fraudx_synthesizer/rails.py`](../../fraudx_synthesizer/rails.py)):
 - **Decoupled Candidate Intent Contract:** Generative models or agents do not generate finalized transaction records directly. Instead, they propose a `CandidateTransactionIntent`:
   ```python
   @dataclass
@@ -312,7 +312,7 @@ In statistical tabular models (CTGAN, TabDDPM), `amount`, `old_balance`, and `ne
 - **Unbounded Negative Balances:** When synthesizing series of transactions for a specific account, DGMs have no concept of credit limits or posted balances. A cardholder with a $1,000 credit limit can be sampled for ten consecutive $800 transactions, driving their balance to $8,000 without triggering decline code `51` (Insufficient Funds).
 
 #### FraudxAI Architectural Defense: Stateful Multi-Party Core Ledger
-FraudxAI enforces strict mathematical conservation through its **Stateful Core Ledger** ([`fraudx_synthesizer/ledger.py`](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/fraudx_synthesizer/ledger.py)):
+FraudxAI enforces strict mathematical conservation through its **Stateful Core Ledger** ([`fraudx_synthesizer/ledger.py`](../../fraudx_synthesizer/ledger.py)):
 - **Double-Entry Balance Updates:** Every transaction executes atomic double-entry updates:
   $$\Delta \text{Balance}_{\text{payer}} + \Delta \text{Balance}_{\text{payee}} + \text{Interchange Fee} + \text{Network Fee} = 0$$
 - **Solvency Guardrails:** Before an authorization is granted, the Rail Switch verifies:
@@ -334,7 +334,7 @@ Because continuous latitude, longitude, and timestamps are generated as unconstr
 Unconstrained DGMs assign positive probability density to these hypersonic teleportations because their covariance matrices lack spatial-temporal kinematic bounds.
 
 #### FraudxAI Architectural Defense: Antipodal-Safe Geodesic Kinematics
-FraudxAI enforces strict kinematic verification via [`fraudx_synthesizer/invariants.py`](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/fraudx_synthesizer/invariants.py):
+FraudxAI enforces strict kinematic verification via [`fraudx_synthesizer/invariants.py`](../../fraudx_synthesizer/invariants.py):
 - **Antipodal-Safe Haversine Metric:** To prevent floating-point roundoff singularities on antipodal coordinates, FraudxAI clamps the spherical chord length:
   $$a = \sin^2\left(\frac{\Delta \phi}{2}\right) + \cos(\phi_1)\cos(\phi_2)\sin^2\left(\frac{\Delta \lambda}{2}\right)$$
   $$a_{\text{clamped}} = \max(0.0, \min(1.0, a))$$
@@ -354,7 +354,7 @@ TimeGAN operates on discrete, regularly spaced time slices $\tau \in \{1, \dots,
 - Forcing asynchronous financial events into fixed time-step RNN/LSTM grids causes severe quantization errors, failing to model sub-second velocity attacks.
 
 #### FraudxAI Architectural Defense: Hawkes Point Process Engine
-FraudxAI models asynchronous transaction arrivals using a **Multivariate Hawkes Point Process Engine** ([`fraudx_synthesizer/hawkes.py`](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/fraudx_synthesizer/hawkes.py)):
+FraudxAI models asynchronous transaction arrivals using a **Multivariate Hawkes Point Process Engine** ([`fraudx_synthesizer/hawkes.py`](../../fraudx_synthesizer/hawkes.py)):
 $$\lambda(t) = \mu_0(t) + \sum_{t_i < t} \alpha e^{-\beta(t - t_i)}$$
 where:
 - $\mu_0(t)$ represents the cardholder's baseline circadian intensity function;
@@ -384,7 +384,7 @@ graph LR
 
 - **The Lucas Critique in Fraud Detection:** Suppose an issuer changes its fraud mitigation strategy by requiring mandatory 3DS biometric challenges on all transactions over $100. In real life, fraudsters adapt (strategic classification): they reduce ticket sizes to $95 (smurfing) or migrate to alternative payment rails (e.g., gift cards or peer-to-peer transfers).
 - **The Failure of DGMs:** A CTGAN or TabDDPM model trained on historical data will continue generating $150 fraudulent transactions without 3DS challenges, because it has no causal representation of agent incentives or institutional rules.
-- **FraudxAI Invertible Structural Causal Models (SCMs):** FraudxAI implements an **Invertible SCM** ([`fraudx_synthesizer/causal_scm.py`](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/fraudx_synthesizer/causal_scm.py)) with analytical Shapley efficiency guarantees:
+- **FraudxAI Invertible Structural Causal Models (SCMs):** FraudxAI implements an **Invertible SCM** ([`fraudx_synthesizer/causal_scm.py`](../../fraudx_synthesizer/causal_scm.py)) with analytical Shapley efficiency guarantees:
   $$\sum_{i} \phi_i = \text{risk\_score} - \text{base\_risk}$$
   allowing risk engineers to execute exact $do(\text{intervention})$ queries, simulate multi-agent adversarial adaptation, and benchmark explainable AI (XAI) models against known ground-truth causal attributions.
 

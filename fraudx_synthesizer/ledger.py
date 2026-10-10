@@ -414,22 +414,99 @@ class StreamingLedger:
 
 
 class DoubleEntryWorldLedger:
-    """Multi-party double-entry accounting ledger guaranteeing bitwise balance conservation.
-    
-    Axiom: For every financial mutation across the payments ecosystem,
-    sum(Debits) == sum(Credits) to floating-point machine precision.
+    """Multi-party double-entry ledger whose conservation invariant can actually fail.
+
+    Sign convention: `accounts` holds signed balances in **minor integer units**
+    (cents / paisa), positive meaning value held by that party. Value moving between
+    parties leaves one account and enters another, so the accounts sum to exactly
+    zero - integer arithmetic, not floating-point luck.
+
+    Two account families:
+    - *Conservation accounts* (`accounts`): escrow, card availability, merchant
+      settlement, issuer interchange, network assessment. Only these are summed by
+      `verify_global_balance_conservation`.
+    - *Memo accounts* (`memo_accounts`): bookkeeping notes such as a cardholder's
+      cumulative posted spend. A memo reports on transactions but holds no value of
+      its own; recording it as a conservation account is what used to mint money at
+      every settlement, because the cardholder's outflow was already booked when the
+      hold was placed and the posted-balance line had no counterparty.
+
+    Every mutation goes through `_post`, which refuses an unbalanced posting, and
+    `verify_global_balance_conservation` re-derives the invariant from stored state
+    (journal legs, account sum, journal replay) instead of trusting a running total
+    that was incremented by the same code that performed the mutation.
     """
 
     def __init__(self, max_journal_entries: int = 2000):
-        # Multi-party balance accounts
-        self.accounts: Dict[str, float] = collections.defaultdict(float)
+        # Conservation accounts: signed balances in minor units (cents/paisa)
+        self.accounts: Dict[str, int] = collections.defaultdict(int)
+        # Memo accounts: reporting-only figures in minor units, excluded from conservation
+        self.memo_accounts: Dict[str, int] = collections.defaultdict(int)
         # Pre-authorization hold state machine: tx_id -> (card_id, hold_amount, status)
         self.active_holds: Dict[str, Tuple[str, float, str]] = {}
         # Bounded double-entry journal ring buffer for auditing/tests
         self.journal: collections.deque[Dict[str, Any]] = collections.deque(maxlen=max_journal_entries)
-        # Cumulative balance conservation tracking (O(1) memory)
-        self.cumulative_debits: float = 0.0
-        self.cumulative_credits: float = 0.0
+        # Postings ever applied; equals len(journal) only while the ring is unevicted
+        self._postings: int = 0
+
+    @staticmethod
+    def _to_minor(amount_major: float) -> int:
+        """Converts a major-unit amount (USD/INR) to integer minor units (cents/paisa).
+
+        Amounts are 2-decimal in this simulator, so this is an exact conversion; it
+        raises on anything that cannot be represented in whole minor units rather
+        than silently truncating value.
+        """
+        minor = int(round(float(amount_major) * 100.0))
+        if not math.isclose(float(amount_major) * 100.0, minor, abs_tol=1e-6):
+            raise ValueError(f"{amount_major!r} is not a whole number of minor units")
+        return minor
+
+    def _post(
+        self,
+        tx_id: str,
+        action: str,
+        sim_time_sec: float,
+        debits: Dict[str, float],
+        credits: Dict[str, float],
+        memo: Optional[Dict[str, float]] = None,
+    ) -> Dict[str, Any]:
+        """Applies one balanced posting and appends it to the journal.
+
+        Debits reduce an account, credits increase it. A posting whose legs do not
+        sum to the same total would create or destroy value, so it is rejected here
+        with an explicit error instead of being written.
+        """
+        debit_minor = {acct: self._to_minor(v) for acct, v in debits.items()}
+        credit_minor = {acct: self._to_minor(v) for acct, v in credits.items()}
+
+        total_d = sum(debit_minor.values())
+        total_c = sum(credit_minor.values())
+        if total_d != total_c:
+            raise ValueError(
+                f"Unbalanced double-entry posting {action} on {tx_id}: "
+                f"debits {total_d} minor units != credits {total_c} minor units"
+            )
+
+        for acct, amount in debit_minor.items():
+            self.accounts[acct] -= amount
+        for acct, amount in credit_minor.items():
+            self.accounts[acct] += amount
+        for acct, amount in (memo or {}).items():
+            self.memo_accounts[acct] += self._to_minor(amount)
+
+        entry: Dict[str, Any] = {
+            "tx_id": tx_id,
+            "timestamp": sim_time_sec,
+            "action": action,
+            "debits": dict(debits),
+            "credits": dict(credits),
+        }
+        if memo:
+            entry["memo"] = dict(memo)
+        self.journal.append(entry)
+        self._postings += 1
+        return entry
 
     def place_pre_auth_hold(
         self,
@@ -445,23 +522,15 @@ class DoubleEntryWorldLedger:
         - Credit: ESCROW_HOLD:{card_id} (+hold_amount)
         """
         hold_amount = round(hold_amount, 2)
-        debit_acct = f"card_available:{card_id}"
-        credit_acct = f"escrow_hold:{card_id}"
 
-        self.accounts[debit_acct] -= hold_amount
-        self.accounts[credit_acct] += hold_amount
+        self._post(
+            tx_id=tx_id,
+            action="PRE_AUTH_HOLD",
+            sim_time_sec=sim_time_sec,
+            debits={f"card_available:{card_id}": hold_amount},
+            credits={f"escrow_hold:{card_id}": hold_amount},
+        )
         self.active_holds[tx_id] = (card_id, hold_amount, "HELD")
-        self.cumulative_debits += hold_amount
-        self.cumulative_credits += hold_amount
-
-        entry = {
-            "tx_id": tx_id,
-            "timestamp": sim_time_sec,
-            "action": "PRE_AUTH_HOLD",
-            "debits": {debit_acct: hold_amount},
-            "credits": {credit_acct: hold_amount},
-        }
-        self.journal.append(entry)
         return True
 
     def settle_hold(
@@ -475,18 +544,21 @@ class DoubleEntryWorldLedger:
         sim_time_sec: float = 0.0,
     ) -> Tuple[float, float, float]:
         """Settles clearing presentment with exact multi-party conservation.
-        
-        Double-Entry Allocation:
-        - Release Escrow Hold: Debit ESCROW_HOLD:{card_id} (hold_amount)
-        - Restore unused hold delta to available balance: Credit CARD_AVAILABLE:{card_id} (hold - settled)
-        - Post financial balance: Debit CARD_POSTED:{card_id} (settled_amount)
-        - Pay merchant net: Credit MERCHANT_SETTLEMENT:{merchant_id} (settled - interchange - network)
-        - Issuer fee: Credit ISSUER_INTERCHANGE (interchange)
-        - Network fee: Credit NETWORK_ASSESSMENT (network)
-        
-        Conservation Invariant:
-        Debits: settled_amount
-        Credits: (settled - interchange - network) + interchange + network == settled_amount
+
+        Double-Entry Legs (all value-bearing, all part of the conservation set):
+        - Debit ESCROW_HOLD:{card_id} (hold_amount) - escrow gives up the reserved value
+        - Credit CARD_AVAILABLE:{card_id} (hold - settled) - unused reservation returns
+        - Credit MERCHANT_SETTLEMENT:{merchant_id} (settled - interchange - network)
+        - Credit ISSUER_INTERCHANGE (interchange)
+        - Credit NETWORK_ASSESSMENT (network)
+
+        Conservation: hold == (hold - settled) + settled, and settled decomposes into
+        merchant net + interchange + network by construction.
+
+        The cardholder's cumulative posted spend is written to the *memo* ledger for
+        reporting. It is not a conservation account: the cardholder's value already
+        left `card_available` when the hold was placed, so booking `CARD_POSTED` as a
+        value-holding debit as well would double-count the charge.
         """
         settled_amount = round(settled_amount, 2)
         interchange_fee = round(settled_amount * interchange_rate, 2)
@@ -501,84 +573,100 @@ class DoubleEntryWorldLedger:
         card_avail_acct = f"card_available:{card_id}"
         card_posted_acct = f"card_posted:{card_id}"
         merchant_acct = f"merchant_settlement:{merchant_id}"
-        issuer_acct = "issuer_interchange"
-        network_acct = "network_assessment"
 
-        # 1. Release escrow hold
-        self.accounts[escrow_acct] -= hold_amount
-        # 2. Adjust available balance with difference between hold and settled
         unused_hold = round(hold_amount - settled_amount, 2)
+
+        debits = {escrow_acct: hold_amount}
+        credits: Dict[str, float] = {}
         if unused_hold != 0.0:
-            self.accounts[card_avail_acct] += unused_hold
+            credits[card_avail_acct] = unused_hold
+        credits[merchant_acct] = merchant_net
+        credits["issuer_interchange"] = interchange_fee
+        credits["network_assessment"] = network_fee
 
-        # 3. Post debit on cardholder
-        self.accounts[card_posted_acct] += settled_amount
-        # 4. Credit merchant net
-        self.accounts[merchant_acct] += merchant_net
-        # 5. Credit interchange
-        self.accounts[issuer_acct] += interchange_fee
-        # 6. Credit network assessment
-        self.accounts[network_acct] += network_fee
-
-        debits = {
-            card_posted_acct: settled_amount,
-            escrow_acct: hold_amount,
-        }
-        credits = {
-            merchant_acct: merchant_net,
-            issuer_acct: interchange_fee,
-            network_acct: network_fee,
-            card_avail_acct: hold_amount,
-        }
-
-        # Exact accounting reconciliation check
-        total_d = sum(debits.values())
-        total_c = sum(credits.values())
-        assert math.isclose(total_d, total_c, abs_tol=1e-5), (
-            f"Double-entry settlement discrepancy on {tx_id}: {total_d} != {total_c}"
+        self._post(
+            tx_id=tx_id,
+            action="CLEARING_SETTLEMENT",
+            sim_time_sec=sim_time_sec,
+            debits=debits,
+            credits=credits,
+            memo={card_posted_acct: settled_amount},
         )
-
-        self.cumulative_debits += total_d
-        self.cumulative_credits += total_c
-
-        entry = {
-            "tx_id": tx_id,
-            "timestamp": sim_time_sec,
-            "action": "CLEARING_SETTLEMENT",
-            "debits": debits,
-            "credits": credits,
-        }
-        self.journal.append(entry)
         return merchant_net, interchange_fee, network_fee
 
     def release_hold(self, tx_id: str, card_id: str, sim_time_sec: float = 0.0) -> float:
-        """Releases hold upon decline, reversal, or expiry without financial mutation."""
+        """Releases hold upon decline, reversal, or expiry, returning reserved value."""
         if tx_id not in self.active_holds:
             return 0.0
 
         _, hold_amount, _ = self.active_holds.pop(tx_id)
-        escrow_acct = f"escrow_hold:{card_id}"
-        avail_acct = f"card_available:{card_id}"
-
-        self.accounts[escrow_acct] -= hold_amount
-        self.accounts[avail_acct] += hold_amount
-
-        self.cumulative_debits += hold_amount
-        self.cumulative_credits += hold_amount
-
-        entry = {
-            "tx_id": tx_id,
-            "timestamp": sim_time_sec,
-            "action": "HOLD_RELEASE",
-            "debits": {escrow_acct: hold_amount},
-            "credits": {avail_acct: hold_amount},
-        }
-        self.journal.append(entry)
+        self._post(
+            tx_id=tx_id,
+            action="HOLD_RELEASE",
+            sim_time_sec=sim_time_sec,
+            debits={f"escrow_hold:{card_id}": hold_amount},
+            credits={f"card_available:{card_id}": hold_amount},
+        )
         return hold_amount
 
-    def verify_global_balance_conservation(self) -> Tuple[bool, float]:
-        """Proves that sum(Debits) == sum(Credits) globally across all historical mutations."""
-        discrepancy = abs(self.cumulative_debits - self.cumulative_credits)
-        is_conserved = discrepancy < 1e-5
-        return is_conserved, discrepancy
+    def verify_global_balance_conservation(self, abs_tol: float = 1e-6) -> Tuple[bool, float]:
+        """Re-derives conservation from stored state instead of trusting a counter.
+
+        Three independent residuals are computed, and the largest is returned in
+        major units (USD/INR):
+
+        1. **Journal legs** - any retained entry whose debits and credits differ is a
+           posting that minted value, even if it was written by code that believed
+           it was balanced.
+        2. **Account sum** - `sum(accounts)` must be exactly zero; a non-zero value
+           means value entered or left the system outside a posting (the classic
+           being a reporting figure booked as a conserved balance).
+        3. **Journal replay** - while the journal ring buffer has dropped no entries,
+           replaying every entry must reproduce `accounts` exactly, which fails if an
+           account was mutated by anything other than `_post`.
+
+        Returns `(is_conserved, discrepancy)`; `is_conserved` is true only when
+        `discrepancy < abs_tol`.
+        """
+        worst = 0.0
+
+        def minor(value: Any) -> Optional[int]:
+            """Minor units, or None if the stored amount is not a whole minor unit.
+
+            A value that cannot be converted is itself a defect in stored state, so
+            it is reported as a failure below rather than raising out of an invariant
+            checker (a checker that throws cannot say whether the invariant holds).
+            """
+            try:
+                return self._to_minor(value)
+            except (TypeError, ValueError):
+                return None
+
+        # 1. Per-entry leg balance
+        for entry in self.journal:
+            leg_totals = []
+            for leg in ("debits", "credits"):
+                values = [minor(v) for v in entry.get(leg, {}).values()]
+                if any(v is None for v in values):
+                    return False, float("inf")
+                leg_totals.append(sum(v for v in values if v is not None))
+            worst = max(worst, abs(leg_totals[0] - leg_totals[1]) / 100.0)
+
+        # 2. Conservation accounts must sum to zero (minor units are exact)
+        worst = max(worst, abs(sum(self.accounts.values())) / 100.0)
+
+        # 3. Replay the journal against live accounts, but only while it is complete
+        if self._postings == len(self.journal):
+            replayed: Dict[str, int] = collections.defaultdict(int)
+            for entry in self.journal:
+                for leg, sign in (("debits", -1), ("credits", 1)):
+                    for acct, amount in entry.get(leg, {}).items():
+                        value = minor(amount)
+                        if value is None:
+                            return False, float("inf")
+                        replayed[acct] += sign * value  # type: ignore[operator]
+            for acct in set(replayed) | set(self.accounts):
+                worst = max(worst, abs(replayed.get(acct, 0) - self.accounts.get(acct, 0)) / 100.0)
+
+        return worst < abs_tol, worst
 
