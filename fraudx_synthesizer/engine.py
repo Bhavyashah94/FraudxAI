@@ -57,9 +57,22 @@ from .spec_loader import load_all_specs
 PROXY_NETWORK_ASN = {"DATACENTER_ROTATING": "datacenter", "MOBILE_4G_5G": "mobile", "RESIDENTIAL_STICKY": "residential"}
 
 
+_NONE_TYPE = type(None)
+
+
 def _plain(value: Any) -> Any:
     """A record's dictionary fields as plain Python values with floats rounded to six
-    decimals, so the master export is the same bytes on every machine (spec/07 section 20)."""
+    decimals, so the master export is the same bytes on every machine (spec/07 section 20).
+
+    The exact-type shortcuts come first because they cover almost every leaf in a record;
+    each still returns exactly what the original isinstance chain returned, and anything
+    unusual (numpy scalars, dict/list subclasses) falls through to that chain.
+    """
+    t = type(value)
+    if t is float:
+        return round(value, 6) + 0.0
+    if t is str or t is bool or t is int or t is _NONE_TYPE:
+        return value
     if isinstance(value, dict):
         return {str(k): _plain(v) for k, v in value.items()}
     if isinstance(value, (list, tuple)):
@@ -146,6 +159,10 @@ class DiscreteEventEngine:
             seed=seed,
         )
         self.causal_engine = StructuralCausalEngine(base_prevalence=0.0020)
+        # Batch generation skips the per-record flow round-trip self-check (see
+        # HeuristicBankScorer.verify_flow_consistency); the attributions and the
+        # counterfactual twins themselves are still computed for every record.
+        self.causal_engine.verify_flow_consistency = False
         self.fraudster = AdaptiveFraudsterAgent(self.rng, adversary_mimicry=adversary_mimicry)
         self.syndicate_registry = SyndicateRegistry(region=self.region, seed=seed)
         self.ledger = StreamingLedger(seed=seed)

@@ -168,6 +168,13 @@ class HeuristicBankScorer(BankModel):
         self.codec = TransactionFlowFeatureCodec
         self.latent_attributor = LatentAumannShapleyAttributor(self.flow)
 
+        # Round-tripping x -> u -> x on every record is a self-check of the flow's algebraic
+        # inverse, not a quantity any export consumes. It is on by default (tests and single
+        # evaluations rely on `pearlian_consistency_error`), and the batch generator turns it
+        # off, where it cost about 8% of per-record evaluation time to re-verify a property the
+        # architecture guarantees and tests/test_invertible_dscm.py asserts.
+        self.verify_flow_consistency: bool = True
+
     def _logistic(self, z: float) -> float:
         """Numerically stable standard sigmoid."""
         if z >= 35.0:
@@ -175,6 +182,33 @@ class HeuristicBankScorer(BankModel):
         elif z <= -35.0:
             return 0.0
         return 1.0 / (1.0 + math.exp(-z))
+
+    def _flow_scorer(self, x_vec: np.ndarray, mean_30d: float) -> float:
+        """Scalar risk score used as the target of the Aumann-Shapley path integral.
+
+        A monotone function of amount saturation against the card's 30-day mean and of
+        velocity, both read out of the flow's feature space.
+        """
+        v_kph = min(900.0, max(0.0, float(x_vec[1])))
+        log_amt = min(15.0, max(-5.0, float(x_vec[0])))
+        amt = math.exp(log_amt)
+        ratio = amt / max(mean_30d, 1.0)
+        sat_ratio = math.log(1.0 + max(0.0, ratio - 1.0))
+        z = self.base_logit + 0.65 * sat_ratio + 0.0055 * v_kph
+        return self._logistic(z)
+
+    def _flow_scorer_batch(self, x_rows: np.ndarray, mean_30d: float) -> np.ndarray:
+        """`_flow_scorer` for a stack of rows: element-wise equivalents of every operation
+        above, so path integration scores n_steps x (1 + dim) rows in one call instead of
+        that many interpreter calls. Both are exercised against each other in
+        tests/test_synthesizer/test_causal_shapley.py."""
+        v_kph = np.clip(x_rows[:, 1], 0.0, 900.0)
+        log_amt = np.clip(x_rows[:, 0], -5.0, 15.0)
+        ratio = np.exp(log_amt) / max(mean_30d, 1.0)
+        sat_ratio = np.log1p(np.maximum(0.0, ratio - 1.0))
+        z = self.base_logit + 0.65 * sat_ratio + 0.0055 * v_kph
+        out = 1.0 / (1.0 + np.exp(-np.clip(z, -35.0, 35.0)))
+        return np.where(z <= -35.0, 0.0, out)
 
     def evaluate(
         self,
@@ -362,24 +396,22 @@ class HeuristicBankScorer(BankModel):
         C_norm[0] = 0.0  # Surgical intervention: do(is_fraud = 0)
         u_star = self.flow.abduce(x_obs, C_obs)
         x_cf = self.flow.predict_counterfactual(u_star, C_norm)
-        consistency_error = self.flow.verify_pearlian_consistency(x_obs, C_obs)
+        if self.verify_flow_consistency:
+            consistency_error = self.flow.verify_pearlian_consistency(x_obs, C_obs)
+        else:
+            # NaN means "not measured on this path", which is not the same as a
+            # round-trip error of zero; see the flag's definition in __init__.
+            consistency_error = float("nan")
 
         # On-manifold latent Aumann-Shapley path integration
         # Evaluated for fraud, anomalous scenarios, or counterfactual foils to maintain high simulation TPS
         if is_fraud == 1 or scenario_tag != "ORGANIC_NORMAL":
-            def _flow_scorer(x_vec: np.ndarray) -> float:
-                v_kph = min(900.0, max(0.0, float(x_vec[1])))
-                log_amt = min(15.0, max(-5.0, float(x_vec[0])))
-                amt = math.exp(log_amt)
-                ratio = amt / max(mean_30d, 1.0)
-                sat_ratio = math.log(1.0 + max(0.0, ratio - 1.0))
-                z = self.base_logit + 0.65 * sat_ratio + 0.0055 * v_kph
-                return self._logistic(z)
-
             latent_shapley = self.latent_attributor.attribute(
                 x_obs=x_obs,
                 context=C_obs,
-                scorer_fn=_flow_scorer,
+                scorer_fn=lambda v: self._flow_scorer(v, mean_30d),
+                u_obs=u_star,
+                scorer_batch_fn=lambda X: self._flow_scorer_batch(X, mean_30d),
             )
         else:
             latent_shapley = {}
