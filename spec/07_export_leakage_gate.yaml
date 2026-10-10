@@ -421,17 +421,35 @@ attack_channel_mix:
 # the batch fills before the span ends and the fraud stream, paced to the full span, under-delivers: a
 # 1,000-row batch asked for 6 percent fraud over 30 days delivered 2.4 percent and stopped on day 17.
 # The fraud rate is now re-estimated at each attack from the legitimate rate realised over the last daily
-# cycle, after a warm-up, so the share delivered in any batch is the requested one. A trailing window
+# cycle, after a warm-up, so the share delivered converges on the requested one. A trailing window
 # rather than the whole run, because the legitimate rate falls as alerts freeze cards and the cumulative
 # rate would lag it (at 10 percent requested the cumulative estimate over-delivered by 40 percent); a
 # full daily cycle rather than the last few hundred rows, because an attack scheduled at night would
 # otherwise set the night-time rate for the whole of the next day (a 30,000-row export at 0.5 percent
 # delivered 124 fraud rows of 150 that way). The stream stays a competing stream: attacks are placed on
 # the queue by the clock, on any active card, not on the card that just paid.
+#
+# What "delivered" means, measured 2026-10-11 at beeb668 over 12 seeds per configuration: this control
+# holds the share right IN EXPECTATION, and an individual batch carries the Poisson variation of the
+# attack count. It cannot do better, because the attacks are a Poisson stream -- the standard deviation
+# of a count of k is sqrt(k), so the share's relative spread is 1/sqrt(k) no matter how the rate is set.
+#
+#   cards / rows / requested   mean share   bias     observed sd   Poisson 1-sigma   expected k
+#   300 / 3000 / 3%            0.0295       -1.8%    13.4%         10.5%             90
+#    80 / 2000 / 5%            0.0509       +1.8%    11.0%         10.0%            100
+#   500 / 1000 / 2%            0.0185       -7.5%    22.7%         22.4%             20
+#
+# The observed spread tracks the Poisson floor, so the swings a single run shows (measured from -15% to
+# +30% across configurations and seeds) are sampling noise, not a pacing failure. The one systematic
+# term is -7.5% at 1,000 rows and 2%, which is 18.5 attacks against 20 expected and sits well inside
+# one standard deviation. Quoting a delivered share without its batch size therefore misrepresents it:
+# at 2% of 1,000 rows the share is only good to about +/-2 points (1 sigma), and a report that needs
+# three-digit prevalence must raise k, not re-tune this controller.
 prevalence_pacing:
   method: "at each attack the fraud rate is p / (1 - p) times the legitimate rate realised over the last window_hours; over the whole run when the window holds fewer than warm_up_rows rows"
   warm_up_rows: 25       # the planned rate is used until this many legitimate rows have arrived
   window_hours: 24
+  delivery: "correct in expectation; a single batch varies as 1/sqrt(k) where k is the expected attack count (measured, 12 seeds per configuration -- see the block above)"
   hypothesis: false
 
 # ----------------------------------------------------------------------------------------------

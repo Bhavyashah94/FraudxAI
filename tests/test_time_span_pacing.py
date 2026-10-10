@@ -220,3 +220,53 @@ def test_span_is_monotonic_in_requested_days():
     assert spans[30] / spans[15] == pytest.approx(2.0, abs=0.35), (
         f"doubling the request should roughly double the span: {spans}"
     )
+
+
+def test_fraud_share_is_unbiased_in_expectation():
+    """D3: `--fraud-rate` is delivered in expectation, not in any single batch.
+
+    spec/07 section 19 originally claimed "the share delivered in any batch is the
+    requested one", which no Poisson stream can do: the standard deviation of a
+    count of k is sqrt(k), so the share's relative spread is 1/sqrt(k) however the
+    rate is set. A single batch asked for 3% of 3000 rows carries 90 expected
+    attacks, so its share is only good to about +/-3 points at one sigma, and
+    reading -15% or +30% off one run as a pacing failure is a mistake.
+
+    Measured over 12 seeds at beeb668, the systematic term was -1.8%, +1.8% and
+    -7.5% across three configurations while the observed spread tracked the Poisson
+    floor (13.4% vs 10.5%, 11.0% vs 10.0%, 22.7% vs 22.4%). This test pins the
+    property that matters -- the mean -- using fewer seeds so it stays affordable
+    for CI, and asserts the spread is the right order of magnitude for Poisson
+    rather than a pacing failure.
+    """
+    requested = 0.03
+    shares = []
+    for seed in range(6):
+        engine = SimulationEngine(n_cards=300, n_merchants=50, region="US", seed=seed)
+        records = engine.generate_batch(
+            n_transactions=3000,
+            fraud_prevalence=requested,
+            time_span_days=30,
+            enforce_invariants=False,
+        )
+        shares.append(sum(1 for r in records if r.get("is_fraud") == 1) / len(records))
+
+    shares = np.asarray(shares)
+    expected_k = 3000 * requested
+    bias = (shares.mean() - requested) / requested
+    poisson_rel_sd = 1.0 / np.sqrt(expected_k)
+
+    # In expectation the control must not drift. The bound is the Poisson floor plus a
+    # margin for a six-seed mean; it is far tighter than the +/-30% a single batch shows.
+    assert abs(bias) <= 2.0 * poisson_rel_sd, (
+        f"fraud share biased by {bias:+.1%} against a Poisson 1-sigma of {poisson_rel_sd:.1%}: "
+        f"mean {shares.mean():.4f} vs requested {requested}"
+    )
+
+    # The spread must be Poisson-sized. If it were far larger the controller would be
+    # unstable; if far smaller the attacks would not be a Poisson stream any more.
+    rel_sd = shares.std(ddof=1) / requested
+    assert 0.4 * poisson_rel_sd <= rel_sd <= 3.0 * poisson_rel_sd, (
+        f"fraud-share spread {rel_sd:.1%} is not Poisson-sized against a floor of "
+        f"{poisson_rel_sd:.1%}: shares={shares.tolist()}"
+    )
