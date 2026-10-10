@@ -370,9 +370,13 @@ def test_benchmark_measurements_are_empirical_not_constants():
     assert report1.privacy.mia_attack_roc_auc != 0.518
     assert 0.40 <= report1.privacy.mia_attack_roc_auc <= 0.65
 
-    # 3. Causal faithfulness must be empirical, not a literal 0.88
+    # 3. Causal faithfulness must be an empirical subset-ablation correlation, not a
+    #    literal 0.88 and not the constant 1.0 a self-comparison would always yield.
+    #    It is a Pearson correlation, so its valid range includes negative values:
+    #    a negative score means the attribution is anti-correlated with the model's
+    #    actual score drop, which the pillar-4 gate (< 0.500) reports as a failure.
     assert report1.xai.mean_causal_faithfulness != 0.88
-    assert 0.0 <= report1.xai.mean_causal_faithfulness <= 1.0
+    assert -1.0 <= report1.xai.mean_causal_faithfulness <= 1.0
 
     # 4. Multi-seed variation proves genuine data-dependent execution
     assert report1.fidelity.wasserstein_amount_log != report2.fidelity.wasserstein_amount_log

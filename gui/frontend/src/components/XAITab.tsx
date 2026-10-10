@@ -76,7 +76,7 @@ export const XAITab: React.FC = () => {
                 : 'text-stone-600 hover:text-stone-900'
             }`}
           >
-            TreeSHAP Log-Odds
+            SCM Log-Odds
           </button>
           <button
             onClick={() => setSpace('probability')}

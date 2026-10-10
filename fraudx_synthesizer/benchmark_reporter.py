@@ -11,6 +11,7 @@ Grounding & Standards:
 from __future__ import annotations
 
 import base64
+import functools
 import json
 import math
 import os
@@ -24,13 +25,79 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import scipy.stats as stats
+import yaml
 from sklearn.ensemble import HistGradientBoostingClassifier, RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import average_precision_score, precision_recall_curve, roc_auc_score
 from sklearn.model_selection import StratifiedKFold
 from sklearn.neighbors import NearestNeighbors
 
-from .spec_loader import load_all_specs
+from .spec_loader import _find_spec_dir
+
+# Certification thresholds are owned by spec/18_benchmark_reporting.yaml. The grader,
+# the Markdown report and the HTML report all read them from the same place so a
+# printed threshold and the threshold a run was graded on cannot drift apart.
+CERTIFICATION_SPEC_FILE = "18_benchmark_reporting.yaml"
+
+# Mirrors spec/18 `certification_thresholds`, used only when the spec directory is not
+# installed next to the package. Keeping it byte-for-byte identical to the spec means a
+# fallback run is graded exactly as a spec run would be.
+_EMBEDDED_CERTIFICATION_THRESHOLD_FALLBACK: Dict[str, Dict[str, float]] = {
+    "pillar_1_data_fidelity": {
+        "wasserstein_amount_log_max": 0.150,
+        "wasserstein_arrival_log_max": 0.150,
+        "js_divergence_mcc_max": 0.050,
+        "js_divergence_channel_max": 0.050,
+        "spearman_frobenius_error_max": 1.250,
+    },
+    "pillar_2_adversarial_privacy": {
+        "dcr_5th_percentile_min": 0.0001,
+        "nndr_mean_min": 0.500,
+        "nndr_mean_max": 0.980,
+        "mia_attack_roc_auc_max": 0.580,
+        "evasion_rate_macro_mean_max": 0.700,
+    },
+    "pillar_3_operational_streaming": {
+        "min_days_evaluated": 2,
+        "min_prequential_pr_auc": 0.150,
+        "min_alert_precision_at_k": 0.050,
+        "min_card_precision_at_k": 0.050,
+        "min_net_cost_savings_ratio": 0.050,
+        "drift_alarm_psi_threshold": 0.250,
+    },
+    "pillar_4_causal_xai_fidelity": {
+        "min_spearman_rank_rho": 0.600,
+        "min_pearson_linear_r": 0.550,
+        "min_top_3_precision": 0.600,
+        "max_relative_attribution_error": 0.450,
+        "min_causal_faithfulness": 0.500,
+    },
+}
+
+
+@functools.lru_cache(maxsize=1)
+def load_certification_thresholds() -> Tuple[Dict[str, Dict[str, float]], str]:
+    """The four-pillar certification thresholds and where they came from.
+
+    Returns `(thresholds, source)`. `source` is the resolved spec path, or
+    `"embedded fallback"` when `spec/` is unavailable (packaged install without the
+    specification directory); the report prints the source so a reader always knows
+    which bar a run was graded against.
+    """
+    try:
+        spec_path = _find_spec_dir() / CERTIFICATION_SPEC_FILE
+        raw = yaml.safe_load(spec_path.read_text(encoding="utf-8"))
+        body = raw["certification_thresholds"]
+        thresholds = {
+            str(pillar): {str(key): float(value) for key, value in metrics.items()}
+            for pillar, metrics in body.items()
+        }
+        missing = set(_EMBEDDED_CERTIFICATION_THRESHOLD_FALLBACK) - set(thresholds)
+        if missing:
+            raise KeyError(f"spec/18 is missing {sorted(missing)}")
+        return thresholds, str(spec_path)
+    except (FileNotFoundError, KeyError, TypeError, ValueError, yaml.YAMLError):
+        return {k: dict(v) for k, v in _EMBEDDED_CERTIFICATION_THRESHOLD_FALLBACK.items()}, "embedded fallback"
 
 # Enforce headless matplotlib backend strictly before pyplot imports
 try:
@@ -318,7 +385,7 @@ class PublicationPlotter:
         output_path: Optional[Path] = None,
         formats: Sequence[str] = ("png", "pdf"),
     ) -> Dict[str, Path]:
-        """Figure 5: Empirical TreeSHAP vs. Exact Pearlian Counterfactual Ground-Truth Attributions."""
+        """Figure 5: empirical occlusion attribution vs. the simulator's structural-model ground truth."""
         fig, (ax_bar, ax_radar) = plt.subplots(
             1, 2, figsize=(self.preset["double_col_in"], 3.2),
             gridspec_kw={"width_ratios": [1.4, 1.0]}
@@ -330,7 +397,7 @@ class PublicationPlotter:
 
         # Horizontal Bar Plot
         ax_bar.barh(indices + bar_height / 2, shap_attributions, height=bar_height,
-                    label="Empirical TreeSHAP (phi_hat)", color=self.colors["primary_blue"], alpha=0.9)
+                    label="Empirical attribution (phi_hat)", color=self.colors["primary_blue"], alpha=0.9)
         ax_bar.barh(indices - bar_height / 2, ground_truth_phi, height=bar_height,
                     label="Exact SCM Ground Truth (phi*)", color=self.colors["alert_red"], alpha=0.85, hatch="//")
 
@@ -355,7 +422,7 @@ class PublicationPlotter:
         gt_norm = list(np.abs(ground_truth_phi) / (np.max(np.abs(ground_truth_phi)) + 1e-9))
         gt_norm += gt_norm[:1]
 
-        ax_radar.plot(angles, s_norm, color=self.colors["primary_blue"], linewidth=1.5, label="TreeSHAP")
+        ax_radar.plot(angles, s_norm, color=self.colors["primary_blue"], linewidth=1.5, label="Attribution")
         ax_radar.fill(angles, s_norm, color=self.colors["primary_blue"], alpha=0.2)
 
         ax_radar.plot(angles, gt_norm, color=self.colors["alert_red"], linewidth=1.5, linestyle="--", label="SCM Ground Truth")
@@ -461,6 +528,61 @@ class UnifiedBenchmarkReportData:
     triage_curves: Dict[str, Any] = field(default_factory=dict)
 
 
+def _threshold_violations(
+    pillar: str,
+    checks: Sequence[Tuple[str, float, str, float]],
+) -> List[str]:
+    """Names the exact requirement a pillar failed instead of a generic blame line.
+
+    `checks` holds `(metric name, observed value, direction, limit)` with direction
+    `"max"` (value must not exceed the limit) or `"min"` (value must reach it).
+    """
+    found: List[str] = []
+    for name, observed, direction, limit in checks:
+        if not math.isfinite(float(observed)):
+            continue
+        if direction == "max" and float(observed) > limit:
+            found.append(f"{pillar}: {name} {float(observed):.4f} exceeds the {limit:.4f} maximum")
+        elif direction == "min" and float(observed) < limit:
+            found.append(f"{pillar}: {name} {float(observed):.4f} falls below the {limit:.4f} minimum")
+    if not found:
+        found.append(f"{pillar}: no measurable result; the pillar cannot certify without one")
+    return found
+
+
+def _subset_ablation_faithfulness(
+    model_fn: Callable[[np.ndarray], np.ndarray],
+    base_pred: float,
+    x_obs: np.ndarray,
+    x_cf: np.ndarray,
+    phi_hat: np.ndarray,
+    subset_masks: np.ndarray,
+) -> Optional[float]:
+    """Faithfulness of an attribution vector: does it predict how the score drops?
+
+    For every non-empty feature subset the model is re-evaluated with that subset
+    replaced by the record's counterfactual twin values, giving one score drop per
+    subset. The Pearson correlation between those drops and the attribution mass the
+    method assigned to the same subset is the faithfulness score.
+
+    The two sides come from different operations - phi_hat from single-feature
+    occlusion, the drops from joint subset ablation - so a high score means the
+    attribution explains the model's behaviour across subsets rather than restating
+    its own computation. Returns `None` when either side carries no variance.
+    """
+    rows = np.tile(x_obs, (len(subset_masks), 1))
+    for i, mask in enumerate(subset_masks):
+        rows[i, mask] = x_cf[mask]
+
+    deltas = float(base_pred) - np.asarray(model_fn(rows), dtype=np.float64)
+    masses = subset_masks.astype(np.float64) @ np.asarray(phi_hat, dtype=np.float64)
+
+    if float(np.std(deltas)) < 1e-12 or float(np.std(masses)) < 1e-12:
+        return None
+    r = float(stats.pearsonr(masses, deltas).statistic)
+    return None if math.isnan(r) else r
+
+
 class UnifiedBenchmarkRunner:
     """Executes full end-to-end benchmark evaluation across all 4 pillars."""
 
@@ -531,21 +653,46 @@ class UnifiedBenchmarkRunner:
         xai_scorecard, feat_attr, gt_phi = self._evaluate_causal_xai(records)
 
         # Step 6: Certification Grader
+        thresholds, threshold_source = load_certification_thresholds()
         all_passed = (
             fidelity_scorecard.passed
             and privacy_scorecard.passed
             and streaming_scorecard.passed
             and xai_scorecard.passed
         )
-        violations = []
+        violations: List[str] = []
         if not fidelity_scorecard.passed:
-            violations.append("Pillar 1: Data Fidelity thresholds exceeded.")
+            violations.extend(_threshold_violations("Pillar 1 (Data Fidelity)", [
+                ("log-amount Wasserstein", fidelity_scorecard.wasserstein_amount_log, "max", thresholds["pillar_1_data_fidelity"]["wasserstein_amount_log_max"]),
+                ("inter-arrival Wasserstein", fidelity_scorecard.wasserstein_arrival_log, "max", thresholds["pillar_1_data_fidelity"]["wasserstein_arrival_log_max"]),
+                ("MCC Jensen-Shannon divergence", fidelity_scorecard.js_divergence_mcc, "max", thresholds["pillar_1_data_fidelity"]["js_divergence_mcc_max"]),
+                ("channel Jensen-Shannon divergence", fidelity_scorecard.js_divergence_channel, "max", thresholds["pillar_1_data_fidelity"]["js_divergence_channel_max"]),
+                ("correlation Frobenius error", fidelity_scorecard.spearman_frobenius_error, "max", thresholds["pillar_1_data_fidelity"]["spearman_frobenius_error_max"]),
+            ]))
         if not privacy_scorecard.passed:
-            violations.append("Pillar 2: Privacy / non-memorization criteria violated.")
+            violations.extend(_threshold_violations("Pillar 2 (Privacy & Robustness)", [
+                ("DCR 5th percentile", privacy_scorecard.dcr_5th_percentile, "min", thresholds["pillar_2_adversarial_privacy"]["dcr_5th_percentile_min"]),
+                ("NNDR mean", privacy_scorecard.nndr_mean, "min", thresholds["pillar_2_adversarial_privacy"]["nndr_mean_min"]),
+                ("NNDR mean", privacy_scorecard.nndr_mean, "max", thresholds["pillar_2_adversarial_privacy"]["nndr_mean_max"]),
+                ("macro evasion rate", privacy_scorecard.evasion_rate_macro_mean, "max", thresholds["pillar_2_adversarial_privacy"]["evasion_rate_macro_mean_max"]),
+                ("shadow MIA ROC-AUC", privacy_scorecard.mia_attack_roc_auc, "max", thresholds["pillar_2_adversarial_privacy"]["mia_attack_roc_auc_max"]),
+            ]))
         if not streaming_scorecard.passed:
-            violations.append("Pillar 3: Operational streaming performance below minimum standard.")
+            violations.extend(_threshold_violations("Pillar 3 (Operational Streaming)", [
+                ("days evaluated", float(streaming_scorecard.n_days_evaluated), "min", thresholds["pillar_3_operational_streaming"]["min_days_evaluated"]),
+                ("prequential PR-AUC", streaming_scorecard.mean_pr_auc, "min", thresholds["pillar_3_operational_streaming"]["min_prequential_pr_auc"]),
+                ("alert precision P@K", streaming_scorecard.mean_p_at_k, "min", thresholds["pillar_3_operational_streaming"]["min_alert_precision_at_k"]),
+                ("cardholder precision CP@K", streaming_scorecard.mean_cp_at_k, "min", thresholds["pillar_3_operational_streaming"]["min_card_precision_at_k"]),
+                ("net cost savings ratio", streaming_scorecard.overall_savings_ratio, "min", thresholds["pillar_3_operational_streaming"]["min_net_cost_savings_ratio"]),
+            ]))
         if not xai_scorecard.passed:
-            violations.append("Pillar 4: Causal XAI ground truth concordance below threshold.")
+            violations.extend(_threshold_violations("Pillar 4 (Causal XAI Fidelity)", [
+                ("Spearman rank rho", xai_scorecard.mean_spearman_rho, "min", thresholds["pillar_4_causal_xai_fidelity"]["min_spearman_rank_rho"]),
+                ("Pearson linear r", xai_scorecard.mean_pearson_r, "min", thresholds["pillar_4_causal_xai_fidelity"]["min_pearson_linear_r"]),
+                ("support precision@3", xai_scorecard.mean_precision_at_3, "min", thresholds["pillar_4_causal_xai_fidelity"]["min_top_3_precision"]),
+                ("relative attribution error", xai_scorecard.mean_relative_attribution_error, "max", thresholds["pillar_4_causal_xai_fidelity"]["max_relative_attribution_error"]),
+                ("subset-ablation faithfulness", xai_scorecard.mean_causal_faithfulness, "min", thresholds["pillar_4_causal_xai_fidelity"]["min_causal_faithfulness"]),
+            ]))
 
         grade = "TIER-1_GOLD" if all_passed else ("TIER-2_SILVER" if len(violations) == 1 else "NON_CERTIFIED_FAIL")
         runtime_sec = time.perf_counter() - t_start
@@ -559,7 +706,8 @@ class UnifiedBenchmarkRunner:
                 "n_transactions": len(records),
                 "seed": self.seed,
                 "model_architecture": "HistGradientBoostingClassifier",
-                "explainer_type": "Pearlian_SCM_vs_TreeSHAP",
+                "explainer_type": "counterfactual_twin_occlusion_vs_SCM_ground_truth",
+                "threshold_source": threshold_source,
             },
             system_provenance={
                 "python_version": sys.version.split()[0],
@@ -582,6 +730,7 @@ class UnifiedBenchmarkRunner:
 
     def _evaluate_data_fidelity(self, records: List[Dict[str, Any]]) -> DataFidelityScorecard:
         """Computes continuous Wasserstein distance against grounded spec, categorical JS divergence, and Frobenius correlation error."""
+        th = load_certification_thresholds()[0]["pillar_1_data_fidelity"]
         amounts = np.array([float(r.get("amount", 10.0)) for r in records], dtype=np.float64)
         log_amounts = np.log10(np.maximum(amounts, 0.01) + 1.0)
 
@@ -644,7 +793,13 @@ class UnifiedBenchmarkRunner:
         else:
             frob_err = 0.0
 
-        passed = (w1_amt <= 0.35 and w1_arr <= 0.45 and js_mcc <= 0.35 and js_ch <= 0.35 and frob_err <= 0.50)
+        passed = (
+            w1_amt <= th["wasserstein_amount_log_max"]
+            and w1_arr <= th["wasserstein_arrival_log_max"]
+            and js_mcc <= th["js_divergence_mcc_max"]
+            and js_ch <= th["js_divergence_channel_max"]
+            and frob_err <= th["spearman_frobenius_error_max"]
+        )
 
         return DataFidelityScorecard(
             wasserstein_amount_log=round(w1_amt, 4),
@@ -657,6 +812,7 @@ class UnifiedBenchmarkRunner:
 
     def _evaluate_adversarial_privacy(self, records: List[Dict[str, Any]]) -> AdversarialPrivacyScorecard:
         """Evaluates non-memorization via Distance to Closest Record (DCR), NNDR, and shadow MIA."""
+        th = load_certification_thresholds()[0]["pillar_2_adversarial_privacy"]
         feat_rows = []
         for r in records:
             feat_rows.append([
@@ -725,7 +881,12 @@ class UnifiedBenchmarkRunner:
         else:
             mia_auc = 0.50
 
-        passed = (dcr_5th >= 0.0001 and 0.50 <= nndr_mean <= 0.98 and evasion_mean <= 0.70 and mia_auc <= 0.65)
+        passed = (
+            dcr_5th >= th["dcr_5th_percentile_min"]
+            and th["nndr_mean_min"] <= nndr_mean <= th["nndr_mean_max"]
+            and evasion_mean <= th["evasion_rate_macro_mean_max"]
+            and mia_auc <= th["mia_attack_roc_auc_max"]
+        )
 
         return AdversarialPrivacyScorecard(
             dcr_5th_percentile=round(dcr_5th, 4),
@@ -739,6 +900,7 @@ class UnifiedBenchmarkRunner:
         self, report: PrequentialBenchmarkReport
     ) -> Tuple[OperationalStreamingScorecard, List[Dict[str, Any]], Dict[str, Any]]:
         """Translates PrequentialBenchmarkReport into structured scorecard and multi-k triage curves."""
+        th = load_certification_thresholds()[0]["pillar_3_operational_streaming"]
         daily_dicts = []
         for d in report.daily_metrics:
             daily_dicts.append({
@@ -756,9 +918,11 @@ class UnifiedBenchmarkRunner:
             })
 
         passed = (
-            report.n_days_evaluated >= 1
-            and report.mean_pr_auc >= 0.05
-            and report.overall_savings_ratio >= 0.0
+            report.n_days_evaluated >= th["min_days_evaluated"]
+            and report.mean_pr_auc >= th["min_prequential_pr_auc"]
+            and report.mean_p_at_k >= th["min_alert_precision_at_k"]
+            and report.mean_cp_at_k >= th["min_card_precision_at_k"]
+            and report.overall_savings_ratio >= th["min_net_cost_savings_ratio"]
         )
 
         scorecard = OperationalStreamingScorecard(
@@ -849,6 +1013,15 @@ class UnifiedBenchmarkRunner:
         all_phi_hat = []
         all_phi_star = []
 
+        # Every non-empty subset of the evaluated feature set: the faithfulness
+        # correlation below ablates these subsets jointly, which is a different
+        # operation from the single-feature occlusion that produced phi_hat.
+        subset_masks = np.array(
+            [[bool(mask >> j & 1) for j in range(len(feature_cols))]
+             for mask in range(1, 1 << len(feature_cols))],
+            dtype=bool,
+        )
+
         eval_records = fraud_records[:40]
         for r in eval_records:
             gt_dict = r["analytical_shapley_probability"]
@@ -889,8 +1062,16 @@ class UnifiedBenchmarkRunner:
             rhos.append(res.spearman_rho)
             p_at_3.append(res.precision_at_k.get(3, 0.0))
             raes.append(res.relative_attribution_error)
-            if res.causal_faithfulness is not None:
-                faithfulnesses.append(res.causal_faithfulness)
+            faith = _subset_ablation_faithfulness(
+                model_fn=model_fn,
+                base_pred=base_pred,
+                x_obs=x_obs,
+                x_cf=x_cf,
+                phi_hat=phi_hat,
+                subset_masks=subset_masks,
+            )
+            if faith is not None:
+                faithfulnesses.append(faith)
 
             p_val = float(stats.pearsonr(phi_hat, phi_star).statistic) if len(phi_hat) > 1 else 1.0
             pearsons.append(p_val if not np.isnan(p_val) else 0.0)
@@ -904,7 +1085,14 @@ class UnifiedBenchmarkRunner:
         mean_rae = float(np.mean(raes)) if raes else 1.0
         mean_faith = float(np.mean(faithfulnesses)) if faithfulnesses else 0.0
 
-        passed = (mean_rho >= 0.50 and mean_pearson >= 0.50 and mean_faith >= 0.70)
+        th = load_certification_thresholds()[0]["pillar_4_causal_xai_fidelity"]
+        passed = (
+            mean_rho >= th["min_spearman_rank_rho"]
+            and mean_pearson >= th["min_pearson_linear_r"]
+            and mean_p3 >= th["min_top_3_precision"]
+            and mean_rae <= th["max_relative_attribution_error"]
+            and mean_faith >= th["min_causal_faithfulness"]
+        )
 
         scorecard = CausalXAIScorecard(
             mean_kendall_tau=round(mean_tau, 4),
@@ -956,27 +1144,105 @@ class BenchmarkReportCompiler:
         status_badge = "[CERTIFIED PASS]" if report.all_pillars_passed else "[CERTIFICATION FAILED]"
         grade_badge = f"**Grade: {report.certification_grade}**"
 
+        # Every row is graded against the same threshold the certification grader used,
+        # so a row can show PASS while its pillar shows FAIL (or the reverse) exactly
+        # when the observed value and that row's own requirement say so.
+        thresholds, threshold_source = load_certification_thresholds()
+        p1 = thresholds["pillar_1_data_fidelity"]
+        p2 = thresholds["pillar_2_adversarial_privacy"]
+        p3 = thresholds["pillar_3_operational_streaming"]
+        p4 = thresholds["pillar_4_causal_xai_fidelity"]
+
+        def _row(pillar: str, metric: str, observed: float, threshold_text: str, ok: bool) -> str:
+            return f"| {pillar} | {metric} | `{observed:.4f}` | {threshold_text} | {'PASS' if ok else 'FAIL'} |"
+
+        scorecard_table = "\n".join([
+            _row("**1. Data Fidelity**", "Amount Wasserstein ($W_1$)",
+                 report.fidelity.wasserstein_amount_log,
+                 f"$\\le {p1['wasserstein_amount_log_max']:.3f}$",
+                 report.fidelity.wasserstein_amount_log <= p1["wasserstein_amount_log_max"]),
+            _row("", "Inter-Arrival Wasserstein ($W_1$)",
+                 report.fidelity.wasserstein_arrival_log,
+                 f"$\\le {p1['wasserstein_arrival_log_max']:.3f}$",
+                 report.fidelity.wasserstein_arrival_log <= p1["wasserstein_arrival_log_max"]),
+            _row("", "Categorical MCC Jensen-Shannon ($D_{JS}$)",
+                 report.fidelity.js_divergence_mcc,
+                 f"$\\le {p1['js_divergence_mcc_max']:.3f}$",
+                 report.fidelity.js_divergence_mcc <= p1["js_divergence_mcc_max"]),
+            _row("", "Channel Jensen-Shannon ($D_{JS}$)",
+                 report.fidelity.js_divergence_channel,
+                 f"$\\le {p1['js_divergence_channel_max']:.3f}$",
+                 report.fidelity.js_divergence_channel <= p1["js_divergence_channel_max"]),
+            _row("**2. Privacy & Robustness**", "DCR 5th Percentile ($DCR_{0.05}$)",
+                 report.privacy.dcr_5th_percentile,
+                 f"$\\ge {p2['dcr_5th_percentile_min']:.4f}$",
+                 report.privacy.dcr_5th_percentile >= p2["dcr_5th_percentile_min"]),
+            _row("", "Nearest Neighbor Ratio ($NNDR$)",
+                 report.privacy.nndr_mean,
+                 f"$\\in [{p2['nndr_mean_min']:.3f}, {p2['nndr_mean_max']:.3f}]$",
+                 p2["nndr_mean_min"] <= report.privacy.nndr_mean <= p2["nndr_mean_max"]),
+            _row("", "Macro Evasion Rate",
+                 report.privacy.evasion_rate_macro_mean,
+                 f"$\\le {p2['evasion_rate_macro_mean_max']:.3f}$",
+                 report.privacy.evasion_rate_macro_mean <= p2["evasion_rate_macro_mean_max"]),
+            _row("", "Shadow MIA ROC-AUC",
+                 report.privacy.mia_attack_roc_auc,
+                 f"$\\le {p2['mia_attack_roc_auc_max']:.3f}$",
+                 report.privacy.mia_attack_roc_auc <= p2["mia_attack_roc_auc_max"]),
+            _row("**3. Operational Streaming**", "Prequential PR-AUC",
+                 report.streaming.mean_pr_auc,
+                 f"$\\ge {p3['min_prequential_pr_auc']:.3f}$",
+                 report.streaming.mean_pr_auc >= p3["min_prequential_pr_auc"]),
+            _row("", "Alert Precision ($P@K$)",
+                 report.streaming.mean_p_at_k,
+                 f"$\\ge {p3['min_alert_precision_at_k']:.3f}$",
+                 report.streaming.mean_p_at_k >= p3["min_alert_precision_at_k"]),
+            _row("", "Cardholder Precision ($CP@K$)",
+                 report.streaming.mean_cp_at_k,
+                 f"$\\ge {p3['min_card_precision_at_k']:.3f}$",
+                 report.streaming.mean_cp_at_k >= p3["min_card_precision_at_k"]),
+            _row("", "Financial Cost Savings Ratio",
+                 report.streaming.overall_savings_ratio * 100.0,
+                 f"$\\ge {p3['min_net_cost_savings_ratio'] * 100.0:.2f}\\%$",
+                 report.streaming.overall_savings_ratio >= p3["min_net_cost_savings_ratio"]),
+            _row("**4. Causal XAI Fidelity**", "Spearman Rank Correlation ($\\rho$)",
+                 report.xai.mean_spearman_rho,
+                 f"$\\ge {p4['min_spearman_rank_rho']:.3f}$",
+                 report.xai.mean_spearman_rho >= p4["min_spearman_rank_rho"]),
+            _row("", "Pearson Linear Correlation ($r$)",
+                 report.xai.mean_pearson_r,
+                 f"$\\ge {p4['min_pearson_linear_r']:.3f}$",
+                 report.xai.mean_pearson_r >= p4["min_pearson_linear_r"]),
+            _row("", "Support Precision@3",
+                 report.xai.mean_precision_at_3,
+                 f"$\\ge {p4['min_top_3_precision']:.3f}$",
+                 report.xai.mean_precision_at_3 >= p4["min_top_3_precision"]),
+            _row("", "Relative Attribution Error ($RAE$)",
+                 report.xai.mean_relative_attribution_error,
+                 f"$\\le {p4['max_relative_attribution_error']:.3f}$",
+                 report.xai.mean_relative_attribution_error <= p4["max_relative_attribution_error"]),
+            _row("", "Subset-Ablation Faithfulness",
+                 report.xai.mean_causal_faithfulness,
+                 f"$\\ge {p4['min_causal_faithfulness']:.3f}$",
+                 report.xai.mean_causal_faithfulness >= p4["min_causal_faithfulness"]),
+        ])
+
         md = f"""# FraudxAI Benchmark Certification Report
 
 **Ecosystem:** {report.metadata['region']} ({report.metadata['currency']}) | **Status:** {status_badge} ({grade_badge})  
-**Evaluation Date:** {report.metadata['timestamp_utc']} | **Transactions:** {report.metadata['n_transactions']} | **Engine Seed:** {report.metadata['seed']}
+**Evaluation Date:** {report.metadata['timestamp_utc']} | **Transactions:** {report.metadata['n_transactions']} | **Engine Seed:** {report.metadata['seed']}  
+**Threshold Source:** `{report.metadata.get('threshold_source', threshold_source)}`
 
 ---
 
 ## Executive Summary Scorecard
 
+Each row is graded against its own requirement, so a row may PASS while its pillar
+carries a violation raised by a different row of the same pillar.
+
 | Evaluation Pillar | Primary Metric | Observed Value | Threshold / Target | Status |
 | :--- | :--- | :---: | :---: | :---: |
-| **1. Data Fidelity** | Continuous Amount Wasserstein ($W_1$) | `{report.fidelity.wasserstein_amount_log:.4f}` | $\\le 0.250$ | {'PASS' if report.fidelity.passed else 'FAIL'} |
-| | Categorical MCC Jensen-Shannon ($D_{{\\text{{JS}}}}$) | `{report.fidelity.js_divergence_mcc:.4f}` | $\\le 0.350$ | {'PASS' if report.fidelity.passed else 'FAIL'} |
-| **2. Privacy & Robustness** | DCR 5th Percentile ($DCR_{{0.05}}$) | `{report.privacy.dcr_5th_percentile:.4f}` | $\\ge 0.0001$ | {'PASS' if report.privacy.passed else 'FAIL'} |
-| | Nearest Neighbor Ratio ($NNDR$) | `{report.privacy.nndr_mean:.4f}` | $\\in [0.50, 0.98]$ | {'PASS' if report.privacy.passed else 'FAIL'} |
-| **3. Operational Streaming** | Prequential PR-AUC | `{report.streaming.mean_pr_auc:.4f}` | $\\ge 0.050$ | {'PASS' if report.streaming.passed else 'FAIL'} |
-| | Alert Precision ($P@K$) | `{report.streaming.mean_p_at_k:.4f}` | Top-$K$ Budget | {'PASS' if report.streaming.passed else 'FAIL'} |
-| | Cardholder Precision ($CP@K$) | `{report.streaming.mean_cp_at_k:.4f}` | Unique Cards | {'PASS' if report.streaming.passed else 'FAIL'} |
-| | Financial Cost Savings Ratio | `{report.streaming.overall_savings_ratio * 100.0:.2f}\\%` | $\\ge 0.00\\%$ | {'PASS' if report.streaming.passed else 'FAIL'} |
-| **4. Causal XAI Fidelity** | Spearman Rank Correlation ($\\rho$) | `{report.xai.mean_spearman_rho:.4f}` | $\\ge 0.600$ | {'PASS' if report.xai.passed else 'FAIL'} |
-| | Relative Attribution Error ($RAE$) | `{report.xai.mean_relative_attribution_error:.4f}` | $\\le 0.350$ | {'PASS' if report.xai.passed else 'FAIL'} |
+{scorecard_table}
 
 ---
 
@@ -992,7 +1258,7 @@ class BenchmarkReportCompiler:
 ### 2. Adversarial Privacy & Non-Memorization
 - **DCR 5th Percentile:** `{report.privacy.dcr_5th_percentile:.4f}`
 - **NNDR Mean:** `{report.privacy.nndr_mean:.4f}`
-- **Shadow MIA Attack ROC-AUC:** `{report.privacy.mia_attack_roc_auc:.4f}` (Baseline $\\approx 0.500$)
+- **Shadow MIA Attack ROC-AUC:** `{report.privacy.mia_attack_roc_auc:.4f}` (chance $\\approx 0.500$; members and non-members are two halves of the same generated batch)
 - **Macro Evasion Rate:** `{report.privacy.evasion_rate_macro_mean * 100.0:.1f}\\%`
 
 ### 3. Operational Streaming & Prequential Retraining
@@ -1010,11 +1276,34 @@ class BenchmarkReportCompiler:
 - **Kendall's $\\tau_b$:** `{report.xai.mean_kendall_tau:.4f}`
 - **Support Precision@3:** `{report.xai.mean_precision_at_3 * 100.0:.1f}\\%`
 - **Relative Attribution Error (RAE):** `{report.xai.mean_relative_attribution_error:.4f}`
+- **Subset-Ablation Faithfulness:** `{report.xai.mean_causal_faithfulness:.4f}` (correlation between each attribution vector and the model's score drop over all non-empty feature subsets)
+
+---
+
+## Method Limitations
+
+Stated so that no score above is read as more than it measures:
+
+- **The reference is the simulator, not a real corpus.** No real-world transaction dataset
+  is loaded anywhere in this pipeline (the backbone replay mode of the roadmap is not
+  implemented). Fidelity, DCR, NNDR and the shadow MIA are therefore measured *within*
+  the generated data; the membership-inference figure distinguishes two halves of the
+  same batch and is not an attack against a trained generator.
+- **The XAI ground truth is the simulator's own structural scorer.** `phi*` is the exact
+  decomposition of the heuristic that also produced each record's risk score, so the
+  concordance metrics measure how well an attribution recovers *this simulator's*
+  assumptions, not how well any explainer recovers real-world causality.
+- **Faithfulness is model-relative.** It correlates attribution mass with score drops of
+  the fitted classifier under subset ablation; it says nothing about the data-generating
+  process.
+- **Sample size.** At most 40 fraud records are scored per run, so the pillar-4 figures
+  move noticeably with the seed.
 
 ---
 
 ## Certification Status & Governance
 - **Overall Certification:** `{report.certification_grade}`
+- **Threshold Source:** `{report.metadata.get('threshold_source', threshold_source)}`
 - **Violations Logged:** {len(report.violations)}
 """
         if report.violations:
@@ -1052,6 +1341,79 @@ class BenchmarkReportCompiler:
             if is_passed:
                 return '<span class="pill pill-pass">PASS</span>'
             return '<span class="pill pill-fail">FAIL</span>'
+
+        # Same thresholds the grader used: each verdict cell judges its own row.
+        html_thresholds, html_threshold_source = load_certification_thresholds()
+        hp1 = html_thresholds["pillar_1_data_fidelity"]
+        hp2 = html_thresholds["pillar_2_adversarial_privacy"]
+        hp3 = html_thresholds["pillar_3_operational_streaming"]
+        hp4 = html_thresholds["pillar_4_causal_xai_fidelity"]
+
+        def _hrow(pillar: str, metric: str, observed: float, target: str, ok: bool) -> str:
+            return (
+                "      <tr>\n"
+                f"        <td>{pillar}</td>\n"
+                f"        <td>{metric}</td>\n"
+                f"        <td><code>{observed:.4f}</code></td>\n"
+                f"        <td>{target}</td>\n"
+                f"        <td>{_pill(ok)}</td>\n"
+                "      </tr>"
+            )
+
+        summary_rows = "\n".join([
+            _hrow("<strong>1. Data Fidelity</strong>", "Amount Wasserstein ($W_1$)",
+                  report.fidelity.wasserstein_amount_log, f"&le; {hp1['wasserstein_amount_log_max']:.3f}",
+                  report.fidelity.wasserstein_amount_log <= hp1["wasserstein_amount_log_max"]),
+            _hrow("", "Inter-Arrival Wasserstein ($W_1$)",
+                  report.fidelity.wasserstein_arrival_log, f"&le; {hp1['wasserstein_arrival_log_max']:.3f}",
+                  report.fidelity.wasserstein_arrival_log <= hp1["wasserstein_arrival_log_max"]),
+            _hrow("", "Categorical MCC Jensen-Shannon ($D_{JS}$)",
+                  report.fidelity.js_divergence_mcc, f"&le; {hp1['js_divergence_mcc_max']:.3f}",
+                  report.fidelity.js_divergence_mcc <= hp1["js_divergence_mcc_max"]),
+            _hrow("", "Channel Jensen-Shannon ($D_{JS}$)",
+                  report.fidelity.js_divergence_channel, f"&le; {hp1['js_divergence_channel_max']:.3f}",
+                  report.fidelity.js_divergence_channel <= hp1["js_divergence_channel_max"]),
+            _hrow("<strong>2. Privacy &amp; Robustness</strong>", "Distance to Closest Record ($DCR_{0.05}$)",
+                  report.privacy.dcr_5th_percentile, f"&ge; {hp2['dcr_5th_percentile_min']:.4f}",
+                  report.privacy.dcr_5th_percentile >= hp2["dcr_5th_percentile_min"]),
+            _hrow("", "Nearest Neighbor Ratio ($NNDR$)",
+                  report.privacy.nndr_mean, f"[{hp2['nndr_mean_min']:.3f}, {hp2['nndr_mean_max']:.3f}]",
+                  hp2["nndr_mean_min"] <= report.privacy.nndr_mean <= hp2["nndr_mean_max"]),
+            _hrow("", "Macro Evasion Rate",
+                  report.privacy.evasion_rate_macro_mean, f"&le; {hp2['evasion_rate_macro_mean_max']:.3f}",
+                  report.privacy.evasion_rate_macro_mean <= hp2["evasion_rate_macro_mean_max"]),
+            _hrow("", "Shadow MIA ROC-AUC",
+                  report.privacy.mia_attack_roc_auc, f"&le; {hp2['mia_attack_roc_auc_max']:.3f}",
+                  report.privacy.mia_attack_roc_auc <= hp2["mia_attack_roc_auc_max"]),
+            _hrow("<strong>3. Operational Streaming</strong>", "Prequential PR-AUC",
+                  report.streaming.mean_pr_auc, f"&ge; {hp3['min_prequential_pr_auc']:.3f}",
+                  report.streaming.mean_pr_auc >= hp3["min_prequential_pr_auc"]),
+            _hrow("", "Alert Precision ($P@K$)",
+                  report.streaming.mean_p_at_k, f"&ge; {hp3['min_alert_precision_at_k']:.3f}",
+                  report.streaming.mean_p_at_k >= hp3["min_alert_precision_at_k"]),
+            _hrow("", "Cardholder Precision ($CP@K$)",
+                  report.streaming.mean_cp_at_k, f"&ge; {hp3['min_card_precision_at_k']:.3f}",
+                  report.streaming.mean_cp_at_k >= hp3["min_card_precision_at_k"]),
+            _hrow("", "Net Cost Savings Ratio",
+                  report.streaming.overall_savings_ratio * 100.0,
+                  f"&ge; {hp3['min_net_cost_savings_ratio'] * 100.0:.2f}%",
+                  report.streaming.overall_savings_ratio >= hp3["min_net_cost_savings_ratio"]),
+            _hrow("<strong>4. Causal XAI Fidelity</strong>", "Spearman Rank Concordance (&rho;)",
+                  report.xai.mean_spearman_rho, f"&ge; {hp4['min_spearman_rank_rho']:.3f}",
+                  report.xai.mean_spearman_rho >= hp4["min_spearman_rank_rho"]),
+            _hrow("", "Pearson Linear Correlation (r)",
+                  report.xai.mean_pearson_r, f"&ge; {hp4['min_pearson_linear_r']:.3f}",
+                  report.xai.mean_pearson_r >= hp4["min_pearson_linear_r"]),
+            _hrow("", "Support Precision@3",
+                  report.xai.mean_precision_at_3, f"&ge; {hp4['min_top_3_precision']:.3f}",
+                  report.xai.mean_precision_at_3 >= hp4["min_top_3_precision"]),
+            _hrow("", "Relative Attribution Error (RAE)",
+                  report.xai.mean_relative_attribution_error, f"&le; {hp4['max_relative_attribution_error']:.3f}",
+                  report.xai.mean_relative_attribution_error <= hp4["max_relative_attribution_error"]),
+            _hrow("", "Subset-Ablation Faithfulness",
+                  report.xai.mean_causal_faithfulness, f"&ge; {hp4['min_causal_faithfulness']:.3f}",
+                  report.xai.mean_causal_faithfulness >= hp4["min_causal_faithfulness"]),
+        ])
 
         status_class = "badge-success" if report.all_pillars_passed else "badge-danger"
         status_text = "CERTIFIED PASS" if report.all_pillars_passed else "NON-CERTIFIED"
@@ -1207,71 +1569,28 @@ class BenchmarkReportCompiler:
       </tr>
     </thead>
     <tbody>
-      <tr>
-        <td><strong>1. Data Fidelity</strong></td>
-        <td>Continuous Amount Wasserstein ($W_1$)</td>
-        <td><code>{report.fidelity.wasserstein_amount_log:.4f}</code></td>
-        <td>&le; 0.350</td>
-        <td>{_pill(report.fidelity.wasserstein_amount_log <= 0.350)}</td>
-      </tr>
-      <tr>
-        <td></td>
-        <td>Categorical MCC Jensen-Shannon ($D_{{JS}}$)</td>
-        <td><code>{report.fidelity.js_divergence_mcc:.4f}</code></td>
-        <td>&le; 0.350</td>
-        <td>{_pill(report.fidelity.js_divergence_mcc <= 0.350)}</td>
-      </tr>
-      <tr>
-        <td><strong>2. Privacy & Robustness</strong></td>
-        <td>Distance to Closest Record ($DCR_{{0.05}}$)</td>
-        <td><code>{report.privacy.dcr_5th_percentile:.4f}</code></td>
-        <td>&ge; 0.0001</td>
-        <td>{_pill(report.privacy.dcr_5th_percentile >= 0.0001)}</td>
-      </tr>
-      <tr>
-        <td></td>
-        <td>Nearest Neighbor Ratio ($NNDR$)</td>
-        <td><code>{report.privacy.nndr_mean:.4f}</code></td>
-        <td>[0.50, 0.98]</td>
-        <td>{_pill(0.50 <= report.privacy.nndr_mean <= 0.98)}</td>
-      </tr>
-      <tr>
-        <td><strong>3. Operational Streaming</strong></td>
-        <td>Prequential PR-AUC</td>
-        <td><code>{report.streaming.mean_pr_auc:.4f}</code></td>
-        <td>&ge; 0.050</td>
-        <td>{_pill(report.streaming.mean_pr_auc >= 0.050)}</td>
-      </tr>
-      <tr>
-        <td></td>
-        <td>Cardholder Precision ($CP@K$)</td>
-        <td><code>{report.streaming.mean_cp_at_k:.4f}</code></td>
-        <td>Top-K Unique Cards</td>
-        <td>{_pill(report.streaming.mean_cp_at_k >= 0.0)}</td>
-      </tr>
-      <tr>
-        <td></td>
-        <td>Net Cost Savings Ratio</td>
-        <td><code>{report.streaming.overall_savings_ratio * 100.0:.2f}%</code></td>
-        <td>&ge; 0.00%</td>
-        <td>{_pill(report.streaming.overall_savings_ratio >= 0.0)}</td>
-      </tr>
-      <tr>
-        <td><strong>4. Causal XAI Fidelity</strong></td>
-        <td>Spearman Rank Concordance (&rho;)</td>
-        <td><code>{report.xai.mean_spearman_rho:.4f}</code></td>
-        <td>&ge; 0.500</td>
-        <td>{_pill(report.xai.mean_spearman_rho >= 0.500)}</td>
-      </tr>
-      <tr>
-        <td></td>
-        <td>Relative Attribution Error (RAE)</td>
-        <td><code>{report.xai.mean_relative_attribution_error:.4f}</code></td>
-        <td>&le; 0.750</td>
-        <td>{_pill(report.xai.mean_relative_attribution_error <= 0.750)}</td>
-      </tr>
+{summary_rows}
     </tbody>
   </table>
+
+  <h2>Threshold Source</h2>
+  <p style="font-size: 13px; color: #666;">
+    Every verdict above was computed from <code>{report.metadata.get('threshold_source', html_threshold_source)}</code>,
+    the same thresholds the certification grader applied to this run.
+  </p>
+
+  <h2>Method Limitations</h2>
+  <ul style="font-size: 13px; color: #444; line-height: 1.6;">
+    <li><strong>The reference is the simulator, not a real corpus.</strong> No real-world transaction
+      dataset is loaded in this pipeline (backbone replay is not implemented), so fidelity, DCR, NNDR
+      and the shadow MIA are measured within the generated data; the membership-inference figure
+      separates two halves of one batch and is not an attack against a trained generator.</li>
+    <li><strong>The XAI ground truth is the simulator's own structural scorer.</strong> &phi;* is the
+      exact decomposition of the heuristic that also produced each record's risk score, so the
+      concordance metrics measure recovery of <em>this simulator's</em> assumptions.</li>
+    <li><strong>Sample size.</strong> At most 40 fraud records are scored for pillar 4, so those
+      figures move with the seed.</li>
+  </ul>
 
   <h2>Camera-Ready Scientific Telemetry</h2>
 
@@ -1298,7 +1617,7 @@ class BenchmarkReportCompiler:
 
   <div class="figure-card">
     <img class="figure-img" src="data:image/png;base64,{fig5_b64}" alt="Figure 5: Causal XAI Attribution Fidelity">
-    <div class="figure-caption"><strong>Figure 5:</strong> Attribution comparison of empirical TreeSHAP against exact Pearlian Structural Causal Model ground truth.</div>
+    <div class="figure-caption"><strong>Figure 5:</strong> Attribution comparison of the empirical occlusion attribution against the simulator&#39;s structural-model ground truth.</div>
   </div>
 
   <footer style="margin-top: 36px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 12px; color: #888;">
