@@ -167,17 +167,29 @@ evaluation_protocol:
 # cards, and how many depends on how many distinct cards the adversary strikes. One equation
 # with one free variable means the slack must appear somewhere, and it appears in T.
 #
-# Measured at seed 42, region US, cards=1000, n=100000, days=30 (the published configuration),
-# where the identity closes to the row:
+# Measured at seed 42, region US, cards=1000, n=100000, days=30, fraud 0.02,
+# adversary_mode=intent, validated_card_follow_up p=0.58 -- the exact `fraudx generate`
+# command that produced the published dataset, not a direct engine call, because
+# adversary_mode changes the outcome materially. There the identity closes to the row
+# with no residual:
 #
-#   per-card rate   3.012 tx per ACTIVE card-day
-#   active cards    32,521 card-days realised against 48,519 possible (67% -- fraud froze the rest)
-#   3.012 x 32,521  = 97,961  ==  the 97,961 legitimate rows actually produced
+#   per-card rate   3.077 tx per ACTIVE card-day
+#   active cards    31,858 card-days realised against 46,673 possible
+#                   (68% -- fraud struck 720 of 1000 cards and froze 533 of them)
+#   3.077 x 31,858 = 98,042  ==  the 98,042 legitimate rows actually produced
+#                                 (delta 0.000000, computed in double precision)
 #
-# Therefore the realised span was 48.5 days, not 30: with 67% of the population generating,
+# Therefore the realised span was 46.67 days, not 30: with 68% of the population generating,
 # delivering 100,000 rows at the spec'd per-card rate simply takes longer. This is arithmetic,
 # not a simulator defect -- the per-card rate is correct and the freeze behaviour is spec'd
 # (cohort vigilance_weights, spec/02).
+#
+# The span is not tunable to 30 for free: raising the fraud-concentration value shortens it
+# (spec/07 measured 59.54 d at p=0.40, 46.67 d at p=0.58 and 41.80 d at p=0.70) but every
+# value past 0.58 breaks a gate -- leakage, channel coverage, calibration or an anti-vacuity
+# precondition -- which is why 0.58 is the ceiling. A default-mode (non-intent) call gives
+# 48.52 d at p=0.40, which is why every figure quoted here and in spec/07 names the
+# adversary_mode it came from.
 #
 # Consequences, all of which are now stated in the interface rather than left implicit:
 #

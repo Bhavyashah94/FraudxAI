@@ -241,14 +241,65 @@ legitimate_micro_tickets:
 # cash-out the probe exists for never happened. spec/04 ADV_MICRO_AUTH_PROBE response_handling says what
 # follows an approval: PROMOTE_TO_HIGH_TICKET_CASHOUT.
 validated_card_follow_up:
-  probability_next_attack_targets_validated_card: 0.40
+  probability_next_attack_targets_validated_card: 0.58
   hypothesis: true
-  note: >
-    The share of an operator's attempts spent cashing out validated cards versus probing new ones is not
-    published. Every approved playbook attack promotes its card, so a higher value pushes the playbook mix
-    towards account-takeover cash-outs; at 0.70 and 0.50 that failed the syndicate-diversity falsification
-    test (tests/test_syndicate_ecology_graph.py, 1.6 bits at seed 42), at 0.40 it gives 1.74 bits against
-    1.73 on 2a9bbfb.
+  note: >-
+    The share of an operator's attempts spent cashing out validated cards versus probing new
+    ones is not published, so this stays a hypothesis. It is however CONSTRAINED by five
+    independent gates, and the previous note recorded only one of them -- incorrectly.
+    Re-measured 2026-10-11: the old note claimed 0.50 and 0.70 "failed the syndicate-diversity
+    falsification test (1.6 bits)" and that 0.40 was chosen to give 1.74 bits "against 1.73 on
+    2a9bbfb". All of that was stale: the diversity test asserts entropy >= 1.25 bits (its
+    docstring still says 1.8 and its comment records the bar being lowered from 1.6 when
+    prevalence pacing changed the mix), 1.73 bits is unreachable -- the peak over p in
+    [0.10, 1.00] is 1.545 at p=0.20 -- and 0.50 and 0.70 both PASS diversity (1.369 and 1.499).
+    Diversity is not what binds. What actually binds:
+      (a) response_code must not leak the label -- ROC-AUC <= 0.95,
+          tests/test_multi_seed_timeline_leakage.py::test_leakage_across_timelines_fixed_seed[playbook-45];
+      (b) fraud must still reach the contactless POS channel -- >= 3 CP_POS_CONTACTLESS frauds,
+          tests/test_synthesizer/test_attack_channels.py::test_intent_fraud_uses_mobile_and_contactless;
+      (c) the US calibration report must stay PASS,
+          tests/test_synthesizer/test_calibration_gates.py::test_us_calibration_report_on_synthetic_batch;
+      (d) the institutional-schema gate's anti-vacuity precondition needs at least one
+          card-present fraud row, and in region IN at 500 rows / 6% / seed 202 that quantity
+          is a 0-or-1 coin flip -- measured CP fraud by p: 0.40->1, 0.50->1, 0.55->1, 0.60->0,
+          0.65->0, 0.70->1, 0.80->1. The property it guards (no card-present row carries a
+          real client IP) still holds at every p; only the sample comes up empty at 0.60+,
+          which the test correctly refuses to accept as proof.
+    Gates (a)-(d) measure real properties (label leakage, channel realism, calibration,
+    non-vacuity), so a value that fails them is a genuine regression, not a tautology.
+    Measured sweep at seed 42 over the sensitive tests plus the span:
+      p       span(CLI)  sensitive tests
+      0.45    52.83 d    6/6 pass
+      0.50    51.51 d    6/6 pass
+      0.55    49.37 d    6/6 pass
+      0.58    46.67 d    6/6 pass   <-- chosen
+      0.60    45.77 d    5/6, (d) fails
+      0.65      n/a      4/6, (c) and (d) fail
+      0.70    41.80 d    3/6, (a) (b) (c) all fail
+    0.58 is the highest value that clears EVERY gate, and it was chosen that way rather than
+    taking 0.60's extra 0.90 days, because the only thing standing between them is a
+    precondition no test should be edited to satisfy. No test was modified to reach this
+    value; the full suite passes 324/324 at 0.58.
+  measured_effect:
+    what: >-
+      seed 42, region US, cards=1000, n=100000, days=30, fraud 0.02, adversary_mode=intent --
+      the exact `fraudx generate` command that produced the published dataset. All figures come
+      from that CLI path, not a direct engine call, because adversary_mode changes them
+      materially (a default-mode call gives 48.52 d at p=0.40, not 59.54 d).
+    at_0.40: {span_days: 59.54, cards_struck: 893, cards_frozen: 687}
+    at_0.58: {span_days: 46.67, cards_struck: 720, cards_frozen: 533}
+    at_0.70: {span_days: 41.80, cards_struck: 575, cards_frozen: 412, rejected: "breaks gates (a), (b) and (c)"}
+    why_it_matters: >
+      Uniform targeting struck 89% of the card population at p=0.40, and cohort vigilance
+      freezes a card within minutes to hours of its first fraud (tiers 1 and 2 carry 0.35 and
+      0.45 of the weight), so 687 of 1000 cards froze. Freezing most of the population is what
+      stretches the realised span, so this value governs how close --days gets to the truth.
+      Moving 0.40 -> 0.58 recovers 12.87 days of span (59.54 -> 46.67) and 154 cards of
+      generating capacity (687 -> 533 frozen) while clearing every gate. It still cannot reach
+      30 days and cannot without breaking (a)-(d). See spec/18 section 5, where the identity
+      N = density x active cards x days is measured to the row (3.077 x 31,858 = 98,042 =
+      the 98,042 legitimate rows produced).
 
 # ----------------------------------------------------------------------------------------------
 # 11. Credential completeness drives verification telemetry
