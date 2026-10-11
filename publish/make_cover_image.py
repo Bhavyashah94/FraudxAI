@@ -1,23 +1,24 @@
 #!/usr/bin/env python3
-"""Render dataset-cover-image.png from the published export's own measurements.
+"""Render dataset-cover-image.png: a static, iconic FraudxAI brand emblem.
 
-The canvas is exactly 560x280 pixels because the Kaggle Python CLI hardcodes
-CroppedImageRectangle(left=0, top=0, width=560, height=280) for the cover image
-and CroppedImageRectangle(left=140, top=0, width=280, height=280) for the thumbnail.
-An image of exact dimensions 560x280 is preserved 100% without any cropping.
+The canvas is exactly 560x280 pixels, matching Kaggle's upload API specifications:
+1. Cover image rectangle: (left=0, top=0, width=560, height=280)
+2. Thumbnail rectangle: (left=140, top=0, width=280, height=280)
+
+All primary visual elements (the hexagonal causal neural emblem, the FraudxAI
+lettermark, and the subtitle) are centered at (x=280, y=140) inside the central
+280px window (x in [140, 420]). This ensures the graphic displays cleanly and
+without text clipping in both the full banner and the square thumbnail.
 
 Usage:
-
-    FRAUDX_DATA_DIR=/path/to/staged python publish/make_cover_image.py
+    python publish/make_cover_image.py
 """
 
 from __future__ import annotations
 
-import csv
-import gzip
+import math
 import os
 import sys
-from datetime import datetime
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
@@ -26,14 +27,12 @@ HERE = Path(__file__).resolve().parent
 OUT = HERE / "dataset-cover-image.png"
 W, H = 560, 280
 
-BG_TOP = (10, 18, 32)
-BG_BOTTOM = (13, 25, 45)
-ACCENT = (86, 199, 255)
-ACCENT_DIM = (46, 96, 130)
-TEXT = (232, 240, 248)
-MUTED = (150, 168, 186)
-CARD_BG = (17, 31, 52)
-CARD_EDGE = (35, 58, 88)
+BG_DARK = (10, 15, 30)
+CYAN = (0, 229, 255)
+BLUE = (37, 99, 235)
+WHITE = (255, 255, 255)
+PURPLE = (168, 85, 247)
+MUTED = (148, 163, 184)
 
 FONT_DIR = "/usr/share/fonts/noto"
 
@@ -45,137 +44,77 @@ def _font(name: str, size: int) -> ImageFont.FreeTypeFont:
     return ImageFont.truetype(path, size)
 
 
-def measure(data_dir: Path) -> dict:
-    """Read the four cover figures straight from the staged export."""
-    files = sorted(data_dir.glob("*.csv.gz"))
-    if not files:
-        raise SystemExit(f"no *.csv.gz in {data_dir}")
-
-    main = data_dir / "fraudxai_us_100k_seed42.csv.gz"
-    if not main.exists():
-        main = files[0]
-
-    rows = fraud = 0
-    first = last = None
-    with gzip.open(main, "rt", newline="") as fh:
-        for row in csv.DictReader(fh):
-            rows += 1
-            fraud += int(row["is_fraud"])
-            ts = datetime.fromisoformat(row["timestamp_utc"])
-            first = ts if first is None or ts < first else first
-            last = ts if last is None or ts > last else last
-
-    if not rows or first is None:
-        raise SystemExit("export is empty; cannot measure a cover")
-
-    return {
-        "rows": rows,
-        "rate": 100.0 * fraud / rows,
-        "span": (last - first).total_seconds() / 86400.0,
-        "views": len(files),
-    }
-
-
-def gradient() -> Image.Image:
-    img = Image.new("RGB", (W, H), BG_TOP)
-    d = ImageDraw.Draw(img)
-    for y in range(H):
-        t = y / (H - 1)
-        d.line(
-            [(0, y), (W, y)],
-            fill=tuple(int(a + (b - a) * t) for a, b in zip(BG_TOP, BG_BOTTOM)),
-        )
-    return img
-
-
-def mesh(img: Image.Image, seed: int = 42) -> None:
-    """A sparse node/edge motif, deterministic so re-renders are byte-stable."""
-    d = ImageDraw.Draw(img)
-    s = seed
-    pts = []
-    for _ in range(24):
-        s = (1103515245 * s + 12345) % (2**31)
-        x = s % W
-        s = (1103515245 * s + 12345) % (2**31)
-        y = s % H
-        pts.append((x, y))
-    for i, (x1, y1) in enumerate(pts):
-        for x2, y2 in pts[i + 1:]:
-            dist = ((x2 - x1) ** 2 + (y2 - y1) ** 2) ** 0.5
-            if dist < 140:
-                fade = max(0.0, 1.0 - dist / 140)
-                c = tuple(int(v * fade * 0.28) for v in ACCENT_DIM)
-                d.line([(x1, y1), (x2, y2)], fill=c, width=1)
-    for x, y in pts:
-        d.ellipse([x - 2, y - 2, x + 2, y + 2], fill=ACCENT_DIM)
-
-
-def stat_card(d: ImageDraw.ImageDraw, box: tuple, value: str, label: str,
-              vf, lf) -> None:
-    x1, y1, x2, _y2 = box
-    d.rounded_rectangle(box, radius=8, fill=CARD_BG, outline=CARD_EDGE, width=1)
-    vw = d.textlength(value, font=vf)
-    d.text(((x1 + x2 - vw) / 2, y1 + 10), value, font=vf, fill=ACCENT)
-    lw = d.textlength(label, font=lf)
-    d.text(((x1 + x2 - lw) / 2, y1 + 35), label, font=lf, fill=MUTED)
-
-
-def render(m: dict) -> Image.Image:
-    img = gradient()
-    mesh(img)
+def render_logo() -> Image.Image:
+    img = Image.new("RGB", (W, H), BG_DARK)
     d = ImageDraw.Draw(img)
 
-    title = _font("NotoSans-Bold.ttf", 36)
-    sub = _font("NotoSans-Regular.ttf", 15)
-    tag = _font("NotoSans-Regular.ttf", 11)
-    vf = _font("NotoSans-Bold.ttf", 16)
-    lf = _font("NotoSans-Regular.ttf", 10)
-    foot = _font("NotoSans-Regular.ttf", 10)
+    cx, cy = W // 2, H // 2
 
-    def center(y: int, text: str, font, fill) -> None:
-        w = d.textlength(text, font=font)
-        d.text(((W - w) / 2, y), text, font=font, fill=fill)
+    # Radial gradient / soft atmospheric glow behind the emblem
+    for r in range(180, 0, -2):
+        alpha = int(45 * (1.0 - r / 180.0))
+        c = (10 + alpha // 2, 15 + alpha, 30 + alpha * 2)
+        d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=c)
 
-    center(18, "FraudxAI", title, ACCENT)
-    center(62, "100,000 US Card Transactions Benchmark", sub, TEXT)
-    center(
-        86,
-        "Discrete-Event Payment Simulator  •  ISO 8583 Rails  •  Pearlian Causal Twins",
-        tag,
-        MUTED,
-    )
+    # Geometric Causal Neural Emblem (Shield / Hexagonal Causal Core)
+    ecx, ecy = cx, cy - 36
+    radius = 48
 
-    cards = [
-        (f"{m['rows']:,}", "Transactions"),
-        (f"{m['rate']:.3f}%", "Fraud Prevalence"),
-        (f"{m['span']:.2f} Days", "Simulated Span"),
-        (str(m['views']), "Institutional Views"),
-    ]
+    # Outer Hexagon
+    hex_pts = []
+    for i in range(6):
+        angle = math.radians(60 * i - 30)
+        hx = ecx + radius * math.cos(angle)
+        hy = ecy + radius * math.sin(angle)
+        hex_pts.append((hx, hy))
 
-    margin = 20
-    gap = 10
-    cw = (W - 2 * margin - gap * (len(cards) - 1)) / len(cards)
-    y1, y2 = 118, 186
-    for i, (value, label) in enumerate(cards):
-        x1 = margin + i * (cw + gap)
-        stat_card(d, (x1, y1, x1 + cw, y2), value, label, vf, lf)
+    d.polygon(hex_pts, fill=(15, 23, 42), outline=CYAN, width=3)
 
-    center(
-        224,
-        "Synthetic data. No real cardholder, card number or merchant appears in it.",
-        foot,
-        MUTED,
-    )
+    # Inner directed causal graph edges
+    d.line([(ecx, ecy - 30), (ecx, ecy)], fill=CYAN, width=2)
+    d.line([(ecx - 24, ecy + 12), (ecx, ecy)], fill=BLUE, width=2)
+    d.line([(ecx + 24, ecy + 12), (ecx, ecy)], fill=PURPLE, width=2)
+    d.line([(ecx - 24, ecy + 12), (ecx + 24, ecy + 12)], fill=(40, 60, 100), width=1)
+
+    # Central glowing junction node
+    d.ellipse([ecx - 6, ecy - 6, ecx + 6, ecy + 6], fill=CYAN)
+    d.ellipse([ecx - 3, ecy - 3, ecx + 3, ecy + 3], fill=WHITE)
+
+    # Hexagon vertex anchor nodes
+    for hx, hy in hex_pts:
+        d.ellipse([hx - 3, hy - 3, hx + 3, hy + 3], fill=CYAN)
+
+    # Secondary causal nodes
+    d.ellipse([ecx - 4, ecy - 34, ecx + 4, ecy - 26], fill=WHITE)
+    d.ellipse([ecx - 28, ecy + 8, ecx - 20, ecy + 16], fill=BLUE)
+    d.ellipse([ecx + 20, ecy + 8, ecx + 28, ecy + 16], fill=PURPLE)
+
+    # Typography
+    font_title = _font("NotoSans-Bold.ttf", 38)
+    font_sub = _font("NotoSans-Regular.ttf", 12)
+
+    w_fraud = d.textlength("Fraud", font=font_title)
+    w_xai = d.textlength("xAI", font=font_title)
+    total_w = w_fraud + w_xai
+
+    ty = cy + 32
+    start_x = cx - total_w / 2
+
+    d.text((start_x, ty), "Fraud", font=font_title, fill=WHITE)
+    d.text((start_x + w_fraud, ty), "xAI", font=font_title, fill=CYAN)
+
+    # Minimal clean subtitle
+    tag = "CAUSAL PAYMENT INTELLIGENCE"
+    w_tag = d.textlength(tag, font=font_sub)
+    d.text((cx - w_tag / 2, ty + 50), tag, font=font_sub, fill=MUTED)
+
     return img
 
 
 def main() -> None:
-    data_dir = os.environ.get("FRAUDX_DATA_DIR")
-    if not data_dir:
-        raise SystemExit("set FRAUDX_DATA_DIR to the directory of staged *.csv.gz")
-    m = measure(Path(data_dir))
-    render(m).save(OUT)
-    print(f"wrote {OUT} ({W}x{H}) rows={m['rows']:,} rate={m['rate']:.3f}% span={m['span']:.2f}d views={m['views']}")
+    img = render_logo()
+    img.save(OUT)
+    print(f"wrote static logo cover to {OUT} ({W}x{H})")
 
 
 if __name__ == "__main__":
