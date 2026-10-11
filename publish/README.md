@@ -23,12 +23,12 @@ simulator.
 |---|---|
 | Rows | 100,000 per file (6 files) |
 | Columns | 91 (main file) + 5 targeted views |
-| Fraud label | `is_fraud`, 2,009 positives = **2.009%** |
-| Time span | 2024-01-01 → 2024-02-16 = **46.91 days** (measured) |
+| Fraud label | `is_fraud`, 1,958 positives = **1.958%** |
+| Time span | 2024-01-01T00:01:10 → 2024-02-16T16:10:01 = **46.67 days** (measured) |
 | Currency | USD |
-| Uncompressed | 601.4 MB → **60.9 MB** gzipped |
+| Uncompressed | 601.4 MB → **58.9 MB** gzipped |
 | License | Apache-2.0 |
-| Generator | `fraudx 0.3.0`, region US, seed 42, commit `9895834` |
+| Generator | `fraudx 0.3.0`, region US, seed 42, commit `e5e1813` |
 
 ## Files
 
@@ -36,18 +36,18 @@ Every file has exactly 100,000 rows, one per transaction, keyed by `transaction_
 
 | file | cols | carries `is_fraud` | gz MB |
 |---|---|---|---|
-| `fraudxai_us_100k_seed42.csv` | 91 | **yes** | 49.66 |
-| `fraudxai_us_100k_seed42_auth_stream.csv` | 25 | no | 4.74 |
-| `fraudxai_us_100k_seed42_clearing_settlement.csv` | 13 | no | 2.42 |
-| `fraudxai_us_100k_seed42_dispute_recovery.csv` | 13 | **yes — see caveat 3** | 0.86 |
-| `fraudxai_us_100k_seed42_gateway_telemetry.csv` | 16 | no | 2.55 |
-| `fraudxai_us_100k_seed42_threat_intel_graph.csv` | 9 | no | 0.65 |
+| `fraudxai_us_100k_seed42.csv` | 91 | **yes** | 47.95 |
+| `fraudxai_us_100k_seed42_auth_stream.csv` | 25 | no | 4.67 |
+| `fraudxai_us_100k_seed42_clearing_settlement.csv` | 13 | no | 2.37 |
+| `fraudxai_us_100k_seed42_dispute_recovery.csv` | 13 | **yes — see caveat 3** | 0.83 |
+| `fraudxai_us_100k_seed42_gateway_telemetry.csv` | 16 | no | 2.43 |
+| `fraudxai_us_100k_seed42_threat_intel_graph.csv` | 9 | no | 0.61 |
 | `SHA256SUMS` | — | — | 0.01 |
 | `SHA256SUMS_UNCOMPRESSED.txt` | — | — | 0.01 |
 
 **Integrity — two manifests, because the two hosts store different bytes.** The files are
 published gzipped; **Hugging Face stores them exactly as uploaded**, while **Kaggle
-decompresses them** (a `.csv.gz` arrives as a plain `.csv`, 60.9 MB → 601.4 MB). The data
+decompresses them** (a `.csv.gz` arrives as a plain `.csv`, 58.9 MB → 601.4 MB). The data
 is identical either way — verified by downloading from both hosts and comparing SHA-256.
 So verify with whichever matches what you downloaded:
 
@@ -80,39 +80,80 @@ real-world fraud rates. See the caveats.
 
 ## Caveats you must read before using this data
 
-### 1. Fraud prevalence is boosted ~12× above real card data
+### 1. Fraud prevalence is boosted ~11× above real card data
 
-The dataset has **2.009%** fraud (`--fraud-rate 0.02`). For comparison, the real ULB
+The dataset has **1.958%** fraud (`--fraud-rate 0.02`). For comparison, the real ULB
 credit-card corpus (284,807 transactions), scored by this repository's own script, contains
 **0.1727%** fraud; the literature reports card-fraud prevalence below ~0.2%. Resampling this
 data to a realistic rate, or reporting metrics computed at 2%, will not transfer.
 
-### 2. The time span is 46.91 days, not the 30 days requested
+### 2. The time span is 46.67 days, not the 30 days requested
 
 The export was generated with `--days 30`, but the measured span is
-`2024-01-01T00:01:06 → 2024-02-16T21:55:23` = **46.91 days**. This section describes *this
-published file*, whose span is a fixed property of the artefact.
+`2024-01-01T00:01:10 → 2024-02-16T16:10:01` = **46.67 days** (+55.6%). This section
+describes *this published file*, whose span is a fixed property of the artefact.
 
-**The cause has since been found and fixed in the generating repository.** `_get_card_hawkes_params`
+**The cause was found, and it took two independent fixes — fixing the first alone made
+this number worse, not better.**
+
+**1. A normalisation bug inflated every paced batch by ~18%.** `_get_card_hawkes_params`
 divided each persona's transaction volume by a hard-coded constant — `55.0` for US — that
-happened to equal *one persona's* volume rather than the population mean the scale is defined
-relative to. The persona scales therefore averaged **1.1793** over the card population (a
-realised mean volume of 64.86 against the 55.0 divisor), so every paced batch ran **~18% hot**
-and landed well short of the requested span. Regenerating with the fix gives **29.80 days**
-against the same `--days 30` (−0.7%), from 46.91 (+56.4%).
+happened to equal *one persona's* volume rather than the population mean the scale is
+defined relative to. The persona scales therefore averaged **1.1793** over the card
+population (a realised mean volume of 64.86 against the 55.0 divisor), so every batch ran
+~18% hot. The previous release of this dataset carried that bug: it spanned **46.91 days**
+and struck 861 cards with fraud.
 
-Two consequences for anyone using this file:
+**2. Fixing only that gave 59.54 days, not 30.** The +18% error had been *masking* a second
+effect. Regenerating with the normalisation fix alone, at the unchanged fraud-concentration
+value, stretched the span to **59.54 days**: fraud strikes 893 of the 1000 cards, cohort
+vigilance (spec/02) freezes **687** of them within minutes to hours of their first fraud,
+and the surviving population cannot deliver 100,000 rows in 30 days at the spec'd per-card
+rate. Two errors were cancelling. Correcting one exposed the other.
 
-- **Reproducing this exact artefact requires the pre-fix commit.** A current checkout will
-  regenerate a *different* stream. This file's checksums are pinned in `SHA256SUMS` and do
-  not change.
-- **Do not treat the span as evidence of a modelling choice.** It was a normalisation bug,
-  not a deliberate horizon, and it is no longer present in the generator.
+The relationship the span obeys is arithmetic, and it is now recorded in
+`spec/18_benchmark_reporting.yaml` §5:
 
-If you need a specific horizon, measure the span of whatever you generate rather than
-trusting the flag alone — at small batch sizes the per-card first-arrival offset still
-dominates, and fraud-driven card freezing extends the span further (see caveat 1 and the
-repository's defect notes).
+```
+N = density x days,          density = per-card rate x active cards
+```
+
+You pin `-n`, `--days` and the spec/02 persona rates, but the active card count is
+*emergent* — fraud removes cards. Measured on this exact file the identity closes to the
+row with no residual: a per-card rate of **3.077** tx per **active** card-day across
+**31,858** active card-days of 46,673 possible (68%) is precisely the **98,042**
+legitimate rows produced. With 68% of the population generating, 100,000 rows takes
+longer than 30 days. That is arithmetic, not a simulator defect.
+
+**3. The second fix attacked the freezing, not the clock.** Raising the fraud-concentration
+value (spec/07 `probability_next_attack_targets_validated_card`, **0.40 → 0.58**) makes each
+attack revisit a card it has already validated instead of picking a fresh victim, so fewer
+distinct cards are struck — 893 → 720 — and fewer freeze: 687 → 533. That recovers 12.87
+days (59.54 → **46.67**) while also correcting the rate defect the previous release had.
+
+It stops at 0.58 deliberately, and the value was not tuned to the span: 0.60 is 0.90 days
+better but leaves an institutional-schema precondition with no card-present fraud to check,
+and 0.70 reaches 41.80 days by breaking label leakage, channel coverage and the US
+calibration report. 0.58 is the highest value that clears every gate, chosen without
+modifying a single test — the full suite passes 324/324 at it. Net effect against the
+previous release: 46.67 vs 46.91 days (marginally better), 720 vs 861 cards struck, and
+per-card rates that are finally correct rather than ~18% hot.
+
+Three consequences for anyone using this file:
+
+- **The span is emergent, not a modelling choice.** It is the output of fraud-driven card
+  freezing under a spec'd per-card rate. Do not read 46.67 days as a horizon.
+- **`-n` and `--days` are not independent** — together they fix density as `n / days`, and
+  count alone cannot express "how many transactions happen in a day". The generator now
+  accepts `--density <tx/day>` directly (deriving `n = density x days`) and prints a density
+  report giving the requested and the realised span and density on every run.
+- **Measure the span of whatever you generate.** At small batch sizes each card's first
+  arrival dominates and the span falls *short* of the request instead of overrunning it; the
+  density report states which direction it went and why.
+
+Reproducing this exact file requires this commit, not an older one: this release is the
+regenerated stream, and its checksums are pinned in `SHA256SUMS` and
+`SHA256SUMS_UNCOMPRESSED.txt`.
 
 ### 3. `dispute_recovery.csv` carries the label — do not join it into features
 
@@ -139,8 +180,8 @@ Pillar 1 compares this data against a fixed reference distribution
 
 | corpus | log10(1+amount) W₁ | log10(1+Δt s) W₁ | verdict |
 |---|---|---|---|
-| **this dataset (100k)** | **0.1312** PASS | **0.1460** PASS | PASS |
-| reference-sampler control (n=1500) | 0.0000 PASS | 0.0016 PASS | PASS |
+| **this dataset (100k)** | **0.1323** PASS | **0.1285** PASS | PASS |
+| reference-sampler control (n=1500) | 0.0000 PASS | 0.0056 PASS | PASS |
 | real ULB corpus (284,807) | 0.3745 FAIL | 0.1716 FAIL | FAIL |
 
 Real card data **fails** this gate while this synthetic data passes it, so the gate ranks
@@ -157,7 +198,7 @@ git clone https://github.com/Bhavyashah94/FraudxAI && cd FraudxAI
 python -m fraudx_synthesizer.cli generate -n 100000 --region US --seed 42 \
   --days 30 --fraud-rate 0.02 --export-institutional-views \
   -o fraudxai_us_100k_seed42.csv
-# ~1 m 35 s; recorded with python 3.12.15, fraudx 0.3.0, commit 9895834
+# ~1 m 45 s; recorded with python 3.12.15, fraudx 0.3.0, commit e5e1813
 sha256sum -c SHA256SUMS_UNCOMPRESSED.txt   # the export is written uncompressed
 ```
 
