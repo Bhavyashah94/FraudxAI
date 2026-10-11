@@ -47,6 +47,9 @@ cp "$DATA_DIR"/*.csv.gz "$WORK/"
 cp "$HERE/SHA256SUMS" "$WORK/"
 cp "$HERE/SHA256SUMS_UNCOMPRESSED.txt" "$WORK/"
 cp "$HERE/dataset-metadata.json" "$WORK/"
+# dataset-metadata.json sets "image": "dataset-cover-image.png"; Kaggle resolves that
+# reference against the dataset's own files, so the PNG has to ship with the upload.
+cp "$HERE/dataset-cover-image.png" "$WORK/"
 
 # Drop only the leading front matter (first --- ... --- block); later horizontal rules stay,
 # and the blank line that followed the block is dropped so the description starts at the title.

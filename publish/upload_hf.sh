@@ -16,7 +16,7 @@ set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DATA_DIR="${FRAUDX_DATA_DIR:?set FRAUDX_DATA_DIR to the directory containing the staged *.csv.gz}"
 REPO="${HF_REPO:-bshah123/fraudxai-us-100k-seed42}"
-COMMIT="${HF_COMMIT_MESSAGE:-FraudxAI US 100k seed42: 6 files, 100000 rows each, 2.009% fraud}"
+COMMIT="${HF_COMMIT_MESSAGE:-FraudxAI US 100k seed42: regenerated at e5e1813 - 6 files, 100000 rows each, 1.958% fraud, 46.67-day span}"
 
 : "${HF_TOKEN:?set HF_TOKEN to a Hugging Face write token}"
 
@@ -39,6 +39,8 @@ cp "$HERE/SHA256SUMS" "$WORK/"
 cp "$HERE/SHA256SUMS_UNCOMPRESSED.txt" "$WORK/"
 # The card keeps its YAML front matter: that is how Hugging Face reads license and tags.
 cp "$HERE/README.md" "$WORK/README.md"
+# Same cover image Kaggle carries, so both hosts show an identical thumbnail.
+cp "$HERE/dataset-cover-image.png" "$WORK/"
 
 echo "verifying checksums before upload..."
 (cd "$WORK" && sha256sum -c SHA256SUMS)

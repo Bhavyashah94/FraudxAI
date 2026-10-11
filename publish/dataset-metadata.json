@@ -13,6 +13,897 @@
     "synthetic-data",
     "payment-fraud",
     "iso-8583",
-    "tabular"
+    "tabular",
+    "finance",
+    "banking",
+    "business"
+  ],
+  "userSpecifiedSources": "https://github.com/Bhavyashah94/FraudxAI",
+  "expectedUpdateFrequency": "never",
+  "image": "dataset-cover-image.png",
+  "resources": [
+    {
+      "path": "fraudxai_us_100k_seed42.csv",
+      "description": "Master dataset containing all 100,000 synthetic US payment-card transactions across 91 operational, telemetry, ISO 8583, and causal XAI ground-truth columns.",
+      "schema": {
+        "fields": [
+          {
+            "name": "transaction_id",
+            "description": "Transaction identifier: TX_ + zero-padded 8-digit sequence, shared by all six views",
+            "type": "string"
+          },
+          {
+            "name": "card_id",
+            "description": "Card token: CARD_ + zero-padded 6-digit sequence",
+            "type": "string"
+          },
+          {
+            "name": "pan_masked",
+            "description": "Masked Primary Account Number (BIN + ****** + last 4 digits)",
+            "type": "string"
+          },
+          {
+            "name": "product_id",
+            "description": "Card product tier, e.g. PROD_REWARDS_SIGNATURE, PROD_CHECKING_DEBIT, PROD_TOKENIZED_DPAN",
+            "type": "string"
+          },
+          {
+            "name": "cohort_id",
+            "description": "Cardholder demographic and behavioral cohort ID",
+            "type": "string"
+          },
+          {
+            "name": "merchant_id",
+            "description": "Unique merchant entity identifier",
+            "type": "string"
+          },
+          {
+            "name": "merchant_name",
+            "description": "Commercial trading name of the merchant",
+            "type": "string"
+          },
+          {
+            "name": "mid",
+            "description": "Merchant Identification Number: MID_ + acquirer BIN + zero-padded terminal sequence",
+            "type": "string"
+          },
+          {
+            "name": "tid",
+            "description": "Terminal Identification Number: TID_ + zero-padded 4-digit sequence",
+            "type": "string"
+          },
+          {
+            "name": "mcc",
+            "description": "Merchant Category Code (ISO 18245, 4 digits)",
+            "type": "integer"
+          },
+          {
+            "name": "merchant_category",
+            "description": "Merchant category label, e.g. Grocery / Supermarket, Restaurants / Dining, Quasi-Cash / Crypto On-Ramp",
+            "type": "string"
+          },
+          {
+            "name": "merchant_lat",
+            "description": "Latitude coordinate of merchant location in decimal degrees",
+            "type": "number"
+          },
+          {
+            "name": "merchant_lon",
+            "description": "Longitude coordinate of merchant location in decimal degrees",
+            "type": "number"
+          },
+          {
+            "name": "acquirer_bin",
+            "description": "Bank Identification Number of acquiring bank",
+            "type": "string"
+          },
+          {
+            "name": "gateway_provider",
+            "description": "Payment gateway routing provider",
+            "type": "string"
+          },
+          {
+            "name": "country_code",
+            "description": "ISO 3166-1 alpha-2 country code of transaction location",
+            "type": "string"
+          },
+          {
+            "name": "postal_code",
+            "description": "Postal/ZIP code of merchant or terminal location",
+            "type": "string"
+          },
+          {
+            "name": "timestamp_utc",
+            "description": "ISO 8601 UTC timestamp of transaction authorization",
+            "type": "string"
+          },
+          {
+            "name": "tx_time_seconds",
+            "description": "Elapsed simulation time in seconds from epoch start",
+            "type": "number"
+          },
+          {
+            "name": "hour_of_day",
+            "description": "Local wall-clock hour of transaction arrival (0 to 23)",
+            "type": "integer"
+          },
+          {
+            "name": "day_of_week",
+            "description": "Day of the week (0 = Monday, 6 = Sunday)",
+            "type": "integer"
+          },
+          {
+            "name": "amount",
+            "description": "Transaction currency amount in major units (USD)",
+            "type": "number"
+          },
+          {
+            "name": "amount_minor",
+            "description": "Transaction currency amount in minor units (integer cents)",
+            "type": "integer"
+          },
+          {
+            "name": "currency",
+            "description": "ISO 4217 three-letter currency code (USD)",
+            "type": "string"
+          },
+          {
+            "name": "channel_type",
+            "description": "Transaction channel: CP_POS_CHIP, CP_POS_CONTACTLESS, CNP_WEB, or CNP_MOBILE",
+            "type": "string"
+          },
+          {
+            "name": "credit_limit",
+            "description": "Assigned credit line ceiling in major units (USD)",
+            "type": "number"
+          },
+          {
+            "name": "current_balance",
+            "description": "Current ledger balance on the account in major units (USD)",
+            "type": "number"
+          },
+          {
+            "name": "available_balance",
+            "description": "Available credit balance remaining in major units (USD)",
+            "type": "number"
+          },
+          {
+            "name": "user_avg_tx_amount_30d",
+            "description": "Welford rolling mean of card transaction amount over 30 days",
+            "type": "number"
+          },
+          {
+            "name": "user_std_tx_amount_30d",
+            "description": "Welford rolling standard deviation of amount over 30 days",
+            "type": "number"
+          },
+          {
+            "name": "z_score_amount_30d",
+            "description": "Standard score of current transaction amount vs 30-day baseline",
+            "type": "number"
+          },
+          {
+            "name": "tx_count_1h",
+            "description": "Count of authorized transactions on card in past 1 hour",
+            "type": "integer"
+          },
+          {
+            "name": "tx_count_24h",
+            "description": "Count of authorized transactions on card in past 24 hours",
+            "type": "integer"
+          },
+          {
+            "name": "tx_attempts_1h",
+            "description": "Count of all transaction attempts (incl. declines) in past 1 hour",
+            "type": "integer"
+          },
+          {
+            "name": "distinct_mids_30m",
+            "description": "Count of distinct MIDs attempted on card in past 30 minutes",
+            "type": "integer"
+          },
+          {
+            "name": "subminute_attempts_60s",
+            "description": "Count of rapid velocity attempts on card within 60 seconds",
+            "type": "integer"
+          },
+          {
+            "name": "tx_amount_sum_24h",
+            "description": "Cumulative spend on card in past 24 hours (USD)",
+            "type": "number"
+          },
+          {
+            "name": "distinct_merchants_24h",
+            "description": "Count of distinct merchants transacted with in past 24 hours",
+            "type": "integer"
+          },
+          {
+            "name": "distance_from_last_tx_km",
+            "description": "Haversine distance in kilometers from previous transaction location",
+            "type": "number"
+          },
+          {
+            "name": "time_since_last_tx_seconds",
+            "description": "Time elapsed in seconds since previous transaction on card",
+            "type": "number"
+          },
+          {
+            "name": "haversine_velocity_kph",
+            "description": "Apparent travel velocity required between successive transactions (km/h)",
+            "type": "number"
+          },
+          {
+            "name": "ip_distance_from_home_km",
+            "description": "Geodetic distance in km between client IP and cardholder billing address",
+            "type": "number"
+          },
+          {
+            "name": "client_ip",
+            "description": "Client IPv4 address recorded at transaction gateway",
+            "type": "string"
+          },
+          {
+            "name": "asn_type",
+            "description": "Client network classification: residential, mobile, or datacenter",
+            "type": "string"
+          },
+          {
+            "name": "geo_risk_score",
+            "description": "Geospatial velocity/anomaly band as an integer 0-95 (0 = no elevation)",
+            "type": "number"
+          },
+          {
+            "name": "device_canvas_hash",
+            "description": "Browser canvas fingerprint hash for web transactions (null for CP)",
+            "type": "string"
+          },
+          {
+            "name": "is_cross_border",
+            "description": "Boolean flag indicating whether transaction crossed country borders",
+            "type": "boolean"
+          },
+          {
+            "name": "billing_shipping_match",
+            "description": "Address-verification match between billing and shipping; encoded 1 match, 0 mismatch",
+            "type": "boolean"
+          },
+          {
+            "name": "avs_match_code",
+            "description": "Address Verification Service result code (Y, A, Z, N, U)",
+            "type": "string"
+          },
+          {
+            "name": "cvv_match_flag",
+            "description": "CVV check result: 1 match, 0 no match",
+            "type": "string"
+          },
+          {
+            "name": "is_fraud",
+            "description": "Ground-truth fraud label: 1 fraudulent, 0 legitimate",
+            "type": "integer"
+          },
+          {
+            "name": "scenario_tag",
+            "description": "Traffic class: ORGANIC_NORMAL, HARD_NEGATIVE_{TRAVEL,RELOCATION,EMERGENCY}, or INTENT_OMEGA_{PROBE,HARVEST,BISECT_DRAIN}",
+            "type": "string"
+          },
+          {
+            "name": "syndicate_id",
+            "description": "Adversarial syndicate identifier; populated for fraud rows only",
+            "type": "string"
+          },
+          {
+            "name": "botnet_cluster_id",
+            "description": "Automated botnet cluster identifier; populated for a subset of rows",
+            "type": "string"
+          },
+          {
+            "name": "mule_ring_id",
+            "description": "Money-mule ring identifier; populated for fraud rows only",
+            "type": "string"
+          },
+          {
+            "name": "beneficiary_account_id",
+            "description": "Beneficiary account token receiving liquidated funds; populated for fraud rows only",
+            "type": "string"
+          },
+          {
+            "name": "ip_subnet_prefix",
+            "description": "Client IP /24 subnet routing prefix",
+            "type": "string"
+          },
+          {
+            "name": "device_fingerprint_id",
+            "description": "Unique client hardware device fingerprint ID",
+            "type": "string"
+          },
+          {
+            "name": "risk_score",
+            "description": "Composite heuristic fraud risk score computed by BankDecisionEngine (0.0 to 1.0)",
+            "type": "number"
+          },
+          {
+            "name": "base_risk",
+            "description": "Ex-ante risk prior to behavioral escalation; constant 0.002 across this export",
+            "type": "number"
+          },
+          {
+            "name": "dominant_causal_driver",
+            "description": "Primary Structural Causal Model factor explaining transaction risk escalation",
+            "type": "string"
+          },
+          {
+            "name": "analytical_shapley_probability",
+            "description": "Exact Pearlian SCM Shapley attribution vector in probability delta space",
+            "type": "string"
+          },
+          {
+            "name": "analytical_shapley_log_odds",
+            "description": "Exact Pearlian SCM Shapley attribution vector in log-odds logit space",
+            "type": "string"
+          },
+          {
+            "name": "counterfactual_input_deltas",
+            "description": "Minimal intervention input deltas required to flip bank decision",
+            "type": "string"
+          },
+          {
+            "name": "counterfactual_mode",
+            "description": "Target state of counterfactual twin: approve or decline",
+            "type": "string"
+          },
+          {
+            "name": "counterfactual_twin",
+            "description": "Complete counterfactual transaction twin JSON under abduction-action-prediction",
+            "type": "string"
+          },
+          {
+            "name": "normative_baseline",
+            "description": "Cardholder normative spending baseline reference vector",
+            "type": "string"
+          },
+          {
+            "name": "explanation_narrative",
+            "description": "Human-readable causal explanation generated from ground-truth Shapley attributions",
+            "type": "string"
+          },
+          {
+            "name": "mti",
+            "description": "ISO 8583 Message Type Identifier; 0100 (Authorization Request) throughout this export",
+            "type": "string"
+          },
+          {
+            "name": "stan",
+            "description": "Systems Trace Audit Number (6-digit ISO 8583 field 11)",
+            "type": "string"
+          },
+          {
+            "name": "rrn",
+            "description": "Retrieval Reference Number (12-digit ISO 8583 field 37)",
+            "type": "string"
+          },
+          {
+            "name": "auth_code",
+            "description": "Authorization approval code (6-character alphanumeric ISO 8583 field 38)",
+            "type": "string"
+          },
+          {
+            "name": "response_code",
+            "description": "ISO 8583 authorization response code; observed set 00, 10, 51, 57, 59, 63, 65, 82",
+            "type": "string"
+          },
+          {
+            "name": "auth_response_code",
+            "description": "ISO 8583 field 39 authorization response code; same observed set as response_code",
+            "type": "string"
+          },
+          {
+            "name": "pos_entry_mode",
+            "description": "ISO 8583 POS entry mode: 051 chip, 071 contactless, 012 card-not-present web, 102 card-not-present mobile",
+            "type": "string"
+          },
+          {
+            "name": "pos_condition_code",
+            "description": "ISO 8583 POS condition code; 00 normal, 59 e-commerce",
+            "type": "string"
+          },
+          {
+            "name": "eci",
+            "description": "Electronic Commerce Indicator (e.g. 05 3DS authenticated, 07 non-3DS)",
+            "type": "string"
+          },
+          {
+            "name": "trans_status_3ds",
+            "description": "EMV 3-D Secure authentication status: Y (authenticated), N (failed), C (challenge required)",
+            "type": "string"
+          },
+          {
+            "name": "vaai_score",
+            "description": "Visa Advanced Authorization network risk score, integer 0-98 in this export",
+            "type": "integer"
+          },
+          {
+            "name": "hop_origin",
+            "description": "Originating hop server or ingestion edge node identifier",
+            "type": "string"
+          },
+          {
+            "name": "clearing_mti",
+            "description": "ISO 8583 clearing message type identifier: 0200 (Financial Presentment)",
+            "type": "string"
+          },
+          {
+            "name": "clearing_delay_hours",
+            "description": "Latency in hours between real-time authorization and clearing batch settlement",
+            "type": "number"
+          },
+          {
+            "name": "settled_amount",
+            "description": "Final presentment settlement amount in major currency units (USD)",
+            "type": "number"
+          },
+          {
+            "name": "settled_amount_minor",
+            "description": "Final presentment settlement amount in integer cents",
+            "type": "integer"
+          },
+          {
+            "name": "interchange_fee_minor",
+            "description": "Card scheme interchange assessment fee in integer cents",
+            "type": "integer"
+          },
+          {
+            "name": "hawkes_intensity_R",
+            "description": "Real-time self-exciting Hawkes process intensity state on card account",
+            "type": "number"
+          },
+          {
+            "name": "asn",
+            "description": "Autonomous System Number of the client network gateway, AS-prefixed (e.g. AS7018); empty for most rows",
+            "type": "string"
+          },
+          {
+            "name": "isp",
+            "description": "Internet Service Provider operating client IP network",
+            "type": "string"
+          },
+          {
+            "name": "ja4_signature",
+            "description": "JA4 TLS client fingerprint signature",
+            "type": "string"
+          },
+          {
+            "name": "mule_tier",
+            "description": "Liquidation tier: TIER_1_SMURF, TIER_2_AGGREGATOR, or TIER_3_OFFRAMP; empty for non-fraud rows",
+            "type": "string"
+          },
+          {
+            "name": "liquidation_channel",
+            "description": "Cash-out rail: INSTANT_P2P_SMURF, SECONDARY_GIFT_CARD_P2P, SAME_DAY_ACH_CONSOLIDATION, ACH_KITING_WHOLESALE, or BINANCE_BYBIT_P2P_USDT_TRC20; empty for non-fraud rows",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "path": "fraudxai_us_100k_seed42_auth_stream.csv",
+      "description": "Institutional View 1: Real-time authorization stream mimicking issuing bank ISO 8583 MTI 0100/0110 authorization feed with zero dispute/ground-truth leakage.",
+      "schema": {
+        "fields": [
+          {
+            "name": "transaction_id",
+            "description": "Transaction identifier: TX_ + zero-padded 8-digit sequence, shared by all six views",
+            "type": "string"
+          },
+          {
+            "name": "card_id",
+            "description": "Card token: CARD_ + zero-padded 6-digit sequence",
+            "type": "string"
+          },
+          {
+            "name": "pan_masked",
+            "description": "Masked Primary Account Number (BIN + ****** + last 4 digits)",
+            "type": "string"
+          },
+          {
+            "name": "product_id",
+            "description": "Card product tier, e.g. PROD_REWARDS_SIGNATURE, PROD_CHECKING_DEBIT, PROD_TOKENIZED_DPAN",
+            "type": "string"
+          },
+          {
+            "name": "cohort_id",
+            "description": "Cardholder demographic and behavioral cohort ID",
+            "type": "string"
+          },
+          {
+            "name": "timestamp_utc",
+            "description": "ISO 8601 UTC timestamp of transaction authorization",
+            "type": "string"
+          },
+          {
+            "name": "tx_time_seconds",
+            "description": "Elapsed simulation time in seconds from epoch start",
+            "type": "number"
+          },
+          {
+            "name": "mti",
+            "description": "ISO 8583 Message Type Identifier; 0100 (Authorization Request) throughout this export",
+            "type": "string"
+          },
+          {
+            "name": "stan",
+            "description": "Systems Trace Audit Number (6-digit ISO 8583 field 11)",
+            "type": "string"
+          },
+          {
+            "name": "rrn",
+            "description": "Retrieval Reference Number (12-digit ISO 8583 field 37)",
+            "type": "string"
+          },
+          {
+            "name": "auth_code",
+            "description": "Authorization approval code (6-character alphanumeric ISO 8583 field 38)",
+            "type": "string"
+          },
+          {
+            "name": "response_code",
+            "description": "ISO 8583 authorization response code; observed set 00, 10, 51, 57, 59, 63, 65, 82",
+            "type": "string"
+          },
+          {
+            "name": "auth_response_code",
+            "description": "ISO 8583 field 39 authorization response code; same observed set as response_code",
+            "type": "string"
+          },
+          {
+            "name": "pos_entry_mode",
+            "description": "ISO 8583 POS entry mode: 051 chip, 071 contactless, 012 card-not-present web, 102 card-not-present mobile",
+            "type": "string"
+          },
+          {
+            "name": "pos_condition_code",
+            "description": "ISO 8583 POS condition code; 00 normal, 59 e-commerce",
+            "type": "string"
+          },
+          {
+            "name": "eci",
+            "description": "Electronic Commerce Indicator (e.g. 05 3DS authenticated, 07 non-3DS)",
+            "type": "string"
+          },
+          {
+            "name": "trans_status_3ds",
+            "description": "EMV 3-D Secure authentication status: Y (authenticated), N (failed), C (challenge required)",
+            "type": "string"
+          },
+          {
+            "name": "vaai_score",
+            "description": "Visa Advanced Authorization network risk score, integer 0-98 in this export",
+            "type": "integer"
+          },
+          {
+            "name": "amount",
+            "description": "Transaction currency amount in major units (USD)",
+            "type": "number"
+          },
+          {
+            "name": "amount_minor",
+            "description": "Transaction currency amount in minor units (integer cents)",
+            "type": "integer"
+          },
+          {
+            "name": "currency",
+            "description": "ISO 4217 three-letter currency code (USD)",
+            "type": "string"
+          },
+          {
+            "name": "available_balance",
+            "description": "Available credit balance remaining in major units (USD)",
+            "type": "number"
+          },
+          {
+            "name": "credit_limit",
+            "description": "Assigned credit line ceiling in major units (USD)",
+            "type": "number"
+          },
+          {
+            "name": "mcc",
+            "description": "Merchant Category Code (ISO 18245, 4 digits)",
+            "type": "integer"
+          },
+          {
+            "name": "merchant_id",
+            "description": "Unique merchant entity identifier",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "path": "fraudxai_us_100k_seed42_clearing_settlement.csv",
+      "description": "Institutional View 2: Dual-message clearing and settlement presentment batch (MTI 0200) reflecting real-world clearing latency and minor-unit interchange fees.",
+      "schema": {
+        "fields": [
+          {
+            "name": "transaction_id",
+            "description": "Transaction identifier: TX_ + zero-padded 8-digit sequence, shared by all six views",
+            "type": "string"
+          },
+          {
+            "name": "clearing_mti",
+            "description": "ISO 8583 clearing message type identifier: 0200 (Financial Presentment)",
+            "type": "string"
+          },
+          {
+            "name": "clearing_delay_hours",
+            "description": "Latency in hours between real-time authorization and clearing batch settlement",
+            "type": "number"
+          },
+          {
+            "name": "amount",
+            "description": "Transaction currency amount in major units (USD)",
+            "type": "number"
+          },
+          {
+            "name": "amount_minor",
+            "description": "Transaction currency amount in minor units (integer cents)",
+            "type": "integer"
+          },
+          {
+            "name": "settled_amount",
+            "description": "Final presentment settlement amount in major currency units (USD)",
+            "type": "number"
+          },
+          {
+            "name": "settled_amount_minor",
+            "description": "Final presentment settlement amount in integer cents",
+            "type": "integer"
+          },
+          {
+            "name": "currency",
+            "description": "ISO 4217 three-letter currency code (USD)",
+            "type": "string"
+          },
+          {
+            "name": "interchange_fee_minor",
+            "description": "Card scheme interchange assessment fee in integer cents",
+            "type": "integer"
+          },
+          {
+            "name": "mcc",
+            "description": "Merchant Category Code (ISO 18245, 4 digits)",
+            "type": "integer"
+          },
+          {
+            "name": "merchant_id",
+            "description": "Unique merchant entity identifier",
+            "type": "string"
+          },
+          {
+            "name": "mid",
+            "description": "Merchant Identification Number: MID_ + acquirer BIN + zero-padded terminal sequence",
+            "type": "string"
+          },
+          {
+            "name": "acquirer_bin",
+            "description": "Bank Identification Number of acquiring bank",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "path": "fraudxai_us_100k_seed42_dispute_recovery.csv",
+      "description": "Institutional View 3: Post-settlement chargeback and dispute recovery ledger containing the is_fraud ground truth label and delayed scheme dispute codes.",
+      "schema": {
+        "fields": [
+          {
+            "name": "transaction_id",
+            "description": "Transaction identifier: TX_ + zero-padded 8-digit sequence, shared by all six views",
+            "type": "string"
+          },
+          {
+            "name": "card_id",
+            "description": "Card token: CARD_ + zero-padded 6-digit sequence",
+            "type": "string"
+          },
+          {
+            "name": "amount",
+            "description": "Transaction currency amount in major units (USD)",
+            "type": "number"
+          },
+          {
+            "name": "currency",
+            "description": "ISO 4217 three-letter currency code (USD)",
+            "type": "string"
+          },
+          {
+            "name": "is_fraud",
+            "description": "Ground-truth fraud label: 1 fraudulent, 0 legitimate",
+            "type": "integer"
+          },
+          {
+            "name": "scenario_tag",
+            "description": "Traffic class: ORGANIC_NORMAL, HARD_NEGATIVE_{TRAVEL,RELOCATION,EMERGENCY}, or INTENT_OMEGA_{PROBE,HARVEST,BISECT_DRAIN}",
+            "type": "string"
+          },
+          {
+            "name": "dispute_status",
+            "description": "Dispute lifecycle state: NONE, FIRST_CHARGEBACK, or DEFLECTED_PRE_DISPUTE_CE3",
+            "type": "string"
+          },
+          {
+            "name": "dispute_reason_code",
+            "description": "Card-scheme chargeback reason code: 10.4 (CNP fraud) or 10.5 (card-present fraud); empty when dispute_status is NONE",
+            "type": "string"
+          },
+          {
+            "name": "ce3_qualified",
+            "description": "Compelling Evidence 3.0 qualification flag for merchant dispute defense",
+            "type": "boolean"
+          },
+          {
+            "name": "arbitration_fee_usd",
+            "description": "Scheme arbitration filing penalty fee in USD",
+            "type": "number"
+          },
+          {
+            "name": "rbi_liability_tier",
+            "description": "RBI limited-liability tier (RBI/2017-18/15); India region only, always empty in this US export",
+            "type": "string"
+          },
+          {
+            "name": "rbi_provisional_credit_mandate_days",
+            "description": "RBI provisional-credit mandate in days (10 in the India region); always 0 in this US export",
+            "type": "string"
+          },
+          {
+            "name": "cfcfrms_1930_lien_status",
+            "description": "CFCFRMS 1930 lien-freeze state; India region only, always NO_LIEN in this US export",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "path": "fraudxai_us_100k_seed42_gateway_telemetry.csv",
+      "description": "Institutional View 4: E-commerce checkout gateway telemetry recording client IP, ASN classification, geodetic velocity, and TLS browser fingerprinting.",
+      "schema": {
+        "fields": [
+          {
+            "name": "transaction_id",
+            "description": "Transaction identifier: TX_ + zero-padded 8-digit sequence, shared by all six views",
+            "type": "string"
+          },
+          {
+            "name": "timestamp_utc",
+            "description": "ISO 8601 UTC timestamp of transaction authorization",
+            "type": "string"
+          },
+          {
+            "name": "merchant_id",
+            "description": "Unique merchant entity identifier",
+            "type": "string"
+          },
+          {
+            "name": "mid",
+            "description": "Merchant Identification Number: MID_ + acquirer BIN + zero-padded terminal sequence",
+            "type": "string"
+          },
+          {
+            "name": "tid",
+            "description": "Terminal Identification Number: TID_ + zero-padded 4-digit sequence",
+            "type": "string"
+          },
+          {
+            "name": "acquirer_bin",
+            "description": "Bank Identification Number of acquiring bank",
+            "type": "string"
+          },
+          {
+            "name": "gateway_provider",
+            "description": "Payment gateway routing provider",
+            "type": "string"
+          },
+          {
+            "name": "client_ip",
+            "description": "Client IPv4 address recorded at transaction gateway",
+            "type": "string"
+          },
+          {
+            "name": "asn_type",
+            "description": "Client network classification: residential, mobile, or datacenter",
+            "type": "string"
+          },
+          {
+            "name": "ip_distance_from_home_km",
+            "description": "Geodetic distance in km between client IP and cardholder billing address",
+            "type": "number"
+          },
+          {
+            "name": "device_canvas_hash",
+            "description": "Browser canvas fingerprint hash for web transactions (null for CP)",
+            "type": "string"
+          },
+          {
+            "name": "channel_type",
+            "description": "Transaction channel: CP_POS_CHIP, CP_POS_CONTACTLESS, CNP_WEB, or CNP_MOBILE",
+            "type": "string"
+          },
+          {
+            "name": "avs_match_code",
+            "description": "Address Verification Service result code (Y, A, Z, N, U)",
+            "type": "string"
+          },
+          {
+            "name": "cvv_match_flag",
+            "description": "CVV check result: 1 match, 0 no match",
+            "type": "string"
+          },
+          {
+            "name": "geo_risk_score",
+            "description": "Geospatial velocity/anomaly band as an integer 0-95 (0 = no elevation)",
+            "type": "number"
+          },
+          {
+            "name": "is_cross_border",
+            "description": "Boolean flag indicating whether transaction crossed country borders",
+            "type": "boolean"
+          }
+        ]
+      }
+    },
+    {
+      "path": "fraudxai_us_100k_seed42_threat_intel_graph.csv",
+      "description": "Institutional View 5: Threat-intelligence graph linkage mapping transactions to coordinated adversarial syndicates, botnet clusters, and mule liquidation rings.",
+      "schema": {
+        "fields": [
+          {
+            "name": "transaction_id",
+            "description": "Transaction identifier: TX_ + zero-padded 8-digit sequence, shared by all six views",
+            "type": "string"
+          },
+          {
+            "name": "card_id",
+            "description": "Card token: CARD_ + zero-padded 6-digit sequence",
+            "type": "string"
+          },
+          {
+            "name": "merchant_id",
+            "description": "Unique merchant entity identifier",
+            "type": "string"
+          },
+          {
+            "name": "syndicate_id",
+            "description": "Adversarial syndicate identifier; populated for fraud rows only",
+            "type": "string"
+          },
+          {
+            "name": "botnet_cluster_id",
+            "description": "Automated botnet cluster identifier; populated for a subset of rows",
+            "type": "string"
+          },
+          {
+            "name": "mule_ring_id",
+            "description": "Money-mule ring identifier; populated for fraud rows only",
+            "type": "string"
+          },
+          {
+            "name": "beneficiary_account_id",
+            "description": "Beneficiary account token receiving liquidated funds; populated for fraud rows only",
+            "type": "string"
+          },
+          {
+            "name": "ip_subnet_prefix",
+            "description": "Client IP /24 subnet routing prefix",
+            "type": "string"
+          },
+          {
+            "name": "device_fingerprint_id",
+            "description": "Unique client hardware device fingerprint ID",
+            "type": "string"
+          }
+        ]
+      }
+    }
   ]
 }

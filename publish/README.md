@@ -44,6 +44,13 @@ Every file has exactly 100,000 rows, one per transaction, keyed by `transaction_
 | `fraudxai_us_100k_seed42_threat_intel_graph.csv` | 9 | no | 0.61 |
 | `SHA256SUMS` | — | — | 0.01 |
 | `SHA256SUMS_UNCOMPRESSED.txt` | — | — | 0.01 |
+| `dataset-cover-image.png` | — | — | 0.06 |
+
+Column-by-column descriptions for all six files ship as Kaggle's `dataset-metadata.json`.
+Every stated type and value domain was checked against the published bytes: field names and
+order match the headers exactly, and every non-string value parses as the type declared for
+it. Columns that are constant or empty in this build — the India-region `rbi_*` and
+`cfcfrms_1930_lien_status` fields, `base_risk` — say so rather than implying variation.
 
 **Integrity — two manifests, because the two hosts store different bytes.** The files are
 published gzipped; **Hugging Face stores them exactly as uploaded**, while **Kaggle
