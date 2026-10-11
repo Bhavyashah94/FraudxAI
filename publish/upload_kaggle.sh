@@ -9,13 +9,23 @@
 # this script; the pre-upload `sha256sum -c` fails if the staged data no longer matches
 # the committed manifest, so the two cannot drift apart silently.
 #
-# Two things this script has to get right:
+# Three things this script has to get right:
 #
 #   1. The metadata file must be called dataset-metadata.json. That is what
 #      kaggle.api.kaggle_api_extended.DATASET_METADATA_FILE is set to; the
 #      `kaggle datasets create --help` text says "datasets-metadata.json" and is wrong.
 #   2. Kaggle has no YAML front matter, so the card's --- license block is stripped here
 #      instead of maintaining a second copy of the card that can drift from the first.
+#   3. Uploading the data and publishing the description are two different commands, and
+#      they disagree about what a resource path means. `datasets version` only *validates*
+#      resources -- it never sends them -- and it checks them against the files sitting in
+#      the local folder, which are named *.csv.gz. `datasets metadata --update` is the
+#      only call that actually applies resources, the cover image, userSpecifiedSources
+#      and expectedUpdateFrequency, and it checks paths against Kaggle's *stored* names,
+#      which are decompressed *.csv. So the committed metadata uses .csv, the version
+#      step strips resources entirely, and the metadata step re-applies them.
+#
+#      Skipping step 2 is how the column descriptions silently never reached Kaggle.
 
 set -euo pipefail
 
@@ -39,17 +49,31 @@ grep -q "\"$SLUG\"" "$HERE/dataset-metadata.json" || {
 }
 
 WORK="$(mktemp -d)"
-trap 'rm -rf "$WORK"' EXIT
+META_WORK="$(mktemp -d)"
+trap 'rm -rf "$WORK" "$META_WORK"' EXIT
 
 cp "$DATA_DIR"/*.csv.gz "$WORK/"
 # Kaggle decompresses .csv.gz on ingest, so the manifest that actually verifies Kaggle's
 # files is the uncompressed one; SHA256SUMS is shipped too so both hosts carry both.
 cp "$HERE/SHA256SUMS" "$WORK/"
 cp "$HERE/SHA256SUMS_UNCOMPRESSED.txt" "$WORK/"
-cp "$HERE/dataset-metadata.json" "$WORK/"
-# dataset-metadata.json sets "image": "dataset-cover-image.png"; Kaggle resolves that
-# reference against the dataset's own files, so the PNG has to ship with the upload.
-cp "$HERE/dataset-cover-image.png" "$WORK/"
+
+# `datasets version` validates resources against the local *.csv.gz names and the
+# committed paths use Kaggle's decompressed *.csv names, so sending them here fails
+# outright. It would not apply them anyway -- drop them and re-send below.
+python3 - "$HERE/dataset-metadata.json" "$WORK/dataset-metadata.json" <<'PY'
+import json, sys
+src, dst = sys.argv[1], sys.argv[2]
+m = json.load(open(src))
+m.pop("resources", None)
+m.pop("image", None)
+json.dump(m, open(dst, "w"), indent=2)
+PY
+
+# The metadata step needs the cover image next to the metadata file; Kaggle crops it
+# square for the thumbnail, which is why the generator emits a 1:1 canvas.
+cp "$HERE/dataset-metadata.json" "$META_WORK/"
+cp "$HERE/dataset-cover-image.png" "$META_WORK/"
 
 # Drop only the leading front matter (first --- ... --- block); later horizontal rules stay,
 # and the blank line that followed the block is dropped so the description starts at the title.
@@ -93,8 +117,30 @@ if [ "$RC" -ne 0 ] || printf '%s' "$OUTPUT" | grep -qiE "creation error|internal
   exit 1
 fi
 
-# Prove it landed rather than trusting the message: the uncompressed manifest is the file
-# that did not exist before this run, and Kaggle takes a moment to index new files.
+# Second half of the publish: the column schemas, cover image, source URL and update
+# frequency. `datasets metadata --update` exits non-zero when Kaggle rejects any of it --
+# an invalid keyword or a resource path that matches no stored file aborts the whole call
+# -- so the exit code here is meaningful and is checked.
+#
+# The keywords in dataset-metadata.json are Kaggle's controlled vocabulary only. Kaggle
+# rejects fraud-detection / synthetic-data / payment-fraud / iso-8583 as tags, and one
+# rejected keyword fails the entire settings update, which would also drop the schemas.
+# Those domain tags still reach Hugging Face, whose front matter accepts them.
+echo "publishing schemas, cover image and sources..."
+META_OUT="$(kaggle datasets metadata "$SLUG" --update -p "$META_WORK" 2>&1)" || META_RC="$?"
+META_RC="${META_RC:-0}"
+printf '%s\n' "$META_OUT"
+if [ "$META_RC" -ne 0 ] || printf '%s' "$META_OUT" | grep -qiE "invalid|does not contain a file named"; then
+  echo "kaggle refused the metadata update; schemas/image/sources were NOT applied" >&2
+  exit 1
+fi
+printf '%s' "$META_OUT" | grep -q "successfully updated dataset metadata" || {
+  echo "metadata update did not report success; check the output above" >&2
+  exit 1
+}
+
+# Prove the files landed rather than trusting the message: README.md is the file this run
+# must have uploaded, and Kaggle takes a moment to index new files.
 for _attempt in 1 2 3 4 5 6; do
   if kaggle datasets files "$SLUG" 2>/dev/null | grep -q "SHA256SUMS_UNCOMPRESSED.txt"; then
     echo "verified: SHA256SUMS_UNCOMPRESSED.txt is in $SLUG"
