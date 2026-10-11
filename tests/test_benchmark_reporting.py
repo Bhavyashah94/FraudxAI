@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 import math
 from pathlib import Path
@@ -9,6 +10,7 @@ import tempfile
 import pytest
 import numpy as np
 
+from fraudx_synthesizer.cli import cmd_generate
 from fraudx_synthesizer.benchmark_reporter import (
     AdversarialPrivacyScorecard,
     BenchmarkReportCompiler,
@@ -356,6 +358,102 @@ def test_cli_generate_routing_without_arbitrary_threshold(tmp_path: Path, monkey
     assert out_csv.exists()
     assert (tmp_path / "large_run_auth_stream.csv").exists()
     assert (tmp_path / "large_run_gateway_telemetry.csv").exists()
+
+
+def _generate_args(tmp_path: Path, **overrides) -> argparse.Namespace:
+    """A generate Namespace with every field cmd_generate reads, overridable per test."""
+    base = dict(
+        command="generate",
+        n=1000,
+        cards=100,
+        merchants=20,
+        region="US",
+        fraud_rate=0.01,
+        days=30,
+        density=None,
+        seed=42,
+        output=str(tmp_path / "out.csv"),
+        parallel=False,
+        include_disputes=False,
+        adversary_mode="intent",
+        export_institutional_views=False,
+        calibration=None,
+    )
+    base.update(overrides)
+    return argparse.Namespace(**base)
+
+
+def test_density_knob_sets_the_row_count(tmp_path: Path, monkeypatch):
+    """`--density` must express tx/day directly, deriving n = density x days.
+
+    Count and density are the same quantity written two ways: density = n / days. Pinning
+    -n and --days together therefore fixes density as a side effect, which is why the total
+    alone cannot answer "how many transactions happen in a day". --density exists so that
+    can be chosen first, with the total following from it -- which is the relationship a
+    user asking for "30 days of national transaction density" actually has in mind.
+    """
+    from fraudx_synthesizer.engine import SimulationEngine
+
+    captured = {}
+
+    def mock_generate_batch(self, n_transactions, fraud_prevalence, time_span_days):
+        captured["n"] = n_transactions
+        captured["span"] = time_span_days
+        return [{"transaction_id": "T1", "tx_time_seconds": 0.0, "is_fraud": 0, "card_id": "C1"}]
+
+    monkeypatch.setattr(SimulationEngine, "generate_batch", mock_generate_batch)
+
+    cmd_generate(_generate_args(tmp_path, n=7, density=120.0, days=30))
+
+    assert captured["n"] == 120 * 30, (
+        f"--density 120 x --days 30 should derive 3600 rows, got {captured['n']} "
+        f"(the stale -n of {7} must not survive)"
+    )
+
+
+def test_density_ignores_no_density_flag(tmp_path: Path, monkeypatch):
+    """Without --density, -n must still win exactly: the published 100k contract depends on it."""
+    from fraudx_synthesizer.engine import SimulationEngine
+
+    captured = {}
+
+    def mock_generate_batch(self, n_transactions, fraud_prevalence, time_span_days):
+        captured["n"] = n_transactions
+        return [{"transaction_id": "T1", "tx_time_seconds": 0.0, "is_fraud": 0, "card_id": "C1"}]
+
+    monkeypatch.setattr(SimulationEngine, "generate_batch", mock_generate_batch)
+
+    cmd_generate(_generate_args(tmp_path, n=100000, days=30, density=None))
+
+    assert captured["n"] == 100000, "without --density the requested row count must be honoured exactly"
+
+
+def test_density_report_is_printed_and_states_both_sides(tmp_path: Path, monkeypatch, capsys):
+    """Generation must report requested vs realised span and density rather than stay silent.
+
+    The realised span legitimately diverges from --days (N = density x days, and density
+    itself is per-card rate times the active population, which fraud reduces), so hiding it
+    is what made the divergence look like a defect. The report names both sides so the
+    coupling is visible in the output itself.
+    """
+    import argparse as _argparse
+    from fraudx_synthesizer.engine import SimulationEngine
+
+    # 60 days of timestamps for a 30-day request: a 2x divergence the report must surface.
+    def mock_generate_batch(self, n_transactions, fraud_prevalence, time_span_days):
+        return [
+            {"transaction_id": f"T{i}", "tx_time_seconds": float(i) * 86400.0, "is_fraud": 0, "card_id": "C1"}
+            for i in range(60)
+        ]
+
+    monkeypatch.setattr(SimulationEngine, "generate_batch", mock_generate_batch)
+
+    cmd_generate(_generate_args(tmp_path, n=60, days=30))
+    err = capsys.readouterr().err
+
+    assert "density report:" in err, "generation must print a density report"
+    assert "requested 30 d" in err, f"the requested side must be stated:\n{err}"
+    assert "realised" in err and "d @" in err, f"the realised side must be stated:\n{err}"
 
 
 def test_benchmark_measurements_are_empirical_not_constants():

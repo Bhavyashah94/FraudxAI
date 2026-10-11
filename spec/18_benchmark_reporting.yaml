@@ -151,3 +151,56 @@ evaluation_protocol:
   w_test_days: 1.0
   delta_delay_days: 1.5
   k_daily: 15
+
+# ------------------------------------------------------------------------------
+# 5. Count, density and duration are one equation, not three free knobs
+# ------------------------------------------------------------------------------
+# The CLI exposed -n and --days as if they were independent, and --days was documented as
+# "Simulation duration in days". They are not independent, and this section exists because
+# they were silently coupled for the whole life of the project.
+#
+#   N  = density x T                          (count from rate over a duration)
+#   density = per-card rate x active cards    (per-card rate from spec/02 persona volumes)
+#
+# So N = per-card rate x active cards x T. Three quantities are pinned by the user -- -n,
+# --days, and the persona rates -- while the active card count is EMERGENT: fraud freezes
+# cards, and how many depends on how many distinct cards the adversary strikes. One equation
+# with one free variable means the slack must appear somewhere, and it appears in T.
+#
+# Measured at seed 42, region US, cards=1000, n=100000, days=30 (the published configuration),
+# where the identity closes to the row:
+#
+#   per-card rate   3.012 tx per ACTIVE card-day
+#   active cards    32,521 card-days realised against 48,519 possible (67% -- fraud froze the rest)
+#   3.012 x 32,521  = 97,961  ==  the 97,961 legitimate rows actually produced
+#
+# Therefore the realised span was 48.5 days, not 30: with 67% of the population generating,
+# delivering 100,000 rows at the spec'd per-card rate simply takes longer. This is arithmetic,
+# not a simulator defect -- the per-card rate is correct and the freeze behaviour is spec'd
+# (cohort vigilance_weights, spec/02).
+#
+# Consequences, all of which are now stated in the interface rather than left implicit:
+#
+#   - `-n` and `--days` jointly FIX density as n/days. Count alone cannot express "how many
+#     transactions happen in a day"; only count divided by duration can.
+#   - `--density` was added so tx/day can be chosen directly, with n = density x days following
+#     from it. That is the knob matching "replicate the nation's normal transaction density".
+#   - `generate` now prints a density report giving the requested and the realised span and
+#     density together, and explains the divergence in whichever direction it went: frozen cards
+#     when the span EXCEEDS the request, per-card first-arrival offsets when it falls SHORT.
+#   - You may pin persona rates plus ONE of {-n, --days}. Pinning both, and expecting the span
+#     to match, over-constrains the model by exactly one degree of freedom.
+#
+# OPEN: whether the default should be count-exact (as now, which keeps the published 100k-row
+# contract reproducible) or span-exact (honour --days and let the row count fall out at roughly
+# 90k). Changing the default changes every published artefact, so it is a decision, not a
+# cleanup.
+generate_run_dimensions:
+  identity: "N = density x days, density = per_card_rate x active_cards"
+  active_cards_are_emergent: true
+  why: "fraud freezes cards; the count is held, so the span absorbs the loss of generating capacity"
+  knobs:
+    n: "row count (the stopping rule)"
+    days: "pacing horizon; with -n it fixes density = n/days"
+    density: "transactions per day; overrides -n so n = density x days"
+  reporting: "generate prints requested vs realised span and density on every run"

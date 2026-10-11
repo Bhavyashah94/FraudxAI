@@ -124,6 +124,16 @@ def cmd_generate(args: argparse.Namespace) -> None:
     # The registry rate when calibrated, the historical default otherwise; an explicit --fraud-rate wins and is reported as a boost.
     fraud_rate = args.fraud_rate if args.fraud_rate is not None else (profile.fraud_prevalence if profile else 0.02)
 
+    # Density and total are the same quantity written two ways: density = n / days. Pinning both -n
+    # and --days therefore fixes density too, and it is density -- not the total -- that describes
+    # "how many transactions happen in a day". --density exists so that can be chosen directly.
+    if getattr(args, "density", None):
+        args.n = max(1, int(round(args.density * args.days)))
+        print(
+            f"density {args.density:g} tx/day x {args.days} days = {args.n} transactions",
+            file=sys.stderr,
+        )
+
     engine = SimulationEngine(
         n_cards=args.cards,
         n_merchants=args.merchants,
@@ -168,6 +178,46 @@ def cmd_generate(args: argparse.Namespace) -> None:
                 writer.writerows(export_records)
 
     print(f"Successfully wrote {len(export_records)} transactions to {out_path}", file=sys.stderr)
+
+    # Report what was actually produced. Count, density and duration are one equation
+    # (N = density x days, with density itself = per-card rate x active cards), and fraud
+    # freezes cards, so the realised span can diverge from --days even though the pacing was
+    # right. Printing it keeps the coupling visible instead of silent.
+    if records:
+        _stamps = [float(r.get("tx_time_seconds", 0.0)) for r in records]
+        _span = (max(_stamps) - min(_stamps)) / 86400.0 if len(_stamps) > 1 else 0.0
+        if _span > 0.0:
+            _req_density = args.n / max(args.days, 1)
+            _real_density = len(records) / _span
+            _frozen = sum(1 for c in getattr(engine, "cards", []) if getattr(c, "is_frozen", False))
+            print(
+                f"density report: requested {args.days} d @ {_req_density:.1f} tx/day "
+                f"({args.n:,} rows) | realised {_span:.2f} d @ {_real_density:.1f} tx/day "
+                f"({len(records):,} rows)",
+                file=sys.stderr,
+            )
+            if abs(_span - args.days) / max(args.days, 1) > 0.05:
+                _n_cards = len(getattr(engine, "cards", []))
+                if _span > args.days:
+                    # More time needed than asked: the population lost generating capacity.
+                    print(
+                        f"  span EXCEEDS --days because fraud froze {_frozen}/{_n_cards} cards; "
+                        f"active cards carry the spec'd per-card rate, so fewer of them take longer "
+                        f"to deliver {args.n:,} rows (N = density x days, density = rate x active cards). "
+                        f"Use --density to set tx/day directly, or --cards to change the population.",
+                        file=sys.stderr,
+                    )
+                else:
+                    # Finished early: too few transactions per card for the per-card first arrival
+                    # to amortise, so the stream ends before the horizon rather than after it.
+                    print(
+                        f"  span is SHORT of --days: at {args.n:,} rows over {_n_cards} cards that is "
+                        f"{args.n / max(_n_cards, 1):.1f} tx/card, and each card's first arrival is "
+                        f"drawn from its own inter-arrival distribution, so the batch ends once the last "
+                        f"card has fired rather than at the horizon. Raise -n (or --density) to fill "
+                        f"{args.days} days at the spec'd per-card rate.",
+                        file=sys.stderr,
+                    )
 
     # Export partitioned institutional views if requested
     if args.export_institutional_views and records:
@@ -659,7 +709,8 @@ def main() -> None:
     p_gen.add_argument("-m", "--merchants", type=int, default=150, help="Number of simulated merchants")
     p_gen.add_argument("--region", type=str, choices=["US", "IN"], default="US", help="Geographic banking ecosystem: US (USD dual-message) or IN (INR RBI AFA/RuPay/CoFT)")
     p_gen.add_argument("--fraud-rate", type=float, default=None, help="Fraud prevalence ratio (default 0.02; with --calibration, the registry rate of the profile, and an explicit value is reported as a demo boost)")
-    p_gen.add_argument("--days", type=int, default=30, help="Simulation duration in days")
+    p_gen.add_argument("--days", type=int, default=30, help="Simulation horizon in days. Sets the PACING RATE alongside -n (density = n/days); the realised span can differ because fraud freezes cards -- see the density report printed after generation")
+    p_gen.add_argument("--density", type=float, default=None, help="Transactions per day to simulate. Overrides -n (n = density x --days). This is the knob for 'how many happen in a day': -n alone cannot express density, only the total")
     p_gen.add_argument("--seed", type=int, default=42, help="Deterministic random seed")
     p_gen.add_argument("-o", "--output", type=str, default="synthetic_transactions.csv", help="Output file (.csv, .json, .jsonl) or directory for parallel runs")
     p_gen.add_argument("--parallel", action="store_true", default=False, help="Run multi-core parallel simulation pipeline")
