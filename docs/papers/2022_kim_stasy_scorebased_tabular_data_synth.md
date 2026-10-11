@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2022_kim_stasy_scorebased_tabular_data_synth.pdf"
 
 **Authors:** Kim et al.  
 **Year:** 2022 | **arXiv:** [`2210.04018`](https://arxiv.org/abs/2210.04018)  
-**Local PDF:** [`2022_kim_stasy_scorebased_tabular_data_synth.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2022_kim_stasy_scorebased_tabular_data_synth.pdf)
+**Local PDF:** [`2022_kim_stasy_scorebased_tabular_data_synth.pdf`](2022_kim_stasy_scorebased_tabular_data_synth.pdf)
 
 ---
 

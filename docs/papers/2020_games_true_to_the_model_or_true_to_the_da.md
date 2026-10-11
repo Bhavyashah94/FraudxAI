@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2020_games_true_to_the_model_or_true_to_the_da.pdf"
 
 **Authors:** Games et al.  
 **Year:** 2020 | **arXiv:** [`2006.16234`](https://arxiv.org/abs/2006.16234)  
-**Local PDF:** [`2020_games_true_to_the_model_or_true_to_the_da.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2020_games_true_to_the_model_or_true_to_the_da.pdf)
+**Local PDF:** [`2020_games_true_to_the_model_or_true_to_the_da.pdf`](2020_games_true_to_the_model_or_true_to_the_da.pdf)
 
 ---
 

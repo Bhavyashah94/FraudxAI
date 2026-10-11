@@ -12,7 +12,7 @@ pdf_path: "docs/papers\2026_wu_dollar_metric_credit_card_fraud_temporal_shap_aud
 **Authors:** Chenyu Wu  
 **Venue / Date:** arXiv / Duke University (2026)  
 **Domain Focus:** Dollar-Metric Loss & Temporal SHAP Attribution Drift Audit  
-**Original PDF:** [`2026_wu_dollar_metric_credit_card_fraud_temporal_shap_audit.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2026_wu_dollar_metric_credit_card_fraud_temporal_shap_audit.pdf)
+**Original PDF:** [`2026_wu_dollar_metric_credit_card_fraud_temporal_shap_audit.pdf`](2026_wu_dollar_metric_credit_card_fraud_temporal_shap_audit.pdf)
 
 ---
 

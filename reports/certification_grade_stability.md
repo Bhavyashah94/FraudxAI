@@ -40,22 +40,22 @@ All counts below are printed by `scripts/report_grade_stability.py`, not transcr
 > conclusions depends on the shift.
 
 > **Update, 2026-10-11, commit `e5e1813`.** After `beeb668`, spec/07 raised
-> `validated_card_follow_up` from 0.40 to 0.58 — each attack now revisits a card the operator
-> has already validated instead of picking a fresh victim — which shortens the published
-> stream from 59.54 to 46.67 days and therefore changes arrival shape again. Both columns
+> `validated_card_follow_up` from 0.40 to 0.58 (each attack now revisits a card the operator
+> has already validated instead of picking a fresh victim, which shortens the published
+> stream from 59.54 to 46.67 days and therefore changes arrival shape again). Both columns
 > above are now historical; re-run before citing. Measured on the same pinned protocol:
 >
 > | | `9895834` / `6938da3` | `beeb668` | `e5e1813` |
 > |---|---|---|---|
 > | Inter-arrival W₁ | 0.2522 FAIL | 0.2236 FAIL | 0.2264 FAIL |
 > | Violation count range across seeds | 4 – 9 | 4 – 6 | 3 – 8 |
-> | Gates failing in ≥1 seed | — | — | 9 (3 solid, 6 flipping) |
+> | Gates failing in ≥1 seed | N/A | N/A | 9 (3 solid, 6 flipping) |
 > | Grade | `NON_CERTIFIED_FAIL` ×5 | `NON_CERTIFIED_FAIL` ×5 | `NON_CERTIFIED_FAIL` ×5 |
 >
-> ("—" means not measured at that commit rather than zero.) The verdict is unchanged and the
+> ("N/A" means not measured at that commit rather than zero.) The verdict is unchanged and the
 > gate still fails outright: 0.2264 exceeds the 0.150 maximum by 51%. Note also that the
-> profile moved — prequential PR-AUC left the solid set at 0.58 and three gates began
-> flipping — which is precisely this file's thesis: a violation count taken from one run is
+> profile moved: prequential PR-AUC left the solid set at 0.58 and three gates began
+> flipping, which is precisely this file's thesis: a violation count taken from one run is
 > not a result, because both its size and its membership depend on the seed.
 >
 > The three solid failures at `e5e1813` are not all that fail: across the five pinned seeds
@@ -63,7 +63,7 @@ All counts below are printed by `scripts/report_grade_stability.py`, not transcr
 > attribution error in all five; net cost savings ratio and prequential PR-AUC in four;
 > log-amount W₁, shadow MIA ROC-AUC and alert precision P@K in two; Pearson linear r in one).
 
-## Finding 1 — the grader itself is deterministic
+## Finding 1: The Grader Itself is Deterministic
 
 Re-invoking the identical configuration produced byte-identical results in every group:
 
@@ -76,7 +76,7 @@ Re-invoking the identical configuration produced byte-identical results in every
 So the spread is **not** a race, an unseeded RNG, or a floating-point difference. It is the
 input the caller chose.
 
-## Finding 2 — `spec/18` pinned the thresholds but not the run they were applied to
+## Finding 2: `spec/18` Pinned the Thresholds but Not the Run They Were Applied to
 
 Before this slice, `spec/18_benchmark_reporting.yaml` contained the gate limits and nothing
 about *which* run to grade: no sample size, no seed, no region, no stream length. `-n` was
@@ -89,10 +89,10 @@ Across the 17 stored runs:
 - violation counts: **4 to 9** (`4,4,4,4,4,4,4,5,5,6,6,6,6,6,6,8,9`)
 - grades: `NON_CERTIFIED_FAIL x17`
 
-The grade itself never moved — every run had at least three solid violations — but the
+The grade itself never moved (every run had at least three solid violations), but the
 *violation count*, which is what gets quoted in prose, varied by a factor of two.
 
-## Finding 3 — the gates that flip sit on very small denominators
+## Finding 3: The Gates that Flip Sit on Very Small Denominators
 
 | quantity | across the 17 runs | threshold |
 |---|---|---|
@@ -151,7 +151,7 @@ MCC Jensen-Shannon divergence and relative attribution error failed every single
 
 ## What changed
 
-1. **`spec/18` gained `evaluation_protocol` (§4)** — pins region, `n_transactions: 2000`,
+1. **`spec/18` gained `evaluation_protocol` (§4)**: pins region, `n_transactions: 2000`,
    `seed: 42`, stream length, the four streaming window parameters, and
    `stability_seeds: [42, 0, 1, 2, 3]`. `n` and `seed` come from the command the README
    already documented; the window parameters are the grader's as-run defaults.
@@ -208,7 +208,7 @@ the tables are the record of them, and the loop regenerates an equivalent sweep.
 - **The streaming floor is still `min_days_evaluated: 2`,** and observed test days are 2–8.
   Raising the floor alone would make pillar 3 fail on every run, because the pinned 12-day
   stream cannot produce more than ~8 test days. Doing this honestly means lengthening the
-  stream first and re-measuring every pillar — a separate slice, not a number changed here.
+  stream first and re-measuring every pillar: a separate slice, not a number changed here.
 - **`spec/17` disagrees with the grader's windows** (`default_w_train_days 30.0`,
   `default_delta_delay_days 14.0`, `default_k_daily 50` versus the as-run 3.0 / 1.5 / 15).
   A 30-day training window cannot run on a 12-day stream, so adopting `spec/17` requires the

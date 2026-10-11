@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2019_methods_fooling_lime_and_shap_adversarial_a.pdf"
 
 **Authors:** Methods et al.  
 **Year:** 2019 | **arXiv:** [`1911.02508`](https://arxiv.org/abs/1911.02508)  
-**Local PDF:** [`2019_methods_fooling_lime_and_shap_adversarial_a.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2019_methods_fooling_lime_and_shap_adversarial_a.pdf)
+**Local PDF:** [`2019_methods_fooling_lime_and_shap_adversarial_a.pdf`](2019_methods_fooling_lime_and_shap_adversarial_a.pdf)
 
 ---
 

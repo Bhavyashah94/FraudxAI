@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2019_informatics_explanations_can_be_manipulated_and.pdf"
 
 **Authors:** Informatics et al.  
 **Year:** 2019 | **arXiv:** [`1906.07983`](https://arxiv.org/abs/1906.07983)  
-**Local PDF:** [`2019_informatics_explanations_can_be_manipulated_and.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2019_informatics_explanations_can_be_manipulated_and.pdf)
+**Local PDF:** [`2019_informatics_explanations_can_be_manipulated_and.pdf`](2019_informatics_explanations_can_be_manipulated_and.pdf)
 
 ---
 

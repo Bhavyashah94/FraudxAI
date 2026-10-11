@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2026_unknown_linemvgnn_antimoney_laundering_with.pdf"
 
 **Authors:** Unknown et al.  
 **Year:** 2026 | **arXiv:** [`2603.23584`](https://arxiv.org/abs/2603.23584)  
-**Local PDF:** [`2026_unknown_linemvgnn_antimoney_laundering_with.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2026_unknown_linemvgnn_antimoney_laundering_with.pdf)
+**Local PDF:** [`2026_unknown_linemvgnn_antimoney_laundering_with.pdf`](2026_unknown_linemvgnn_antimoney_laundering_with.pdf)
 
 ---
 

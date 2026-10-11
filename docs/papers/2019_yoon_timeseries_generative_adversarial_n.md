@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2019_yoon_timeseries_generative_adversarial_n.pdf"
 
 **Authors:** Yoon et al.  
 **Year:** 2019 | **arXiv:** [`1910.08260`](https://arxiv.org/abs/1910.08260)  
-**Local PDF:** [`2019_yoon_timeseries_generative_adversarial_n.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2019_yoon_timeseries_generative_adversarial_n.pdf)
+**Local PDF:** [`2019_yoon_timeseries_generative_adversarial_n.pdf`](2019_yoon_timeseries_generative_adversarial_n.pdf)
 
 ---
 

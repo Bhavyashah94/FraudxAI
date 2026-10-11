@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2017_ghorbani_interpretation_of_neural_networks_i.pdf"
 
 **Authors:** Ghorbani∗ et al.  
 **Year:** 2017 | **arXiv:** [`1710.10547`](https://arxiv.org/abs/1710.10547)  
-**Local PDF:** [`2017_ghorbani_interpretation_of_neural_networks_i.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2017_ghorbani_interpretation_of_neural_networks_i.pdf)
+**Local PDF:** [`2017_ghorbani_interpretation_of_neural_networks_i.pdf`](2017_ghorbani_interpretation_of_neural_networks_i.pdf)
 
 ---
 

@@ -12,7 +12,7 @@ pdf_path: "docs/papers\2026_fazel_improving_credit_card_fraud_explainable_boosti
 **Authors:** Reza E. Fazel, Arash Bakhtiary, Siavash A. Bigdeli  
 **Venue / Date:** arXiv / EN Bank Credit and Collection Department (2026)  
 **Domain Focus:** Inherently Interpretable EBM / Glass-Box Credit Card Fraud  
-**Original PDF:** [`2026_fazel_improving_credit_card_fraud_explainable_boosting_machine.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2026_fazel_improving_credit_card_fraud_explainable_boosting_machine.pdf)
+**Original PDF:** [`2026_fazel_improving_credit_card_fraud_explainable_boosting_machine.pdf`](2026_fazel_improving_credit_card_fraud_explainable_boosting_machine.pdf)
 
 ---
 

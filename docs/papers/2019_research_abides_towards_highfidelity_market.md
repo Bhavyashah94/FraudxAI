@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2019_research_abides_towards_highfidelity_market.pdf"
 
 **Authors:** Research et al.  
 **Year:** 2019 | **arXiv:** [`1904.12066`](https://arxiv.org/abs/1904.12066)  
-**Local PDF:** [`2019_research_abides_towards_highfidelity_market.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2019_research_abides_towards_highfidelity_market.pdf)
+**Local PDF:** [`2019_research_abides_towards_highfidelity_market.pdf`](2019_research_abides_towards_highfidelity_market.pdf)
 
 ---
 

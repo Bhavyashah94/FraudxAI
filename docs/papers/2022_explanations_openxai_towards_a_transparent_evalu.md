@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2022_explanations_openxai_towards_a_transparent_evalu.pdf
 
 **Authors:** Explanations et al.  
 **Year:** 2022 | **arXiv:** [`2206.11104`](https://arxiv.org/abs/2206.11104)  
-**Local PDF:** [`2022_explanations_openxai_towards_a_transparent_evalu.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2022_explanations_openxai_towards_a_transparent_evalu.pdf)
+**Local PDF:** [`2022_explanations_openxai_towards_a_transparent_evalu.pdf`](2022_explanations_openxai_towards_a_transparent_evalu.pdf)
 
 ---
 

@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2019_sundararajan_the_many_shapley_values_for_model_e.pdf
 
 **Authors:** Sundararajan et al.  
 **Year:** 2019 | **arXiv:** [`1908.08474`](https://arxiv.org/abs/1908.08474)  
-**Local PDF:** [`2019_sundararajan_the_many_shapley_values_for_model_e.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2019_sundararajan_the_many_shapley_values_for_model_e.pdf)
+**Local PDF:** [`2019_sundararajan_the_many_shapley_values_for_model_e.pdf`](2019_sundararajan_the_many_shapley_values_for_model_e.pdf)
 
 ---
 

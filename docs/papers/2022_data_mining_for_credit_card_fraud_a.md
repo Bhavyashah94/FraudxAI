@@ -8,7 +8,7 @@ pdf_path: "docs/papers\2022_data_mining_for_credit_card_fraud_a.pdf"
 # Financial Fraud Detection Using Value-at-Risk with Machine Learning in Skewed Data
 
 **Year:** 2022  
-**Local PDF:** [`2022_data_mining_for_credit_card_fraud_a.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2022_data_mining_for_credit_card_fraud_a.pdf)
+**Local PDF:** [`2022_data_mining_for_credit_card_fraud_a.pdf`](2022_data_mining_for_credit_card_fraud_a.pdf)
 
 ---
 

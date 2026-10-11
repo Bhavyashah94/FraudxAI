@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2019_problem_feature_relevance_quantification_in.pdf"
 
 **Authors:** Problem et al.  
 **Year:** 2019 | **arXiv:** [`1910.13413`](https://arxiv.org/abs/1910.13413)  
-**Local PDF:** [`2019_problem_feature_relevance_quantification_in.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2019_problem_feature_relevance_quantification_in.pdf)
+**Local PDF:** [`2019_problem_feature_relevance_quantification_in.pdf`](2019_problem_feature_relevance_quantification_in.pdf)
 
 ---
 

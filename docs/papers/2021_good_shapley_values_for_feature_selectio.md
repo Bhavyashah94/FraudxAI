@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2021_good_shapley_values_for_feature_selectio.pdf"
 
 **Authors:** Good et al.  
 **Year:** 2021 | **arXiv:** [`2102.10936`](https://arxiv.org/abs/2102.10936)  
-**Local PDF:** [`2021_good_shapley_values_for_feature_selectio.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2021_good_shapley_values_for_feature_selectio.pdf)
+**Local PDF:** [`2021_good_shapley_values_for_feature_selectio.pdf`](2021_good_shapley_values_for_feature_selectio.pdf)
 
 ---
 

@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2022_unknown_ctabgan_enhancing_tabular_data_synt.pdf"
 
 **Authors:** Unknown et al.  
 **Year:** 2022 | **arXiv:** [`2204.00401`](https://arxiv.org/abs/2204.00401)  
-**Local PDF:** [`2022_unknown_ctabgan_enhancing_tabular_data_synt.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2022_unknown_ctabgan_enhancing_tabular_data_synt.pdf)
+**Local PDF:** [`2022_unknown_ctabgan_enhancing_tabular_data_synt.pdf`](2022_unknown_ctabgan_enhancing_tabular_data_synt.pdf)
 
 ---
 

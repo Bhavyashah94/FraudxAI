@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2018_networks_a_benchmark_for_interpretability_me.pdf"
 
 **Authors:** Networks et al.  
 **Year:** 2018 | **arXiv:** [`1806.10758`](https://arxiv.org/abs/1806.10758)  
-**Local PDF:** [`2018_networks_a_benchmark_for_interpretability_me.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2018_networks_a_benchmark_for_interpretability_me.pdf)
+**Local PDF:** [`2018_networks_a_benchmark_for_interpretability_me.pdf`](2018_networks_a_benchmark_for_interpretability_me.pdf)
 
 ---
 

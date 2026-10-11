@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2023_horowitz_causal_strategic_classification_a_t.pdf"
 
 **Authors:** Horowitz et al.  
 **Year:** 2023 | **arXiv:** [`2302.06280`](https://arxiv.org/abs/2302.06280)  
-**Local PDF:** [`2023_horowitz_causal_strategic_classification_a_t.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2023_horowitz_causal_strategic_classification_a_t.pdf)
+**Local PDF:** [`2023_horowitz_causal_strategic_classification_a_t.pdf`](2023_horowitz_causal_strategic_classification_a_t.pdf)
 
 ---
 

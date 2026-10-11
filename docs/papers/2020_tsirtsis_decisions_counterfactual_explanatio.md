@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2020_tsirtsis_decisions_counterfactual_explanatio.pdf"
 
 **Authors:** Tsirtsis et al.  
 **Year:** 2020 | **arXiv:** [`2002.04333`](https://arxiv.org/abs/2002.04333)  
-**Local PDF:** [`2020_tsirtsis_decisions_counterfactual_explanatio.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2020_tsirtsis_decisions_counterfactual_explanatio.pdf)
+**Local PDF:** [`2020_tsirtsis_decisions_counterfactual_explanatio.pdf`](2020_tsirtsis_decisions_counterfactual_explanatio.pdf)
 
 ---
 

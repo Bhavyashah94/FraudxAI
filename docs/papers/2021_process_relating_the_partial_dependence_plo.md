@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2021_process_relating_the_partial_dependence_plo.pdf"
 
 **Authors:** Process et al.  
 **Year:** 2021 | **arXiv:** [`2109.01433`](https://arxiv.org/abs/2109.01433)  
-**Local PDF:** [`2021_process_relating_the_partial_dependence_plo.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2021_process_relating_the_partial_dependence_plo.pdf)
+**Local PDF:** [`2021_process_relating_the_partial_dependence_plo.pdf`](2021_process_relating_the_partial_dependence_plo.pdf)
 
 ---
 

@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2010_unknown_learning_under_concept_drift_an_ove.pdf"
 
 **Authors:** Unknown et al.  
 **Year:** 2010 | **arXiv:** [`1010.4781`](https://arxiv.org/abs/1010.4781)  
-**Local PDF:** [`2010_unknown_learning_under_concept_drift_an_ove.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2010_unknown_learning_under_concept_drift_an_ove.pdf)
+**Local PDF:** [`2010_unknown_learning_under_concept_drift_an_ove.pdf`](2010_unknown_learning_under_concept_drift_an_ove.pdf)
 
 ---
 

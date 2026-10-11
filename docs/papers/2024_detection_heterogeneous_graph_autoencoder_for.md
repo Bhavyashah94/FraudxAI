@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2024_detection_heterogeneous_graph_autoencoder_for.pdf"
 
 **Authors:** Detection et al.  
 **Year:** 2024 | **arXiv:** [`2410.08121`](https://arxiv.org/abs/2410.08121)  
-**Local PDF:** [`2024_detection_heterogeneous_graph_autoencoder_for.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2024_detection_heterogeneous_graph_autoencoder_for.pdf)
+**Local PDF:** [`2024_detection_heterogeneous_graph_autoencoder_for.pdf`](2024_detection_heterogeneous_graph_autoencoder_for.pdf)
 
 ---
 

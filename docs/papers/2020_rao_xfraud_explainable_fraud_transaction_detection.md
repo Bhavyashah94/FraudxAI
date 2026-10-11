@@ -12,7 +12,7 @@ pdf_path: "docs/papers\2020_rao_xfraud_explainable_fraud_transaction_detection.p
 **Authors:** Susie Xi Rao, Shuai Zhang, Zhichao Han, Ce Zhang, et al.  
 **Venue / Date:** ACM CIKM / ETH Zurich & eBay (2020)  
 **Domain Focus:** Industry Production Graph Explainer for Fraud Ops Analysts  
-**Original PDF:** [`2020_rao_xfraud_explainable_fraud_transaction_detection.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2020_rao_xfraud_explainable_fraud_transaction_detection.pdf)
+**Original PDF:** [`2020_rao_xfraud_explainable_fraud_transaction_detection.pdf`](2020_rao_xfraud_explainable_fraud_transaction_detection.pdf)
 
 ---
 

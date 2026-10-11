@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2026_yan_temporal_heterogeneous_graph_transf.pdf"
 
 **Authors:** Yan et al.  
 **Year:** 2026 | **arXiv:** [`2609.07100`](https://arxiv.org/abs/2609.07100)  
-**Local PDF:** [`2026_yan_temporal_heterogeneous_graph_transf.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2026_yan_temporal_heterogeneous_graph_transf.pdf)
+**Local PDF:** [`2026_yan_temporal_heterogeneous_graph_transf.pdf`](2026_yan_temporal_heterogeneous_graph_transf.pdf)
 
 ---
 

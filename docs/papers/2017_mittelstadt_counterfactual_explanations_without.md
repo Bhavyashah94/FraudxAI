@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2017_mittelstadt_counterfactual_explanations_without.pdf"
 
 **Authors:** Mittelstadt et al.  
 **Year:** 2017 | **arXiv:** [`1711.00399`](https://arxiv.org/abs/1711.00399)  
-**Local PDF:** [`2017_mittelstadt_counterfactual_explanations_without.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2017_mittelstadt_counterfactual_explanations_without.pdf)
+**Local PDF:** [`2017_mittelstadt_counterfactual_explanations_without.pdf`](2017_mittelstadt_counterfactual_explanations_without.pdf)
 
 ---
 

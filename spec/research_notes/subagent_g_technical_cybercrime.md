@@ -1,5 +1,5 @@
 # TECHNICAL AUDIT: ADVANCED CYBERCRIME TECHNICAL VECTORS & UNDERGROUND INFRASTRUCTURE
-**Role:** Subagent G — Advanced Cybercrime Technical Vectors & Infrastructure Specialist  
+**Role:** Subagent G: Advanced Cybercrime Technical Vectors & Infrastructure Specialist  
 **Project:** FraudxAI Grounded Simulation Engine  
 **Grounding Sources:** 
 - Mohammed Aamir Ali, Budi Arief, Martin Emms, Aad van Moorsel, *"Does The Online Card Payment Landscape Unwittingly Facilitate Fraud?"* (IEEE S&P / Newcastle University 2017)

@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2020_unknown_graphconsis_alleviating_the_inconsi.pdf"
 
 **Authors:** Unknown et al.  
 **Year:** 2020 | **arXiv:** [`2005.00625`](https://arxiv.org/abs/2005.00625)  
-**Local PDF:** [`2020_unknown_graphconsis_alleviating_the_inconsi.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2020_unknown_graphconsis_alleviating_the_inconsi.pdf)
+**Local PDF:** [`2020_unknown_graphconsis_alleviating_the_inconsi.pdf`](2020_unknown_graphconsis_alleviating_the_inconsi.pdf)
 
 ---
 

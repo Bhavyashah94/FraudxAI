@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2023_networks_finding_money_launderers_using_hete.pdf"
 
 **Authors:** Networks et al.  
 **Year:** 2023 | **arXiv:** [`2307.13499`](https://arxiv.org/abs/2307.13499)  
-**Local PDF:** [`2023_networks_finding_money_launderers_using_hete.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2023_networks_finding_money_launderers_using_hete.pdf)
+**Local PDF:** [`2023_networks_finding_money_launderers_using_hete.pdf`](2023_networks_finding_money_launderers_using_hete.pdf)
 
 ---
 

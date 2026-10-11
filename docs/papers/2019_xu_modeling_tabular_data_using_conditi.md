@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2019_xu_modeling_tabular_data_using_conditi.pdf"
 
 **Authors:** Xu et al.  
 **Year:** 2019 | **arXiv:** [`1907.00503`](https://arxiv.org/abs/1907.00503)  
-**Local PDF:** [`2019_xu_modeling_tabular_data_using_conditi.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2019_xu_modeling_tabular_data_using_conditi.pdf)
+**Local PDF:** [`2019_xu_modeling_tabular_data_using_conditi.pdf`](2019_xu_modeling_tabular_data_using_conditi.pdf)
 
 ---
 

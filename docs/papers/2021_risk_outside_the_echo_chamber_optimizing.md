@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2021_risk_outside_the_echo_chamber_optimizing.pdf"
 
 **Authors:** Risk et al.  
 **Year:** 2021 | **arXiv:** [`2102.08570`](https://arxiv.org/abs/2102.08570)  
-**Local PDF:** [`2021_risk_outside_the_echo_chamber_optimizing.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2021_risk_outside_the_echo_chamber_optimizing.pdf)
+**Local PDF:** [`2021_risk_outside_the_echo_chamber_optimizing.pdf`](2021_risk_outside_the_echo_chamber_optimizing.pdf)
 
 ---
 

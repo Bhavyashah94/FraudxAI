@@ -12,7 +12,7 @@ pdf_path: "docs/papers\2015_dal_pozzolo_adaptive_machine_learning_credit_card_fr
 **Authors:** Andrea Dal Pozzolo  
 **Venue / Date:** Université Libre de Bruxelles & Worldline (IEEE TNNLS) (2015)  
 **Domain Focus:** Foundational Credit Card Fraud Benchmark & Verification Latency  
-**Original PDF:** [`2015_dal_pozzolo_adaptive_machine_learning_credit_card_fraud.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2015_dal_pozzolo_adaptive_machine_learning_credit_card_fraud.pdf)
+**Original PDF:** [`2015_dal_pozzolo_adaptive_machine_learning_credit_card_fraud.pdf`](2015_dal_pozzolo_adaptive_machine_learning_credit_card_fraud.pdf)
 
 ---
 

@@ -210,7 +210,7 @@ class StreamingLedger:
         # Recent 30m distinct MIDs and 60s subminute attempts from attempt history.
         # distinct_mids_30m is a PRIOR-WINDOW measure: it counts unique MIDs seen before
         # this transaction attempt (point-in-time). The current merchant_id is intentionally
-        # excluded — it has not yet been attempted. This matches the spec's enumeration
+        # excluded; it has not yet been attempted. This matches the spec's enumeration
         # threshold semantics: a cardholder with 3 prior distinct MIDs in 30m = spec ceiling.
         cutoff_30m = tx_time - 1800.0
         prior_mids_30m = set(m for t, _, m in state.tx_history_attempts_1h if t > cutoff_30m)

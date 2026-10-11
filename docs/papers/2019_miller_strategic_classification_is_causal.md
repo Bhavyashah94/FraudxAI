@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2019_miller_strategic_classification_is_causal.pdf"
 
 **Authors:** Miller et al.  
 **Year:** 2019 | **arXiv:** [`1910.10362`](https://arxiv.org/abs/1910.10362)  
-**Local PDF:** [`2019_miller_strategic_classification_is_causal.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2019_miller_strategic_classification_is_causal.pdf)
+**Local PDF:** [`2019_miller_strategic_classification_is_causal.pdf`](2019_miller_strategic_classification_is_causal.pdf)
 
 ---
 

@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2021_estimation_fastshap_realtime_shapley_value_est.pdf"
 
 **Authors:** Estimation et al.  
 **Year:** 2021 | **arXiv:** [`2107.07436`](https://arxiv.org/abs/2107.07436)  
-**Local PDF:** [`2021_estimation_fastshap_realtime_shapley_value_est.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2021_estimation_fastshap_realtime_shapley_value_est.pdf)
+**Local PDF:** [`2021_estimation_fastshap_realtime_shapley_value_est.pdf`](2021_estimation_fastshap_realtime_shapley_value_est.pdf)
 
 ---
 

@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2018_instead_stop_explaining_black_box_machine_l.pdf"
 
 **Authors:** Instead et al.  
 **Year:** 2018 | **arXiv:** [`1811.10154`](https://arxiv.org/abs/1811.10154)  
-**Local PDF:** [`2018_instead_stop_explaining_black_box_machine_l.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2018_instead_stop_explaining_black_box_machine_l.pdf)
+**Local PDF:** [`2018_instead_stop_explaining_black_box_machine_l.pdf`](2018_instead_stop_explaining_black_box_machine_l.pdf)
 
 ---
 

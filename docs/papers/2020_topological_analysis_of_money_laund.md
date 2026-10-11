@@ -8,7 +8,7 @@ pdf_path: "docs/papers\2020_topological_analysis_of_money_laund.pdf"
 # Z-GCNETs: Time Zigzags at Graph Convolutional Networks for Time Series Forecasting
 
 **Year:** 2020  
-**Local PDF:** [`2020_topological_analysis_of_money_laund.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2020_topological_analysis_of_money_laund.pdf)
+**Local PDF:** [`2020_topological_analysis_of_money_laund.pdf`](2020_topological_analysis_of_money_laund.pdf)
 
 ---
 

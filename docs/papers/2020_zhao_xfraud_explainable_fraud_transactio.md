@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2020_zhao_xfraud_explainable_fraud_transactio.pdf"
 
 **Authors:** Zhao★ et al.  
 **Year:** 2020 | **arXiv:** [`2011.12193`](https://arxiv.org/abs/2011.12193)  
-**Local PDF:** [`2020_zhao_xfraud_explainable_fraud_transactio.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2020_zhao_xfraud_explainable_fraud_transactio.pdf)
+**Local PDF:** [`2020_zhao_xfraud_explainable_fraud_transactio.pdf`](2020_zhao_xfraud_explainable_fraud_transactio.pdf)
 
 ---
 

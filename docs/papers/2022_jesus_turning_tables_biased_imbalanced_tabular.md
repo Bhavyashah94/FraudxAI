@@ -12,7 +12,7 @@ pdf_path: "docs/papers\2022_jesus_turning_tables_biased_imbalanced_tabular.pdf"
 **Authors:** Sérgio Jesus, José Pombal, Duarte Alves, et al.  
 **Venue / Date:** NeurIPS Datasets and Benchmarks Track / Feedzai (2022)  
 **Domain Focus:** Bank Account Fraud (BAF) Realism & Streaming Evaluation  
-**Original PDF:** [`2022_jesus_turning_tables_biased_imbalanced_tabular.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2022_jesus_turning_tables_biased_imbalanced_tabular.pdf)
+**Original PDF:** [`2022_jesus_turning_tables_biased_imbalanced_tabular.pdf`](2022_jesus_turning_tables_biased_imbalanced_tabular.pdf)
 
 ---
 

@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2019_explainability_asymmetric_shapley_values_incorpora.p
 
 **Authors:** Explainability et al.  
 **Year:** 2019 | **arXiv:** [`1910.06358`](https://arxiv.org/abs/1910.06358)  
-**Local PDF:** [`2019_explainability_asymmetric_shapley_values_incorpora.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2019_explainability_asymmetric_shapley_values_incorpora.pdf)
+**Local PDF:** [`2019_explainability_asymmetric_shapley_values_incorpora.pdf`](2019_explainability_asymmetric_shapley_values_incorpora.pdf)
 
 ---
 

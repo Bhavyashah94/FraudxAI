@@ -12,7 +12,7 @@ pdf_path: "docs/papers\2020_kumar_problems_with_shapley_value_feature_importance
 **Authors:** I. Elizabeth Kumar, Suresh Venkatasubramanian, Carlos Scheidegger, Sorelle A. Friedler  
 **Venue / Date:** ICML 2020 (2020)  
 **Domain Focus:** Mathematical Proof of Correlation Leakage in SHAP  
-**Original PDF:** [`2020_kumar_problems_with_shapley_value_feature_importance.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2020_kumar_problems_with_shapley_value_feature_importance.pdf)
+**Original PDF:** [`2020_kumar_problems_with_shapley_value_feature_importance.pdf`](2020_kumar_problems_with_shapley_value_feature_importance.pdf)
 
 ---
 

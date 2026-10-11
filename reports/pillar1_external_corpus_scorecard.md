@@ -70,7 +70,7 @@ trivially 0).
 ## What the numbers say
 
 1. **Real data fails the amount gate, and fails it worse than we do.** ULB scores
-   0.3745 against a 0.150 limit — 2.5× our 0.1508. Dropping ULB's fraud rows changes
+   0.3745 against a 0.150 limit (2.5× our 0.1508). Dropping ULB's fraud rows changes
    nothing (0.3740), so it is not fraud enrichment. The gate measures distance to the
    hardcoded `lognormal(mu=3.75, sigma=0.85)` USD reference, and on this corpus real
    card amounts are not that distribution: ULB's median is 22 against the reference's
@@ -84,7 +84,7 @@ trivially 0).
    3.2941 is dominated by its hourly `step` (dt_min = dt_med = 3600 s), not by its
    arrival process; ULB's timestamps are whole seconds and its median Δt is 1 s, so the
    grader's `Δt > 0` filter drops every same-second pair and biases its score upward;
-   our own Δt floor is 0.01–0.3 s. Three corpora, three clocks — the number is not
+   our own Δt floor is 0.01–0.3 s. Three corpora, three clocks: the number is not
    comparable across them without the dt_min column.
 
 4. **Sample size moves the verdicts at the grader's default n=1,500.** Our
@@ -97,7 +97,7 @@ trivially 0).
    distances to uniform over the categories we emit; neither ULB nor BankSim carries
    MCC or POS-entry-mode codes, and the Frobenius gate needs our own five feature
    columns (`tx_count_1h`, `haversine_velocity_kph`, …). Those three gates are
-   self-referential to our schema — they can fail us, but no external data can
+   self-referential to our schema: they can fail us, but no external data can
    validate them.
 
 ## What this does and does not establish
@@ -116,8 +116,8 @@ relative-attribution-error failure is an internal-consistency result and is unto
 by this measurement.
 
 **Not measured here:** pillar 1's remaining gates on external data (impossible for the
-reasons in finding 5), and any corpus behind Kaggle authentication — IEEE-CIS would be
-the natural second real corpus and needs an API key.
+reasons in finding 5), and any corpus behind Kaggle authentication (IEEE-CIS would be
+the natural second real corpus and needs an API key).
 
 ## Proposed next step (a decision for the slice owner, not taken here)
 

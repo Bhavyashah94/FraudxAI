@@ -1,7 +1,7 @@
 current_slice:
   id: "slice-25-fix-time-span-normalisation-and-unsound-test-invariants"
   title: "Make --days Mean What It Says, and Replace Test Invariants That Were Already False"
-  status: "testing"  # [planning, in_progress, testing, verified]
+  status: "verified"  # [planning, in_progress, testing, verified]
   target_spec_files:
     - "fraudx_synthesizer/engine.py"
     - "fraudx_synthesizer/benchmark_reporter.py"
@@ -16,7 +16,7 @@ current_slice:
     - canonical_data_sample_csv_is_preserved_per_gitignore: true
     - the_dataset_card_no_longer_says_the_cause_is_unknown: true
   verdict: >-
-    testing: D1 fixed -- _get_card_hawkes_params divided each persona's volume by a hard-coded
+    verified: D1 fixed -- _get_card_hawkes_params divided each persona's volume by a hard-coded
     55.0 (US) / 0.684 (IN) that equalled ONE persona's volume rather than the population mean,
     so scales averaged 1.1793 and every paced batch ran ~18% hot. Replaced by
     _persona_volume_scale_mean(), a cached card-weighted region-aware measurement. The

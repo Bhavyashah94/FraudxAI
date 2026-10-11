@@ -12,7 +12,7 @@ pdf_path: "docs/papers\2023_hedstrom_quantus_responsible_evaluation_xai.pdf"
 **Authors:** Anna Hedström, Leander Weber, Dilyara Bareeva, et al.  
 **Venue / Date:** Journal of Machine Learning Research (JMLR) (2023)  
 **Domain Focus:** Evaluation Benchmarks & Faithfulness Metrics for XAI  
-**Original PDF:** [`2023_hedstrom_quantus_responsible_evaluation_xai.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2023_hedstrom_quantus_responsible_evaluation_xai.pdf)
+**Original PDF:** [`2023_hedstrom_quantus_responsible_evaluation_xai.pdf`](2023_hedstrom_quantus_responsible_evaluation_xai.pdf)
 
 ---
 

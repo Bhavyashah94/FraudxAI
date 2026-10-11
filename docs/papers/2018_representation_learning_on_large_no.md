@@ -8,7 +8,7 @@ pdf_path: "docs/papers\2018_representation_learning_on_large_no.pdf"
 # A Comprehensive Survey on Machine Learning for Networking: Evolution, Applications and Research Opportunities
 
 **Year:** 2018  
-**Local PDF:** [`2018_representation_learning_on_large_no.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2018_representation_learning_on_large_no.pdf)
+**Local PDF:** [`2018_representation_learning_on_large_no.pdf`](2018_representation_learning_on_large_no.pdf)
 
 ---
 

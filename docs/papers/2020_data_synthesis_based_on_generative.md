@@ -8,7 +8,7 @@ pdf_path: "docs/papers\2020_data_synthesis_based_on_generative.pdf"
 # Synthesizing Tabular Data
 
 **Year:** 2020  
-**Local PDF:** [`2020_data_synthesis_based_on_generative.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2020_data_synthesis_based_on_generative.pdf)
+**Local PDF:** [`2020_data_synthesis_based_on_generative.pdf`](2020_data_synthesis_based_on_generative.pdf)
 
 ---
 

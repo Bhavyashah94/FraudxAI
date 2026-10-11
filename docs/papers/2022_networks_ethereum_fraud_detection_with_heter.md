@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2022_networks_ethereum_fraud_detection_with_heter.pdf"
 
 **Authors:** Networks et al.  
 **Year:** 2022 | **arXiv:** [`2203.12363`](https://arxiv.org/abs/2203.12363)  
-**Local PDF:** [`2022_networks_ethereum_fraud_detection_with_heter.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2022_networks_ethereum_fraud_detection_with_heter.pdf)
+**Local PDF:** [`2022_networks_ethereum_fraud_detection_with_heter.pdf`](2022_networks_ethereum_fraud_detection_with_heter.pdf)
 
 ---
 

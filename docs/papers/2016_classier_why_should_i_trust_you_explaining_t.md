@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2016_classier_why_should_i_trust_you_explaining_t.pdf"
 
 **Authors:** Classiﬁer et al.  
 **Year:** 2016 | **arXiv:** [`1602.04938`](https://arxiv.org/abs/1602.04938)  
-**Local PDF:** [`2016_classier_why_should_i_trust_you_explaining_t.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2016_classier_why_should_i_trust_you_explaining_t.pdf)
+**Local PDF:** [`2016_classier_why_should_i_trust_you_explaining_t.pdf`](2016_classier_why_should_i_trust_you_explaining_t.pdf)
 
 ---
 

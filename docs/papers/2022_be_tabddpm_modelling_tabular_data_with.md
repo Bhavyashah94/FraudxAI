@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2022_be_tabddpm_modelling_tabular_data_with.pdf"
 
 **Authors:** Be- et al.  
 **Year:** 2022 | **arXiv:** [`2209.15421`](https://arxiv.org/abs/2209.15421)  
-**Local PDF:** [`2022_be_tabddpm_modelling_tabular_data_with.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2022_be_tabddpm_modelling_tabular_data_with.pdf)
+**Local PDF:** [`2022_be_tabddpm_modelling_tabular_data_with.pdf`](2022_be_tabddpm_modelling_tabular_data_with.pdf)
 
 ---
 

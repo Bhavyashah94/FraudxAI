@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2018_brain_sanity_checks_for_saliency_maps.pdf"
 
 **Authors:** Brain et al.  
 **Year:** 2018 | **arXiv:** [`1810.03292`](https://arxiv.org/abs/1810.03292)  
-**Local PDF:** [`2018_brain_sanity_checks_for_saliency_maps.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2018_brain_sanity_checks_for_saliency_maps.pdf)
+**Local PDF:** [`2018_brain_sanity_checks_for_saliency_maps.pdf`](2018_brain_sanity_checks_for_saliency_maps.pdf)
 
 ---
 

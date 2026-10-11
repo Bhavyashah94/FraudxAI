@@ -1,7 +1,7 @@
-# FraudxAI: B.E. Major Project I Synopsis — Complete Content & Team Editing Guide
+# FraudxAI: B.E. Major Project I Synopsis: Complete Content & Team Editing Guide
 
 > **Academic Year:** 2026–2027  
-> **Course:** Bachelor of Engineering (B.E.), Semester VII — Major Project I  
+> **Course:** Bachelor of Engineering (B.E.), Semester VII: Major Project I  
 > **Department:** Department of Information Technology  
 > **Institution:** AET's Atharva College of Engineering, Malad (West), Mumbai  
 > **Affiliation:** University of Mumbai  
@@ -13,10 +13,10 @@
 ## 👥 Project Team & Institutional Roster
 
 ### Students:
-1. **Aariz Warsi** — Roll No: 58 (TEIT-2 / BEIT) | Email: `blazar11111@gmail.com` | Phone: `8208117344`
-2. **Anshul Tipnis** — Roll No: 49 (TEIT-2 / BEIT)
-3. **Bhavya Shah** — Roll No: 36 (TEIT-2 / BEIT) | Email: `bhavyashah04122005@gmail.com`
-4. **Sagar Uradi** — Roll No: 54 (TEIT-2 / BEIT)
+1. **Aariz Warsi** - Roll No: 58 (TEIT-2 / BEIT) | Email: `blazar11111@gmail.com` | Phone: `8208117344`
+2. **Anshul Tipnis** - Roll No: 49 (TEIT-2 / BEIT)
+3. **Bhavya Shah** - Roll No: 36 (TEIT-2 / BEIT) | Email: `bhavyashah04122005@gmail.com`
+4. **Sagar Uradi** - Roll No: 54 (TEIT-2 / BEIT)
 
 ### Faculty & Administration:
 * **Project Guides / Supervisors:**  
@@ -63,8 +63,8 @@ If editing or reviewing the Google Doc, strictly adhere to these typography and 
 | **Page 7** | List of Figures (Page `III`) | ✅ **Completed & Verified** |
 | **Page 8** | List of Tables (Page `IV`) | ✅ **Completed & Verified** |
 | **Page 9** | List of Abbreviations (Page `V`) | ✅ **Completed & Verified** |
-| **Page 10** | **Chapter 1: Introduction (Starts Page `1`)** | ⏳ **CURRENT TARGET — READY TO PASTE** |
-| **Pages 11–27**| Chapters 2 to 12 + Acknowledgement + References | 📝 **Content verified below — ready for sequential paste** |
+| **Page 10** | **Chapter 1: Introduction (Starts Page `1`)** | ⏳ **CURRENT TARGET: READY TO PASTE** |
+| **Pages 11–27**| Chapters 2 to 12 + Acknowledgement + References | 📝 **Content verified below: ready for sequential paste** |
 
 ---
 
@@ -100,7 +100,7 @@ However, financial institutions face the ground-truth explanation void: standard
 
 The fundamental paradigm of FraudxAI is to bridge the realism and explainability gaps in financial fraud detection by uniting high-fidelity multi-agent simulation with exact, closed-form structural causal inference. Rather than generating synthetic tabular records under unrealistic independent and identically distributed (i.i.d.) assumptions, FraudxAI models payment networks as dynamic socioeconomic ecosystems operating over continuous physical time. Central to this approach is a 64-bit microsecond monotonic discrete-event priority queue driven by non-stationary, self-exciting Hawkes point processes. This mathematical framework realistically captures circadian cardholder spend cycles and merchant burstiness while enforcing physical transport constraints via Haversine velocity ceilings (<900 km/h) to eliminate future lookahead bias and spatio-temporal anomalies.
 
-To achieve authentic industrial grounding, the simulation faithfully replicates the operational kinematics of dual major payment regimes. For US infrastructure, it models the dual-message lifecycle separating real-time authorization (ISO 8583 MTI 0100) from delayed clearing (MTI 0200), integrating Address Verification Service (AVS) checks and automated fuel dispenser holds. For Indian infrastructure, it encapsulates Reserve Bank of India (RBI) mandates, including mandatory Additional Factor of Authentication (AFA/OTP challenges), RuPay card switches, and instant settlement networks. Concurrently, FraudxAI models cybercrime syndicates not as static anomalies, but as adaptive goal-driven agents executing ten grounded playbooks—including micro-authorization probing, account takeover, and cooperative smurfing—that dynamically modify their tactics in closed-loop response to bank defenses.
+To achieve authentic industrial grounding, the simulation faithfully replicates the operational kinematics of dual major payment regimes. For US infrastructure, it models the dual-message lifecycle separating real-time authorization (ISO 8583 MTI 0100) from delayed clearing (MTI 0200), integrating Address Verification Service (AVS) checks and automated fuel dispenser holds. For Indian infrastructure, it encapsulates Reserve Bank of India (RBI) mandates, including mandatory Additional Factor of Authentication (AFA/OTP challenges), RuPay card switches, and instant settlement networks. Concurrently, FraudxAI models cybercrime syndicates not as static anomalies, but as adaptive goal-driven agents executing ten grounded playbooks (including micro-authorization probing, account takeover, and cooperative smurfing) that dynamically modify their tactics in closed-loop response to bank defenses.
 
 Crucially, FraudxAI resolves the ground-truth explanation void by coupling each simulated transaction with an underlying Structural Causal Model (SCM). For every fraudulent transaction, the engine computes its exact Pearlian counterfactual baseline twin:
 Δx = x_fraud - x_baseline
@@ -128,7 +128,7 @@ Evaluated Explainable Boosting Machines (EBMs) with Generalized Additive Models 
 3. Graph Neural Networks and Relational Fraud Camouflage (Duan et al., ACM CIKM, 2024) [3]:
 Introduced CaT-GNN to overcome adversarial camouflage in transaction graphs, identifying coordinated multi-account fraud rings. Limitation: GNN graph embeddings introduce significant computational latency (>200ms) exceeding real-time card authorization thresholds and remain uninterpretable to regulatory compliance auditors.
 
-4. Benchmarking Explainer Faithfulness (Hedström et al., JMLR, 2023 — Quantus Benchmark) [4]:
+4. Benchmarking Explainer Faithfulness (Hedström et al., JMLR, 2023, Quantus Benchmark) [4]:
 Formalized 30+ mathematical metrics (faithfulness, monotonicity, robustness) to evaluate XAI explainers. Proved that feature attribution methods frequently fail basic faithfulness tests in the absence of controlled interventions. Limitation: General domain focus (computer vision and synthetic toy datasets); lacks financial streaming invariants, payment schemas, and counterfactual baseline twins.
 ```
 
@@ -165,7 +165,7 @@ Report on the Present Investigation
 
 Current industrial payment fraud prevention relies on a multi-tier authorization pipeline operating across high-throughput banking switches. The first line of defense consists of pre-authorization deterministic rule engines that evaluate incoming transactions in under 10 milliseconds directly on the ISO 8583 message stream (MTI 0100). These engines enforce hardcoded compliance checks, such as transaction velocity limits, country sanction lists, and Address Verification System (AVS) mismatches.
 
-Following deterministic rule validation, transactions pass to supervised tabular machine learning ensembles operating within a strict sub-50ms latency budget before Stand-In Processing timeouts trigger. Production systems deploy gradient boosted decision trees (such as LightGBM and XGBoost) and neural scoring models across real-time feature stores to output continuous fraud risk probabilities. Transactions that fall into ambiguous intermediate risk tiers are escalated to step-up authentication challenges—such as EMV 3DS 2.x one-time passwords or biometric verification—while high-risk alerts are routed to Fraud Investigation Unit (FIU) queues for manual analyst case management.
+Following deterministic rule validation, transactions pass to supervised tabular machine learning ensembles operating within a strict sub-50ms latency budget before Stand-In Processing timeouts trigger. Production systems deploy gradient boosted decision trees (such as LightGBM and XGBoost) and neural scoring models across real-time feature stores to output continuous fraud risk probabilities. Transactions that fall into ambiguous intermediate risk tiers are escalated to step-up authentication challenges (such as EMV 3DS 2.x one-time passwords or biometric verification) while high-risk alerts are routed to Fraud Investigation Unit (FIU) queues for manual analyst case management.
 
 3.2 Limitations and Structural Gaps
 
@@ -283,9 +283,9 @@ Table 7.1: Hardware and Software Specifications
 | **Software** | Operating System | Linux (Ubuntu 22.04+) or Windows 10/11 | Linux (Ubuntu 22.04 LTS / CachyOS) |
 | | Runtime Environment | Python 3.12+ | Python 3.12 (via UV package manager) |
 | | Data Engine & Vectorization | Polars, NumPy, SciPy | Polars (multithreaded streaming) |
-| | Machine Learning & XAI | LightGBM, XGBoost, InterpretML, SHAP | LightGBM 4.x, InterpretML (EBM), SHAP 0.46+ |
-| | Web Dashboard Frontend | React 18, Vite, Tailwind CSS | React 18, Recharts / D3.js, Lucide Icons |
-| | Verification & Test Suite | Pytest 8.x+ | Pytest (302 automated tests) |
+| | Machine Learning & XAI | LightGBM, XGBoost, Scikit-learn, SHAP | LightGBM 4.x, SHAP 0.46+ |
+| | Web Dashboard Frontend | React 18, Vite, Tailwind CSS | React 18, D3.js, Lucide Icons |
+| | Verification & Test Suite | Pytest 8.x+ | Pytest (324 automated tests) |
 
 ```text
 7.2 User Interface Requirements
@@ -331,7 +331,7 @@ Table 8.1: Feasibility Study Matrix
 | Dimension | Key Evaluation Criteria | FraudxAI Solution & Mitigation | Status |
 | :--- | :--- | :--- | :---: |
 | **Operational Feasibility** | Adoption by banks, regulators, and academic researchers | Eliminates data sharing barriers by generating 100% synthetic, realistic data; equips fraud investigators with actionable XAI waterfall plots. | **Feasible** |
-| **Technical Feasibility** | 50ms authorization SLA, 64-bit microsecond clock, memory stability | Implemented in Python 3.12 + Polars vectorization; measured 2,166 events/sec (1,172 transactions/sec) over a 100,000-transaction run and a 100% pass rate across the 302-test pytest suite. | **Feasible** |
+| **Technical Feasibility** | 50ms authorization SLA, 64-bit microsecond clock, memory stability | Implemented in Python 3.12 + Polars vectorization; measured 2,166 events/sec (1,172 transactions/sec) over a 100,000-transaction run and a 100% pass rate across the 324-test pytest suite. | **Feasible** |
 | **Economic Feasibility** | Development budget, licensing, cloud infrastructure costs | Built entirely on open-source libraries (Polars, LightGBM, React); runs locally on commodity multi-core laptops with zero commercial API expenses. | **Feasible** |
 | **Legal & Regulatory Feasibility**| PII, PCI-DSS liability, RBI/ECOA Adverse Action compliance | Fully synthetic identities incur zero PII/PCI-DSS liability; generated causal ground truths directly support RBI and ECOA statutory reason code mandates. | **Feasible** |
 
@@ -411,9 +411,9 @@ Figure 9.3: UML Sequence Diagram for Transaction Authorization & Audit
 
 9.4 Entity-Relationship (E-R) Diagram
 Defines core simulation entities, attributes, and relational cardinalities:
-• CARDHOLDER_AGENT (card_id [PK], persona_type, credit_limit, home_lat, home_lon, welford_mean, welford_var) — 1:N with TRANSACTION.
-• MERCHANT_ENTITY (merchant_id [PK], mcc_code, channel_type, acquirer_id, terminal_lat, terminal_lon) — 1:N with TRANSACTION.
-• TRANSACTION (txn_id [PK], card_id [FK], merchant_id [FK], timestamp_us, amount, currency, channel_type, is_fraud, scenario_tag) — 1:1 with AUTH_EVENT and 1:1 with CAUSAL_ATTRIBUTION.
+• CARDHOLDER_AGENT (card_id [PK], persona_type, credit_limit, home_lat, home_lon, welford_mean, welford_var): 1:N with TRANSACTION.
+• MERCHANT_ENTITY (merchant_id [PK], mcc_code, channel_type, acquirer_id, terminal_lat, terminal_lon): 1:N with TRANSACTION.
+• TRANSACTION (txn_id [PK], card_id [FK], merchant_id [FK], timestamp_us, amount, currency, channel_type, is_fraud, scenario_tag): 1:1 with AUTH_EVENT and 1:1 with CAUSAL_ATTRIBUTION.
 • AUTH_EVENT (event_id [PK], txn_id [FK], mti_code, iso_response_code, avs_result, eci_3ds, action_taken).
 • CAUSAL_ATTRIBUTION (attribution_id [PK], txn_id [FK], dominant_driver, ground_truth_phi, predicted_treeshap_phi, counterfactual_delta_vector).
 Figure 9.4: Entity-Relationship (E-R) Diagram
@@ -441,9 +441,9 @@ Implementation Plan
 10.2 Software and Development Environment
 • Operating System: Linux (Ubuntu 22.04+ / CachyOS) or Windows 10/11.
 • Programming Language: Python 3.12 (managed via UV).
-• Core Libraries: Polars, NumPy, SciPy, LightGBM, XGBoost, InterpretML, SHAP.
+• Core Libraries: Polars, NumPy, SciPy, LightGBM, XGBoost, Scikit-learn, SHAP.
 • Frontend UI: React 18, Tailwind CSS, Vite.
-• Testing & Build: Pytest (302 automated tests).
+• Testing & Build: Pytest (324 automated tests).
 
 10.3 Experimental Results and Output Screenshots
 
@@ -557,6 +557,6 @@ References
 8. M. Sundararajan, A. Taly, and Q. Yan, "Axiomatic attribution for deep networks," in Proc. 34th Int. Conf. Mach. Learn. (ICML), 2017, pp. 3319–3328.
 9. S. Jesus, J. Pombal, M. Alves, A. Cruz, P. Saleiro, R. Ribeiro, J. Gama, and P. Bizarro, "Turning the tables: Biased, imbalanced, dynamic tabular datasets for ML evaluation," in Proc. NeurIPS Track Datasets Benchmarks, 2022, pp. 1–14.
 10. J. S. Allen, "CardSim: A payment card transaction simulator," Finance Econ. Discuss. Ser. (FEDS) 2025-010, Board Governors Fed. Reserve Syst., 2025.
-11. International Organization for Standardization, Financial Transaction Card Originated Messages — Interchange Message Specifications (ISO 8583-1:2003), Geneva, Switzerland: ISO, 2003.
+11. International Organization for Standardization, Financial Transaction Card Originated Messages: Interchange Message Specifications (ISO 8583-1:2003), Geneva, Switzerland: ISO, 2003.
 12. Reserve Bank of India, "Master directions on customer protection – Limiting liability of customers in unauthorised electronic banking transactions," RBI Circular RBI/2017-18/15, DBR.No.Leg.BC.78/09.07.005/2017-18, Mumbai, India, Jul. 2017.
 ```

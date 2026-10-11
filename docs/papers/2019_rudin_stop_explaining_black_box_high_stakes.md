@@ -12,7 +12,7 @@ pdf_path: "docs/papers\2019_rudin_stop_explaining_black_box_high_stakes.pdf"
 **Authors:** Cynthia Rudin  
 **Venue / Date:** Nature Machine Intelligence (2019)  
 **Domain Focus:** Axiomatic Critique of Post-Hoc Explanations in High Stakes Domains  
-**Original PDF:** [`2019_rudin_stop_explaining_black_box_high_stakes.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2019_rudin_stop_explaining_black_box_high_stakes.pdf)
+**Original PDF:** [`2019_rudin_stop_explaining_black_box_high_stakes.pdf`](2019_rudin_stop_explaining_black_box_high_stakes.pdf)
 
 ---
 

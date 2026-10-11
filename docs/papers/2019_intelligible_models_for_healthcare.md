@@ -8,7 +8,7 @@ pdf_path: "docs/papers\2019_intelligible_models_for_healthcare.pdf"
 # Predictive Modeling of the Hospital Readmission Risk from Patients’ Claims Data Using Machine Learning: A Case Study on COPD
 
 **Year:** 2019  
-**Local PDF:** [`2019_intelligible_models_for_healthcare.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2019_intelligible_models_for_healthcare.pdf)
+**Local PDF:** [`2019_intelligible_models_for_healthcare.pdf`](2019_intelligible_models_for_healthcare.pdf)
 
 ---
 

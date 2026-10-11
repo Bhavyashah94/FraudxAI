@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2025_finance_new_money_a_systematic_review_of_sy.pdf"
 
 **Authors:** Finance et al.  
 **Year:** 2025 | **arXiv:** [`2510.26076`](https://arxiv.org/abs/2510.26076)  
-**Local PDF:** [`2025_finance_new_money_a_systematic_review_of_sy.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2025_finance_new_money_a_systematic_review_of_sy.pdf)
+**Local PDF:** [`2025_finance_new_money_a_systematic_review_of_sy.pdf`](2025_finance_new_money_a_systematic_review_of_sy.pdf)
 
 ---
 

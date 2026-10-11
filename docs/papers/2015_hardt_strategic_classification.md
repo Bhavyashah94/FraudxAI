@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2015_hardt_strategic_classification.pdf"
 
 **Authors:** Hardt et al.  
 **Year:** 2015 | **arXiv:** [`1506.06980`](https://arxiv.org/abs/1506.06980)  
-**Local PDF:** [`2015_hardt_strategic_classification.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2015_hardt_strategic_classification.pdf)
+**Local PDF:** [`2015_hardt_strategic_classification.pdf`](2015_hardt_strategic_classification.pdf)
 
 ---
 

@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2022_evaluation_turning_the_tables_biased_imbalance.pdf"
 
 **Authors:** Evaluation et al.  
 **Year:** 2022 | **arXiv:** [`2211.13358`](https://arxiv.org/abs/2211.13358)  
-**Local PDF:** [`2022_evaluation_turning_the_tables_biased_imbalance.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2022_evaluation_turning_the_tables_biased_imbalance.pdf)
+**Local PDF:** [`2022_evaluation_turning_the_tables_biased_imbalance.pdf`](2022_evaluation_turning_the_tables_biased_imbalance.pdf)
 
 ---
 

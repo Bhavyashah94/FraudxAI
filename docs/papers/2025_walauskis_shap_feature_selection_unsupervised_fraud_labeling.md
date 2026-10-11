@@ -12,7 +12,7 @@ pdf_path: "docs/papers\2025_walauskis_shap_feature_selection_unsupervised_fraud_
 **Authors:** Mary Anne Walauskis, Taghi M. Khoshgoftaar  
 **Venue / Date:** IEEE Access (Vol. 13) (2025)  
 **Domain Focus:** XAI & Feature Selection in Credit Card Fraud  
-**Original PDF:** [`2025_walauskis_shap_feature_selection_unsupervised_fraud_labeling.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2025_walauskis_shap_feature_selection_unsupervised_fraud_labeling.pdf)
+**Original PDF:** [`2025_walauskis_shap_feature_selection_unsupervised_fraud_labeling.pdf`](2025_walauskis_shap_feature_selection_unsupervised_fraud_labeling.pdf)
 
 ---
 

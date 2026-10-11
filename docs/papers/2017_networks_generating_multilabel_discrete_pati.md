@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2017_networks_generating_multilabel_discrete_pati.pdf"
 
 **Authors:** Networks et al.  
 **Year:** 2017 | **arXiv:** [`1703.06490`](https://arxiv.org/abs/1703.06490)  
-**Local PDF:** [`2017_networks_generating_multilabel_discrete_pati.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2017_networks_generating_multilabel_discrete_pati.pdf)
+**Local PDF:** [`2017_networks_generating_multilabel_discrete_pati.pdf`](2017_networks_generating_multilabel_discrete_pati.pdf)
 
 ---
 

@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2017_neural_learning_important_features_through.pdf"
 
 **Authors:** Neural et al.  
 **Year:** 2017 | **arXiv:** [`1704.02685`](https://arxiv.org/abs/1704.02685)  
-**Local PDF:** [`2017_neural_learning_important_features_through.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2017_neural_learning_important_features_through.pdf)
+**Local PDF:** [`2017_neural_learning_important_features_through.pdf`](2017_neural_learning_important_features_through.pdf)
 
 ---
 

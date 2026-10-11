@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2020_hu_heterogeneous_graph_transformer.pdf"
 
 **Authors:** Hu∗ et al.  
 **Year:** 2020 | **arXiv:** [`2003.01332`](https://arxiv.org/abs/2003.01332)  
-**Local PDF:** [`2020_hu_heterogeneous_graph_transformer.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2020_hu_heterogeneous_graph_transformer.pdf)
+**Local PDF:** [`2020_hu_heterogeneous_graph_transformer.pdf`](2020_hu_heterogeneous_graph_transformer.pdf)
 
 ---
 

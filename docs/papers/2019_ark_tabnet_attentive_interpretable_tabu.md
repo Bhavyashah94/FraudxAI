@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2019_ark_tabnet_attentive_interpretable_tabu.pdf"
 
 **Authors:** Arık et al.  
 **Year:** 2019 | **arXiv:** [`1908.07442`](https://arxiv.org/abs/1908.07442)  
-**Local PDF:** [`2019_ark_tabnet_attentive_interpretable_tabu.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2019_ark_tabnet_attentive_interpretable_tabu.pdf)
+**Local PDF:** [`2019_ark_tabnet_attentive_interpretable_tabu.pdf`](2019_ark_tabnet_attentive_interpretable_tabu.pdf)
 
 ---
 

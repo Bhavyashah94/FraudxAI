@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2016_process_the_neural_hawkes_process_a_neurall.pdf"
 
 **Authors:** Process et al.  
 **Year:** 2016 | **arXiv:** [`1612.09328`](https://arxiv.org/abs/1612.09328)  
-**Local PDF:** [`2016_process_the_neural_hawkes_process_a_neurall.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2016_process_the_neural_hawkes_process_a_neurall.pdf)
+**Local PDF:** [`2016_process_the_neural_hawkes_process_a_neurall.pdf`](2016_process_the_neural_hawkes_process_a_neurall.pdf)
 
 ---
 

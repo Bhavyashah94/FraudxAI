@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2017_unknown_a_unified_approach_to_interpreting.pdf"
 
 **Authors:** Unknown et al.  
 **Year:** 2017 | **arXiv:** [`1705.07874`](https://arxiv.org/abs/1705.07874)  
-**Local PDF:** [`2017_unknown_a_unified_approach_to_interpreting.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2017_unknown_a_unified_approach_to_interpreting.pdf)
+**Local PDF:** [`2017_unknown_a_unified_approach_to_interpreting.pdf`](2017_unknown_a_unified_approach_to_interpreting.pdf)
 
 ---
 

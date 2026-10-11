@@ -8,7 +8,7 @@ pdf_path: "docs/papers\2020_timegan_yoon2019.pdf"
 # Time-series Generative Adversarial Networks
 
 **Year:** 2020  
-**Local PDF:** [`2020_timegan_yoon2019.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2020_timegan_yoon2019.pdf)
+**Local PDF:** [`2020_timegan_yoon2019.pdf`](2020_timegan_yoon2019.pdf)
 
 ---
 

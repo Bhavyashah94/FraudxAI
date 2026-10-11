@@ -10,25 +10,25 @@
 1. **Slide 1: Title Slide** (SecureShelf / FraudxAI)
 2. **Slide 2: Agenda / Table of Contents** (9 Sections)
 3. **Slide 3: Introduction** (The High-Stakes Scale of Payment Fraud & The Need for XAI)
-4. **Slide 4: Section Divider — Review of Literature**
-5. **Slide 5: Literature Review • Paper 1 / 4** (Walauskis & Khoshgoftaar, IEEE Access 2025 — Post-Hoc XAI & Label Latency)
-6. **Slide 6: Literature Review • Paper 2 / 4** (Fazel et al., EN Bank / DTU 2026 — Glass-Box EBMs & Preprocessing Optimization)
-7. **Slide 7: Literature Review • Paper 3 / 4** (Duan et al., USTC / Peking Univ 2024 — CaT-GNN & Relational Camouflage)
-8. **Slide 8: Literature Review • Paper 4 / 4** (Hedström et al., JMLR 2023 — Quantus & The Explainer Faithfulness Crisis)
-9. **Slide 9: Section Divider — Existing System & Gaps**
+4. **Slide 4: Section Divider: Review of Literature**
+5. **Slide 5: Literature Review • Paper 1 / 4** (Walauskis & Khoshgoftaar, IEEE Access 2025: Post-Hoc XAI & Label Latency)
+6. **Slide 6: Literature Review • Paper 2 / 4** (Fazel et al., EN Bank / DTU 2026: Glass-Box EBMs & Preprocessing Optimization)
+7. **Slide 7: Literature Review • Paper 3 / 4** (Duan et al., USTC / Peking Univ 2024: CaT-GNN & Relational Camouflage)
+8. **Slide 8: Literature Review • Paper 4 / 4** (Hedström et al., JMLR 2023: Quantus & The Explainer Faithfulness Crisis)
+9. **Slide 9: Section Divider: Existing System & Gaps**
 10. **Slide 10: Existing Systems & Architecture** (The Real-World <50ms ISO 8583 Authorization Pipeline & Statutory Constraints)
 11. **Slide 11: Gaps in Existing Systems** (The 4 Structural Failures: Opacity, Latency, Tabular Isolation, Unverifiable XAI)
-12. **Slide 12: Section Divider — Problem Statement**
+12. **Slide 12: Section Divider: Problem Statement**
 13. **Slide 13: Problem Statement** (The Triple Impasse: Label Latency, Graph Blindness & The Absence of Ground-Truth Explanations)
 14. **Slide 14: Feasibility Study & Project Scope** (Technical, Economic, Regulatory Feasibility & Boundaries)
-15. **Slide 15: Section Divider — Methodology**
+15. **Slide 15: Section Divider: Methodology**
 16. **Slide 16: Methodology: FraudxAI System Architecture** (DiscreteEventEngine, Hawkes Diurnal Pacing & 4 Partitioned Banking Feeds)
 17. **Slide 17: Methodology: Closed-Loop Adversarial Engine** (10 Grounded Playbooks & Closed-Loop Bank Response Adaptation)
 18. **Slide 18: Methodology: Ground-Truth Causal Attribution** (Δx Baseline Deltas, Path Integration & Formal XAI Metrics)
-19. **Slide 19: Section Divider — Results and Discussion**
+19. **Slide 19: Section Divider: Results and Discussion**
 20. **Slide 20: Results & Discussion: Benchmarking Post-Hoc Explainers** (Quantus Faithfulness Audits & Empirical Divergence)
-21. **Slide 21: Results & Discussion: Invariant Certification & Engine Throughput** (313/313 Tests Green, 37 Invariants, ~2.2K events/sec)
-22. **Slide 22: Section Divider — Conclusion & Future Scope**
+21. **Slide 21: Results & Discussion: Invariant Certification & Engine Throughput** (324/324 Tests Green, 37 Invariants, ~2.2K events/sec)
+22. **Slide 22: Section Divider: Conclusion & Future Scope**
 23. **Slide 23: Conclusion & Future Scope** (Core Contributions, Multi-Agent RL, ISO 20022 Cross-Border Rails)
 24. **Slide 24: References** (Statutory Circulars, Payment Network Rules & Literature)
 
@@ -170,7 +170,7 @@
 #### Slide 18: Invariant Certification & Throughput Benchmarks
 * **Headline (Serif):** Formal Invariant Verification & Engine Performance
 * **Key Achievements:**
-  * **313 / 313 Tests Passed:** 100% automated pytest suite passing across unit and integration rails.
+  * **324 / 324 Tests Passed:** 100% automated pytest suite passing across unit and integration rails.
   * **37 / 37 Certified Invariants:** Formal mathematical verification of double-entry bitwise conservation, strict temporal monotonicity, anti-leak tripwires, and Haversine velocity ceilings.
   * **Throughput:** Measured generation velocity of **2,166 events/second** (1,172 transactions/second) over a 100,000-transaction run, sustaining synthesis without memory degradation.
 

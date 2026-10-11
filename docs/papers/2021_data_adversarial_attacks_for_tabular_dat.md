@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2021_data_adversarial_attacks_for_tabular_dat.pdf"
 
 **Authors:** Data et al.  
 **Year:** 2021 | **arXiv:** [`2101.08030`](https://arxiv.org/abs/2101.08030)  
-**Local PDF:** [`2021_data_adversarial_attacks_for_tabular_dat.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2021_data_adversarial_attacks_for_tabular_dat.pdf)
+**Local PDF:** [`2021_data_adversarial_attacks_for_tabular_dat.pdf`](2021_data_adversarial_attacks_for_tabular_dat.pdf)
 
 ---
 

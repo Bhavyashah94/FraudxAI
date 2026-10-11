@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2022_unknown_bright_graph_neural_networks_in_rea.pdf"
 
 **Authors:** Unknown et al.  
 **Year:** 2022 | **arXiv:** [`2205.13084`](https://arxiv.org/abs/2205.13084)  
-**Local PDF:** [`2022_unknown_bright_graph_neural_networks_in_rea.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2022_unknown_bright_graph_neural_networks_in_rea.pdf)
+**Local PDF:** [`2022_unknown_bright_graph_neural_networks_in_rea.pdf`](2022_unknown_bright_graph_neural_networks_in_rea.pdf)
 
 ---
 

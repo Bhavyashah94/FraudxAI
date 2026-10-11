@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2024_networks_catgnn_enhancing_credit_card_fraud.pdf"
 
 **Authors:** Networks et al.  
 **Year:** 2024 | **arXiv:** [`2402.14708`](https://arxiv.org/abs/2402.14708)  
-**Local PDF:** [`2024_networks_catgnn_enhancing_credit_card_fraud.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2024_networks_catgnn_enhancing_credit_card_fraud.pdf)
+**Local PDF:** [`2024_networks_catgnn_enhancing_credit_card_fraud.pdf`](2024_networks_catgnn_enhancing_credit_card_fraud.pdf)
 
 ---
 

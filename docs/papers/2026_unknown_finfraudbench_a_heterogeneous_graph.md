@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2026_unknown_finfraudbench_a_heterogeneous_graph.pdf"
 
 **Authors:** Unknown et al.  
 **Year:** 2026 | **arXiv:** [`2608.15177`](https://arxiv.org/abs/2608.15177)  
-**Local PDF:** [`2026_unknown_finfraudbench_a_heterogeneous_graph.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2026_unknown_finfraudbench_a_heterogeneous_graph.pdf)
+**Local PDF:** [`2026_unknown_finfraudbench_a_heterogeneous_graph.pdf`](2026_unknown_finfraudbench_a_heterogeneous_graph.pdf)
 
 ---
 

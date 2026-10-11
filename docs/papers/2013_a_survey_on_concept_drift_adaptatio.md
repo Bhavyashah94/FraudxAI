@@ -8,7 +8,7 @@ pdf_path: "docs/papers\2013_a_survey_on_concept_drift_adaptatio.pdf"
 # A Survey on Concept Drift Adaptation
 
 **Year:** 2013  
-**Local PDF:** [`2013_a_survey_on_concept_drift_adaptatio.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2013_a_survey_on_concept_drift_adaptatio.pdf)
+**Local PDF:** [`2013_a_survey_on_concept_drift_adaptatio.pdf`](2013_a_survey_on_concept_drift_adaptatio.pdf)
 
 ---
 

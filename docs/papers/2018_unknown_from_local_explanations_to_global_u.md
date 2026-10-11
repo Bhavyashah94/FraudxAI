@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2018_unknown_from_local_explanations_to_global_u.pdf"
 
 **Authors:** Unknown et al.  
 **Year:** 2018 | **arXiv:** [`1802.03888`](https://arxiv.org/abs/1802.03888)  
-**Local PDF:** [`2018_unknown_from_local_explanations_to_global_u.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2018_unknown_from_local_explanations_to_global_u.pdf)
+**Local PDF:** [`2018_unknown_from_local_explanations_to_global_u.pdf`](2018_unknown_from_local_explanations_to_global_u.pdf)
 
 ---
 

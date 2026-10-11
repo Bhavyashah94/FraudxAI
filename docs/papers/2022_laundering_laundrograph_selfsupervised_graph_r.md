@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2022_laundering_laundrograph_selfsupervised_graph_r.pdf"
 
 **Authors:** Laundering et al.  
 **Year:** 2022 | **arXiv:** [`2210.14360`](https://arxiv.org/abs/2210.14360)  
-**Local PDF:** [`2022_laundering_laundrograph_selfsupervised_graph_r.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2022_laundering_laundrograph_selfsupervised_graph_r.pdf)
+**Local PDF:** [`2022_laundering_laundrograph_selfsupervised_graph_r.pdf`](2022_laundering_laundrograph_selfsupervised_graph_r.pdf)
 
 ---
 

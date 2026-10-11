@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2019_forensics_antimoney_laundering_in_bitcoin_exp.pdf"
 
 **Authors:** Forensics et al.  
 **Year:** 2019 | **arXiv:** [`1908.02591`](https://arxiv.org/abs/1908.02591)  
-**Local PDF:** [`2019_forensics_antimoney_laundering_in_bitcoin_exp.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2019_forensics_antimoney_laundering_in_bitcoin_exp.pdf)
+**Local PDF:** [`2019_forensics_antimoney_laundering_in_bitcoin_exp.pdf`](2019_forensics_antimoney_laundering_in_bitcoin_exp.pdf)
 
 ---
 

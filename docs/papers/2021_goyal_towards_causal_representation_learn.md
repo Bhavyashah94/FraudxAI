@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2021_goyal_towards_causal_representation_learn.pdf"
 
 **Authors:** Goyal et al.  
 **Year:** 2021 | **arXiv:** [`2102.11107`](https://arxiv.org/abs/2102.11107)  
-**Local PDF:** [`2021_goyal_towards_causal_representation_learn.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2021_goyal_towards_causal_representation_learn.pdf)
+**Local PDF:** [`2021_goyal_towards_causal_representation_learn.pdf`](2021_goyal_towards_causal_representation_learn.pdf)
 
 ---
 

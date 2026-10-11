@@ -22,7 +22,7 @@ Unlike legacy synthetic datasets that rely on static, ungrounded tabular distrib
 │  Production banking warehouses record binary dispute outcomes (Y ∈ {0, 1}), never the true causal│
 │  reasons why an authorization occurred. When banks deploy post-hoc XAI tools (TreeSHAP, LIME),   │
 │  compliance teams have zero ground truth to verify if explanations reflect authentic fraud       │
-│  mechanisms or dangerous heuristic artifacts—violating ECOA Reg B and SR 11-7 requirements.      │
+│  mechanisms or dangerous heuristic artifacts, violating ECOA Reg B and SR 11-7 requirements.     │
 └──────────────────────────────────────────────────────────────────────────────────────────────────┘
                                                  ▲
                                                  │ FraudxAI bridges both gaps
@@ -364,7 +364,7 @@ The simulation is governed by 13 formal living specification files serving as th
 
 FraudxAI enforces strict, deterministic verification across the entire stack:
 
-### 1. PyTest Test Suite (**313 / 313 Passed, 100% Green**)
+### 1. PyTest Test Suite (**324 / 324 Passed, 100% Green**)
 ```bash
 pytest tests/ -v
 ```
@@ -427,7 +427,7 @@ If you use FraudxAI in your research or project, please cite:
 
 This project's source code, tests, specifications and original documentation are licensed under the **Apache License 2.0** - see the [LICENSE](LICENSE) file for details.
 
-The research papers under [`docs/papers/`](docs/papers/INDEX.md) are **third-party copyrighted works and are *not* covered by that licence**; they are kept as unlicensed citation copies. The repository is public, so those files are publicly readable — retaining them there is a deliberate decision, not an oversight, and it grants nobody, including this project, a right to redistribute them. The `LICENSE` file states this exception explicitly. If you redistribute this repository, remove `docs/papers/` first.
+The research papers under [`docs/papers/`](docs/papers/INDEX.md) are **third-party copyrighted works and are *not* covered by that licence**; they are kept as unlicensed citation copies. The repository is public, so those files are publicly readable; retaining them there is a deliberate decision, not an oversight, and it grants nobody, including this project, a right to redistribute them. The `LICENSE` file states this exception explicitly. If you redistribute this repository, remove `docs/papers/` first.
 
 ```
 Copyright 2024-2026 Bhavya Shah

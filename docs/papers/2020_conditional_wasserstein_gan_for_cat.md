@@ -8,7 +8,7 @@ pdf_path: "docs/papers\2020_conditional_wasserstein_gan_for_cat.pdf"
 # Improved Training of Wasserstein GANs
 
 **Year:** 2020  
-**Local PDF:** [`2020_conditional_wasserstein_gan_for_cat.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2020_conditional_wasserstein_gan_for_cat.pdf)
+**Local PDF:** [`2020_conditional_wasserstein_gan_for_cat.pdf`](2020_conditional_wasserstein_gan_for_cat.pdf)
 
 ---
 

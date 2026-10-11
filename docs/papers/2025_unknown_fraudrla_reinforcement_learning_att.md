@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2025_unknown_fraudrla_reinforcement_learning_att.pdf"
 
 **Authors:** Unknown et al.  
 **Year:** 2025 | **arXiv:** [`2502.02290`](https://arxiv.org/abs/2502.02290)  
-**Local PDF:** [`2025_unknown_fraudrla_reinforcement_learning_att.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2025_unknown_fraudrla_reinforcement_learning_att.pdf)
+**Local PDF:** [`2025_unknown_fraudrla_reinforcement_learning_att.pdf`](2025_unknown_fraudrla_reinforcement_learning_att.pdf)
 
 ---
 

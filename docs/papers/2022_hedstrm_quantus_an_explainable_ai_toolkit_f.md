@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2022_hedstrm_quantus_an_explainable_ai_toolkit_f.pdf"
 
 **Authors:** Hedström et al.  
 **Year:** 2022 | **arXiv:** [`2202.06861`](https://arxiv.org/abs/2202.06861)  
-**Local PDF:** [`2022_hedstrm_quantus_an_explainable_ai_toolkit_f.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2022_hedstrm_quantus_an_explainable_ai_toolkit_f.pdf)
+**Local PDF:** [`2022_hedstrm_quantus_an_explainable_ai_toolkit_f.pdf`](2022_hedstrm_quantus_an_explainable_ai_toolkit_f.pdf)
 
 ---
 

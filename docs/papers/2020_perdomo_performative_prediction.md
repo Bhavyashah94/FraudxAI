@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2020_perdomo_performative_prediction.pdf"
 
 **Authors:** Perdomo et al.  
 **Year:** 2020 | **arXiv:** [`2002.06673`](https://arxiv.org/abs/2002.06673)  
-**Local PDF:** [`2020_perdomo_performative_prediction.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2020_perdomo_performative_prediction.pdf)
+**Local PDF:** [`2020_perdomo_performative_prediction.pdf`](2020_perdomo_performative_prediction.pdf)
 
 ---
 

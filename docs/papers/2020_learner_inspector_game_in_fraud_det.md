@@ -8,7 +8,7 @@ pdf_path: "docs/papers\2020_learner_inspector_game_in_fraud_det.pdf"
 # An Efficient Classification Model for Analyzing Skewed Data to Detect Frauds in the Financial Sector
 
 **Year:** 2020  
-**Local PDF:** [`2020_learner_inspector_game_in_fraud_det.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2020_learner_inspector_game_in_fraud_det.pdf)
+**Local PDF:** [`2020_learner_inspector_game_in_fraud_det.pdf`](2020_learner_inspector_game_in_fraud_det.pdf)
 
 ---
 

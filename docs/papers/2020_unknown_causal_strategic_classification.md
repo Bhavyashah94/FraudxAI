@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2020_unknown_causal_strategic_classification.pdf"
 
 **Authors:** Unknown et al.  
 **Year:** 2020 | **arXiv:** [`2006.04683`](https://arxiv.org/abs/2006.04683)  
-**Local PDF:** [`2020_unknown_causal_strategic_classification.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2020_unknown_causal_strategic_classification.pdf)
+**Local PDF:** [`2020_unknown_causal_strategic_classification.pdf`](2020_unknown_causal_strategic_classification.pdf)
 
 ---
 

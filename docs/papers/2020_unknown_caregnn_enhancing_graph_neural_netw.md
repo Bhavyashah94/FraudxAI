@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2020_unknown_caregnn_enhancing_graph_neural_netw.pdf"
 
 **Authors:** Unknown et al.  
 **Year:** 2020 | **arXiv:** [`2008.08692`](https://arxiv.org/abs/2008.08692)  
-**Local PDF:** [`2020_unknown_caregnn_enhancing_graph_neural_netw.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2020_unknown_caregnn_enhancing_graph_neural_netw.pdf)
+**Local PDF:** [`2020_unknown_caregnn_enhancing_graph_neural_netw.pdf`](2020_unknown_caregnn_enhancing_graph_neural_netw.pdf)
 
 ---
 

@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2017_pre_axiomatic_attribution_for_deep_netw.pdf"
 
 **Authors:** Pre- et al.  
 **Year:** 2017 | **arXiv:** [`1703.01365`](https://arxiv.org/abs/1703.01365)  
-**Local PDF:** [`2017_pre_axiomatic_attribution_for_deep_netw.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2017_pre_axiomatic_attribution_for_deep_netw.pdf)
+**Local PDF:** [`2017_pre_axiomatic_attribution_for_deep_netw.pdf`](2017_pre_axiomatic_attribution_for_deep_netw.pdf)
 
 ---
 

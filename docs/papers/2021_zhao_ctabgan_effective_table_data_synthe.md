@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2021_zhao_ctabgan_effective_table_data_synthe.pdf"
 
 **Authors:** Zhao∗ et al.  
 **Year:** 2021 | **arXiv:** [`2102.08369`](https://arxiv.org/abs/2102.08369)  
-**Local PDF:** [`2021_zhao_ctabgan_effective_table_data_synthe.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2021_zhao_ctabgan_effective_table_data_synthe.pdf)
+**Local PDF:** [`2021_zhao_ctabgan_effective_table_data_synthe.pdf`](2021_zhao_ctabgan_effective_table_data_synthe.pdf)
 
 ---
 

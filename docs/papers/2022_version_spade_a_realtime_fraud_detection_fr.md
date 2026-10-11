@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2022_version_spade_a_realtime_fraud_detection_fr.pdf"
 
 **Authors:** Version) et al.  
 **Year:** 2022 | **arXiv:** [`2211.06977`](https://arxiv.org/abs/2211.06977)  
-**Local PDF:** [`2022_version_spade_a_realtime_fraud_detection_fr.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2022_version_spade_a_realtime_fraud_detection_fr.pdf)
+**Local PDF:** [`2022_version_spade_a_realtime_fraud_detection_fr.pdf`](2022_version_spade_a_realtime_fraud_detection_fr.pdf)
 
 ---
 

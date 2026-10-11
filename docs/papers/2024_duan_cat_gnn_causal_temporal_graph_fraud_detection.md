@@ -12,7 +12,7 @@ pdf_path: "docs/papers\2024_duan_cat_gnn_causal_temporal_graph_fraud_detection.p
 **Authors:** Yifan Duan, Guibin Zhang, Shilong Wang, et al.  
 **Venue / Date:** arXiv cs.LG / USTC & Peking University (2024)  
 **Domain Focus:** Causal Graph Neural Networks for Card Fraud  
-**Original PDF:** [`2024_duan_cat_gnn_causal_temporal_graph_fraud_detection.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2024_duan_cat_gnn_causal_temporal_graph_fraud_detection.pdf)
+**Original PDF:** [`2024_duan_cat_gnn_causal_temporal_graph_fraud_detection.pdf`](2024_duan_cat_gnn_causal_temporal_graph_fraud_detection.pdf)
 
 ---
 

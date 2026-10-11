@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2016_lipton_the_mythos_of_model_interpretabilit.pdf"
 
 **Authors:** Lipton et al.  
 **Year:** 2016 | **arXiv:** [`1606.03490`](https://arxiv.org/abs/1606.03490)  
-**Local PDF:** [`2016_lipton_the_mythos_of_model_interpretabilit.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2016_lipton_the_mythos_of_model_interpretabilit.pdf)
+**Local PDF:** [`2016_lipton_the_mythos_of_model_interpretabilit.pdf`](2016_lipton_the_mythos_of_model_interpretabilit.pdf)
 
 ---
 

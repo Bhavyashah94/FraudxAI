@@ -12,7 +12,7 @@ pdf_path: "docs/papers\2017_lundberg_unified_approach_interpreting_model_predict
 **Authors:** Scott M. Lundberg, Su-In Lee  
 **Venue / Date:** NeurIPS 2017 (2017)  
 **Domain Focus:** Foundational Additive Feature Attribution (TreeSHAP)  
-**Original PDF:** [`2017_lundberg_unified_approach_interpreting_model_predictions_shap.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2017_lundberg_unified_approach_interpreting_model_predictions_shap.pdf)
+**Original PDF:** [`2017_lundberg_unified_approach_interpreting_model_predictions_shap.pdf`](2017_lundberg_unified_approach_interpreting_model_predictions_shap.pdf)
 
 ---
 

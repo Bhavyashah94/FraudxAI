@@ -1,24 +1,14 @@
 #!/usr/bin/env python3
 """Render dataset-cover-image.png from the published export's own measurements.
 
-The cover quotes four numbers. Three of them are read straight out of the staged
-*.csv.gz at runtime rather than typed in, so the image cannot drift away from the
-data it describes:
-
-    transactions  row count of the main export
-    fraud rate    is_fraud == 1 over that row count
-    span          max - min timestamp_utc, in days
-    views         number of staged *.csv.gz files
-
-The canvas is square on purpose. Kaggle renders a dataset cover as a square and
-center-crops anything wider, which cut this banner in half; a 1:1 layout survives
-that crop intact and Hugging Face renders it at its natural ratio.
+The canvas is exactly 560x280 pixels because the Kaggle Python CLI hardcodes
+CroppedImageRectangle(left=0, top=0, width=560, height=280) for the cover image
+and CroppedImageRectangle(left=140, top=0, width=280, height=280) for the thumbnail.
+An image of exact dimensions 560x280 is preserved 100% without any cropping.
 
 Usage:
 
     FRAUDX_DATA_DIR=/path/to/staged python publish/make_cover_image.py
-
-Writes publish/dataset-cover-image.png. Requires Pillow.
 """
 
 from __future__ import annotations
@@ -34,7 +24,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 HERE = Path(__file__).resolve().parent
 OUT = HERE / "dataset-cover-image.png"
-W, H = 1000, 1000
+W, H = 560, 280
 
 BG_TOP = (10, 18, 32)
 BG_BOTTOM = (13, 25, 45)
@@ -112,22 +102,22 @@ def mesh(img: Image.Image, seed: int = 42) -> None:
     for i, (x1, y1) in enumerate(pts):
         for x2, y2 in pts[i + 1:]:
             dist = ((x2 - x1) ** 2 + (y2 - y1) ** 2) ** 0.5
-            if dist < 300:
-                fade = max(0.0, 1.0 - dist / 300)
+            if dist < 140:
+                fade = max(0.0, 1.0 - dist / 140)
                 c = tuple(int(v * fade * 0.28) for v in ACCENT_DIM)
                 d.line([(x1, y1), (x2, y2)], fill=c, width=1)
     for x, y in pts:
-        d.ellipse([x - 3, y - 3, x + 3, y + 3], fill=ACCENT_DIM)
+        d.ellipse([x - 2, y - 2, x + 2, y + 2], fill=ACCENT_DIM)
 
 
 def stat_card(d: ImageDraw.ImageDraw, box: tuple, value: str, label: str,
               vf, lf) -> None:
     x1, y1, x2, _y2 = box
-    d.rounded_rectangle(box, radius=12, fill=CARD_BG, outline=CARD_EDGE, width=1)
+    d.rounded_rectangle(box, radius=8, fill=CARD_BG, outline=CARD_EDGE, width=1)
     vw = d.textlength(value, font=vf)
-    d.text(((x1 + x2 - vw) / 2, y1 + 32), value, font=vf, fill=ACCENT)
+    d.text(((x1 + x2 - vw) / 2, y1 + 10), value, font=vf, fill=ACCENT)
     lw = d.textlength(label, font=lf)
-    d.text(((x1 + x2 - lw) / 2, y1 + 92), label, font=lf, fill=MUTED)
+    d.text(((x1 + x2 - lw) / 2, y1 + 35), label, font=lf, fill=MUTED)
 
 
 def render(m: dict) -> Image.Image:
@@ -135,21 +125,22 @@ def render(m: dict) -> Image.Image:
     mesh(img)
     d = ImageDraw.Draw(img)
 
-    title = _font("NotoSans-Bold.ttf", 86)
-    sub = _font("NotoSans-Regular.ttf", 33)
-    tag = _font("NotoSans-Regular.ttf", 20)
-    vf = _font("NotoSans-Bold.ttf", 40)
-    lf = _font("NotoSans-Regular.ttf", 18)
+    title = _font("NotoSans-Bold.ttf", 36)
+    sub = _font("NotoSans-Regular.ttf", 15)
+    tag = _font("NotoSans-Regular.ttf", 11)
+    vf = _font("NotoSans-Bold.ttf", 16)
+    lf = _font("NotoSans-Regular.ttf", 10)
+    foot = _font("NotoSans-Regular.ttf", 10)
 
     def center(y: int, text: str, font, fill) -> None:
         w = d.textlength(text, font=font)
         d.text(((W - w) / 2, y), text, font=font, fill=fill)
 
-    center(150, "FraudxAI", title, ACCENT)
-    center(262, "100,000 US Card Transactions Benchmark", sub, TEXT)
+    center(18, "FraudxAI", title, ACCENT)
+    center(62, "100,000 US Card Transactions Benchmark", sub, TEXT)
     center(
-        320,
-        "Discrete-Event Payment Simulator  \u2022  ISO 8583 Rails  \u2022  Pearlian Causal Twins",
+        86,
+        "Discrete-Event Payment Simulator  •  ISO 8583 Rails  •  Pearlian Causal Twins",
         tag,
         MUTED,
     )
@@ -161,18 +152,18 @@ def render(m: dict) -> Image.Image:
         (str(m['views']), "Institutional Views"),
     ]
 
-    margin, gap, ch = 90, 30, 150
-    cw = (W - 2 * margin - gap) / 2
+    margin = 20
+    gap = 10
+    cw = (W - 2 * margin - gap * (len(cards) - 1)) / len(cards)
+    y1, y2 = 118, 186
     for i, (value, label) in enumerate(cards):
-        row, col = divmod(i, 2)
-        x1 = margin + col * (cw + gap)
-        y1 = 430 + row * (ch + gap)
-        stat_card(d, (x1, y1, x1 + cw, y1 + ch), value, label, vf, lf)
+        x1 = margin + i * (cw + gap)
+        stat_card(d, (x1, y1, x1 + cw, y2), value, label, vf, lf)
 
     center(
-        840,
+        224,
         "Synthetic data. No real cardholder, card number or merchant appears in it.",
-        _font("NotoSans-Regular.ttf", 19),
+        foot,
         MUTED,
     )
     return img
@@ -184,11 +175,7 @@ def main() -> None:
         raise SystemExit("set FRAUDX_DATA_DIR to the directory of staged *.csv.gz")
     m = measure(Path(data_dir))
     render(m).save(OUT)
-    print(
-        f"wrote {OUT} ({W}x{H})\n"
-        f"  rows={m['rows']:,}  rate={m['rate']:.3f}%  "
-        f"span={m['span']:.2f}d  views={m['views']}"
-    )
+    print(f"wrote {OUT} ({W}x{H}) rows={m['rows']:,} rate={m['rate']:.3f}% span={m['span']:.2f}d views={m['views']}")
 
 
 if __name__ == "__main__":

@@ -925,8 +925,8 @@ def render_standalone_html(data_bundle: Dict[str, Any], title: str = "FraudxAI S
             <td><span class="${{tagClass}}">${{r.scenario_tag}}</span></td>
             <td class="${{respClass}}">ISO ${{r.response_code}}</td>
             <td>${{r.hop_origin}}</td>
-            <td>${{r.vaai_score || "—"}}</td>
-            <td>${{r.syndicate_id || "—"}}</td>
+            <td>${{r.vaai_score || "-"}}</td>
+            <td>${{r.syndicate_id || "-"}}</td>
           </tr>
         `;
       }});

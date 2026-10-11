@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2026_for_fedgraphvasp_privacypreserving_fede.pdf"
 
 **Authors:** For et al.  
 **Year:** 2026 | **arXiv:** [`2601.17935`](https://arxiv.org/abs/2601.17935)  
-**Local PDF:** [`2026_for_fedgraphvasp_privacypreserving_fede.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2026_for_fedgraphvasp_privacypreserving_fede.pdf)
+**Local PDF:** [`2026_for_fedgraphvasp_privacypreserving_fede.pdf`](2026_for_fedgraphvasp_privacypreserving_fede.pdf)
 
 ---
 

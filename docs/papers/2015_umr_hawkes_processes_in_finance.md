@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2015_umr_hawkes_processes_in_finance.pdf"
 
 **Authors:** Umr et al.  
 **Year:** 2015 | **arXiv:** [`1502.04592`](https://arxiv.org/abs/1502.04592)  
-**Local PDF:** [`2015_umr_hawkes_processes_in_finance.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2015_umr_hawkes_processes_in_finance.pdf)
+**Local PDF:** [`2015_umr_hawkes_processes_in_finance.pdf`](2015_umr_hawkes_processes_in_finance.pdf)
 
 ---
 

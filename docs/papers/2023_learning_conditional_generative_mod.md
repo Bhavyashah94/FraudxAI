@@ -8,7 +8,7 @@ pdf_path: "docs/papers\2023_learning_conditional_generative_mod.pdf"
 # Gradient-based learning applied to document recognition
 
 **Year:** 2023  
-**Local PDF:** [`2023_learning_conditional_generative_mod.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2023_learning_conditional_generative_mod.pdf)
+**Local PDF:** [`2023_learning_conditional_generative_mod.pdf`](2023_learning_conditional_generative_mod.pdf)
 
 ---
 

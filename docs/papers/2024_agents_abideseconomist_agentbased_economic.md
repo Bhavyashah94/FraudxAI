@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2024_agents_abideseconomist_agentbased_economic.pdf"
 
 **Authors:** Agents et al.  
 **Year:** 2024 | **arXiv:** [`2402.09563`](https://arxiv.org/abs/2402.09563)  
-**Local PDF:** [`2024_agents_abideseconomist_agentbased_economic.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2024_agents_abideseconomist_agentbased_economic.pdf)
+**Local PDF:** [`2024_agents_abideseconomist_agentbased_economic.pdf`](2024_agents_abideseconomist_agentbased_economic.pdf)
 
 ---
 

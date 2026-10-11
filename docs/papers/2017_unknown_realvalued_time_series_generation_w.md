@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2017_unknown_realvalued_time_series_generation_w.pdf"
 
 **Authors:** Unknown et al.  
 **Year:** 2017 | **arXiv:** [`1706.02633`](https://arxiv.org/abs/1706.02633)  
-**Local PDF:** [`2017_unknown_realvalued_time_series_generation_w.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2017_unknown_realvalued_time_series_generation_w.pdf)
+**Local PDF:** [`2017_unknown_realvalued_time_series_generation_w.pdf`](2017_unknown_realvalued_time_series_generation_w.pdf)
 
 ---
 

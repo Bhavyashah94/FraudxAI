@@ -11,7 +11,7 @@ pdf_path: "docs/papers\2020_measures_problems_with_shapleyvaluebased_exp.pdf"
 
 **Authors:** Measures et al.  
 **Year:** 2020 | **arXiv:** [`2002.11097`](https://arxiv.org/abs/2002.11097)  
-**Local PDF:** [`2020_measures_problems_with_shapleyvaluebased_exp.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2020_measures_problems_with_shapleyvaluebased_exp.pdf)
+**Local PDF:** [`2020_measures_problems_with_shapleyvaluebased_exp.pdf`](2020_measures_problems_with_shapleyvaluebased_exp.pdf)
 
 ---
 

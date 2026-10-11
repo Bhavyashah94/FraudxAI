@@ -5,7 +5,7 @@ This directory stores the complete, open-access full-text PDF documents retrieve
 ## Summary Statistics
 * **Total Downloaded Research Papers**: 96 PDFs
 * **Total Corpus Size**: ~266.3 MB
-* **Manifest Registry**: [`manifest.json`](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/manifest.json)
+* **Manifest Registry**: [`manifest.json`](manifest.json)
 * **Status**: 100% verified magic bytes (`%PDF-`), validated, and indexed.
 
 ## Corpus Organization by Battleground
@@ -26,4 +26,4 @@ This directory stores the complete, open-access full-text PDF documents retrieve
 * **Supporting / Foundational**: CARE-GNN (`2008.08692.pdf`), Heterogeneous Graph Transformer - HGT (`2003.01332.pdf`), Elliptic Bitcoin AML Benchmark (`1908.02591.pdf`), LaundroGraph (`2210.14360.pdf`), GraphConsis (`2005.00625.pdf`), CaT-GNN (`2402.14708.pdf`), LineMVGNN (`2603.23584.pdf`).
 * **Opposing / Critical (Real-Time Sub-100ms Constraints & Silos)**: BRIGHT - Real-Time Graph Latency Bottlenecks (`2205.13084.pdf`), Spade - Streaming Graphs (`2211.06977.pdf`), FedGraph-VASP - Cross-Bank Silos (`2601.17935.pdf`), Adversarial Attacks on GNNs (`2104.08921.pdf`).
 
-For detailed analytical breakdowns, review the reports in [`docs/research_reports/`](file:///c:/Users/bhavy/Documents/Projects/FraudxAI/docs/research_reports/).
+For detailed analytical breakdowns, review the reports in [`docs/research_reports/`](../research_reports/).

@@ -12,7 +12,7 @@ pdf_path: "docs/papers\2026_yan_temporal_heterogeneous_graph_transformer_fraud_d
 **Authors:** Qinwen Yan  
 **Venue / Date:** arXiv cs.LG / UCLA (2026)  
 **Domain Focus:** Relational Graph Transformers & Time2Vec Encodings  
-**Original PDF:** [`2026_yan_temporal_heterogeneous_graph_transformer_fraud_detection.pdf`](file:///C:/Users/bhavy/Documents/Projects/FraudxAI/docs/papers/2026_yan_temporal_heterogeneous_graph_transformer_fraud_detection.pdf)
+**Original PDF:** [`2026_yan_temporal_heterogeneous_graph_transformer_fraud_detection.pdf`](2026_yan_temporal_heterogeneous_graph_transformer_fraud_detection.pdf)
 
 ---
 
