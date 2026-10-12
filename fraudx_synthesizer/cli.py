@@ -94,6 +94,28 @@ def cmd_generate(args: argparse.Namespace) -> None:
             )
             sys.exit(2)
 
+        if getattr(args, "annual", False):
+            from .storage import EntityPartitionedParallelCoordinator
+
+            coordinator = EntityPartitionedParallelCoordinator(
+                total_cards=args.cards,
+                time_span_days=args.days,
+                num_workers=args.workers,
+                region=args.region,
+                output_dir=args.output,
+                chunk_size=args.chunk_size,
+                adversary_mode=args.adversary_mode,
+                annual_seasonality=True,
+                p2p_enabled=getattr(args, "p2p", True),
+                base_seed=args.seed,
+            )
+            summary = coordinator.run()
+            print(
+                f"Annual parallel simulation completed: {summary['total_transactions']:,} transactions written to {args.output}",
+                file=sys.stderr,
+            )
+            return
+
         from .storage import ParallelSimulationCoordinator
 
         coordinator = ParallelSimulationCoordinator(
@@ -714,6 +736,8 @@ def main() -> None:
     p_gen.add_argument("--seed", type=int, default=42, help="Deterministic random seed")
     p_gen.add_argument("-o", "--output", type=str, default="synthetic_transactions.csv", help="Output file (.csv, .json, .jsonl) or directory for parallel runs")
     p_gen.add_argument("--parallel", action="store_true", default=False, help="Run multi-core parallel simulation pipeline")
+    p_gen.add_argument("--annual", action="store_true", default=False, help="Enable 365-day annual seasonality, holiday calendars, and macro drift dynamics")
+    p_gen.add_argument("--p2p", action="store_true", default=True, help="Include peer-to-peer transfers (UPI P2P, Zelle push) in transaction stream")
     p_gen.add_argument("--workers", type=int, default=None, help="Number of parallel worker processes (defaults to CPU count - 2)")
     p_gen.add_argument("--chunk-size", type=int, default=10000, help="Batch chunk size for streaming disk flushes")
     p_gen.add_argument("--include-disputes", action="store_true", default=False, help="Include post-authorization dispute and chargeback lifecycle columns in master output")

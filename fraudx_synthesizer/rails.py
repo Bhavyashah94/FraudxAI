@@ -14,10 +14,12 @@ Implements:
 
 from __future__ import annotations
 
+import bisect
 import math
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
+import zlib
 
 import numpy as np
 
@@ -62,6 +64,19 @@ class CandidateTransactionIntent:
     asn_type: str = "residential"
 
 
+@dataclass(frozen=True)
+class BankEntity:
+    """Institutional commercial bank entity in the multi-bank network."""
+    id: str
+    name: str
+    routing_number: str
+    bin_prefixes: Tuple[str, ...]
+    asset_tier: str
+    central_bank_rtgs_id: str
+    market_share_weight: float
+    ifsc_prefix: str = ""
+
+
 @dataclass
 class RailVerificationResult:
     """Complete institutional banking switch evaluation result."""
@@ -80,6 +95,169 @@ class RailVerificationResult:
     pos_entry_mode: str = "051"
     pos_condition_code: str = "00"
     hop_origin: str = "ISSUER_HOST"
+    # Multi-bank routing fields
+    issuing_bank_id: str = ""
+    acquiring_bank_id: str = ""
+    is_on_us: bool = False
+    central_switch_id: str = ""
+    switch_network_fee: float = 0.0
+    interbank_latency_ms: float = 0.0
+    mti_request: str = "0100"
+    mti_response: str = "0110"
+    hop_sequence: List[str] = field(default_factory=list)
+    is_timeout_reversal: bool = False
+
+
+class BankRoutingMesh:
+    """Manages multi-bank topology, BIN routing tables, On-Us vs Off-Us detection,
+    interbank hop routing, and ISO 8583 message envelope creation.
+    """
+
+    def __init__(self, region: str = "US", seed: int = 42):
+        self.region = region.upper()
+        self.rng = np.random.default_rng(seed)
+        self.specs = load_all_specs()
+        self.banks: List[BankEntity] = self._load_banks()
+        self._build_cum_weights()
+
+    def _load_banks(self) -> List[BankEntity]:
+        interbank = self.specs.interbank
+        banks_raw = interbank.commercial_banks.get(self.region, []) if interbank else []
+        if not banks_raw:
+            if self.region == "IN":
+                return [
+                    BankEntity("BANK_IN_SBI", "State Bank of India", "SBIN0000001", ("400012",), "PUBLIC_SECTOR_ANCHOR", "RBI_RTGS_SBI_01", 0.26, "SBIN"),
+                    BankEntity("BANK_IN_HDFC", "HDFC Bank Limited", "HDFC0000001", ("412801",), "PRIVATE_SECTOR_LEADER", "RBI_RTGS_HDFC_02", 0.24, "HDFC"),
+                    BankEntity("BANK_IN_ICICI", "ICICI Bank Limited", "ICIC0000001", ("524181",), "PRIVATE_SECTOR_MAJOR", "RBI_RTGS_ICICI_03", 0.20, "ICIC"),
+                    BankEntity("BANK_IN_AXIS", "Axis Bank Limited", "UTIB0000001", ("607152",), "PRIVATE_SECTOR_MAJOR", "RBI_RTGS_AXIS_04", 0.16, "UTIB"),
+                    BankEntity("BANK_IN_PNB", "Punjab National Bank", "PUNB0000001", ("459111",), "PUBLIC_SECTOR_MAJOR", "RBI_RTGS_PNB_05", 0.14, "PUNB"),
+                ]
+            else:
+                return [
+                    BankEntity("BANK_US_CHASE", "JPMorgan Chase Bank, N.A.", "021000021", ("400000",), "TIER_1_MONEY_CENTER", "FEDWIRE_CHASE_01", 0.28, ""),
+                    BankEntity("BANK_US_BOFA", "Bank of America, N.A.", "011000138", ("412800",), "TIER_1_MONEY_CENTER", "FEDWIRE_BOFA_02", 0.24, ""),
+                    BankEntity("BANK_US_WELLS", "Wells Fargo Bank, N.A.", "121000247", ("541234",), "TIER_1_MONEY_CENTER", "FEDWIRE_WELLS_03", 0.20, ""),
+                    BankEntity("BANK_US_CITI", "Citibank, N.A.", "021000089", ("524180",), "TIER_1_MONEY_CENTER", "FEDWIRE_CITI_04", 0.16, ""),
+                    BankEntity("BANK_US_CAPITALONE", "Capital One, N.A.", "051405515", ("459110",), "TIER_2_SUPER_REGIONAL", "FEDWIRE_CAPONE_05", 0.12, ""),
+                ]
+        entities = []
+        for b in banks_raw:
+            entities.append(
+                BankEntity(
+                    id=b["id"],
+                    name=b["name"],
+                    routing_number=b.get("routing_number", b.get("ifsc_prefix", "ROUTING_DEFAULT")),
+                    bin_prefixes=tuple(b.get("bin_prefixes", [])),
+                    asset_tier=b.get("asset_tier", "COMMERCIAL_BANK"),
+                    central_bank_rtgs_id=b.get("central_bank_rtgs_id", f"RTGS_{b['id']}"),
+                    market_share_weight=float(b.get("market_share_weight", 0.20)),
+                    ifsc_prefix=b.get("ifsc_prefix", ""),
+                )
+            )
+        return entities
+
+    def _build_cum_weights(self) -> None:
+        total = sum(b.market_share_weight for b in self.banks)
+        self.cum_weights = []
+        acc = 0.0
+        for b in self.banks:
+            acc += b.market_share_weight / max(1e-6, total)
+            self.cum_weights.append(acc)
+
+    def resolve_issuing_bank(self, card_id: str) -> BankEntity:
+        """Deterministically resolves cardholder to issuing bank based on card identifier."""
+        u = (zlib.crc32(f"ISSUER_{card_id}".encode("utf-8")) % 1_000_000) / 1_000_000.0
+        idx = bisect.bisect_right(self.cum_weights, u)
+        return self.banks[min(idx, len(self.banks) - 1)]
+
+    def resolve_acquiring_bank(self, merchant_id: str) -> BankEntity:
+        """Deterministically resolves merchant/terminal to acquiring bank based on merchant identifier."""
+        u = (zlib.crc32(f"ACQUIRER_{merchant_id}".encode("utf-8")) % 1_000_000) / 1_000_000.0
+        idx = bisect.bisect_right(self.cum_weights, u)
+        return self.banks[min(idx, len(self.banks) - 1)]
+
+    def route_transaction(
+        self,
+        card_id: str,
+        merchant_id: str,
+        channel_type: str,
+        amount: float,
+        is_fraud: int = 0,
+    ) -> Dict[str, Any]:
+        issuing_bank = self.resolve_issuing_bank(card_id)
+        acquiring_bank = self.resolve_acquiring_bank(merchant_id)
+        is_on_us = (issuing_bank.id == acquiring_bank.id)
+
+        interbank = self.specs.interbank
+        cfg_switch = interbank.central_switching_networks.get(self.region, {}) if interbank else {}
+        cfg_rules = interbank.routing_rules if interbank else {}
+
+        if is_on_us:
+            central_switch_id = "ON_US_INTERNAL"
+            switch_network_fee = 0.0
+            interchange_fee = 0.0
+            latency_ms = float(self.rng.uniform(8.0, 16.0))
+            hops = ["MERCHANT", "ACQUIRER_CBS", "ISSUER_CORE"]
+            is_timeout = False
+            mti_req = "0100"
+            mti_resp = "0110"
+        else:
+            if self.region == "IN":
+                if "UPI" in channel_type:
+                    central_switch_id = cfg_switch.get("instant_payments_switch", "NPCI_UPI_SWITCH")
+                    switch_network_fee = 0.0
+                    interchange_fee = 0.0
+                else:
+                    central_switch_id = cfg_switch.get("primary_card_switch", "NPCI_NFS_RUPAY")
+                    switch_network_fee = float(cfg_switch.get("switch_network_fee_inr", 0.20))
+                    if "DEBIT" in channel_type:
+                        rate = float(cfg_switch.get("off_us_interchange_rate_debit", 0.0090))
+                        cap = float(cfg_switch.get("off_us_interchange_cap_debit_inr", 150.0))
+                        interchange_fee = round(min(amount * rate, cap), 2)
+                    else:
+                        rate = float(cfg_switch.get("off_us_interchange_rate_credit", 0.0180))
+                        interchange_fee = round(amount * rate, 2)
+            else:  # US
+                if "P2P" in channel_type:
+                    central_switch_id = cfg_switch.get("instant_payments_switch", "FEDNOW_SERVICE")
+                    switch_network_fee = 0.0010
+                    interchange_fee = 0.0
+                else:
+                    central_switch_id = cfg_switch.get("primary_card_switch", "VISANET_BASE_I_II")
+                    switch_network_fee = float(cfg_switch.get("switch_network_fee_usd", 0.0025))
+                    if "DEBIT" in channel_type:
+                        rate = float(cfg_switch.get("off_us_interchange_rate_debit", 0.0080))
+                        cap = float(cfg_switch.get("off_us_interchange_cap_debit_usd", 0.22))
+                        interchange_fee = round(min(amount * rate, cap), 2)
+                    else:
+                        rate = float(cfg_switch.get("off_us_interchange_rate_credit", 0.0175))
+                        interchange_fee = round(amount * rate, 2)
+
+            hops = ["MERCHANT", "ACQUIRER_SWITCH", central_switch_id, "ISSUER_SWITCH"]
+            latency_ms = float(self.rng.uniform(45.0, 115.0))
+            timeout_prob = float(cfg_rules.get("off_us", {}).get("timeout_rate", 0.0005))
+            is_timeout = bool(self.rng.random() < timeout_prob)
+            if is_timeout:
+                latency_ms = float(self.rng.uniform(2050.0, 3100.0))
+                mti_req = "0400"
+                mti_resp = "0410"
+            else:
+                mti_req = "0100"
+                mti_resp = "0110"
+
+        return {
+            "issuing_bank": issuing_bank,
+            "acquiring_bank": acquiring_bank,
+            "is_on_us": is_on_us,
+            "central_switch_id": central_switch_id,
+            "switch_network_fee": switch_network_fee,
+            "interchange_fee": interchange_fee,
+            "interbank_latency_ms": latency_ms,
+            "hop_sequence": hops,
+            "is_timeout_reversal": is_timeout,
+            "mti_request": mti_req,
+            "mti_response": mti_resp,
+        }
 
 
 class RailVerifierSwitch:
@@ -99,8 +277,60 @@ class RailVerifierSwitch:
         self.tau_challenge_high = tau_challenge_high
         self.rng = np.random.default_rng(seed)
         self.telemetry = load_all_specs().telemetry
+        self.routing_mesh = BankRoutingMesh(region=self.region, seed=seed)
+
+    def _enrich_result(
+        self,
+        result: RailVerificationResult,
+        routing: Dict[str, Any],
+    ) -> RailVerificationResult:
+        """Enriches verification result with multi-bank routing and network switch telemetry."""
+        result.issuing_bank_id = routing["issuing_bank"].id
+        result.acquiring_bank_id = routing["acquiring_bank"].id
+        result.is_on_us = routing["is_on_us"]
+        result.central_switch_id = routing["central_switch_id"]
+        result.switch_network_fee = routing["switch_network_fee"]
+        result.interbank_latency_ms = round(routing["interbank_latency_ms"], 2)
+        result.mti_request = routing["mti_request"]
+        result.mti_response = routing["mti_response"]
+        result.hop_sequence = list(routing["hop_sequence"])
+        result.is_timeout_reversal = routing["is_timeout_reversal"]
+
+        if routing["is_timeout_reversal"]:
+            result.approved = False
+            result.iso_response_code = "68"
+            result.decline_reason = "NETWORK_TIMEOUT_REVERSAL_MTI_0400"
+            result.hold_placed = False
+            result.hold_amount = 0.0
+            result.mti_request = "0400"
+            result.mti_response = "0410"
+
+        if result.approved:
+            if routing["is_on_us"]:
+                result.interchange_fee = 0.0
+                result.settlement_amount = result.approved_amount
+            else:
+                result.interchange_fee = routing["interchange_fee"]
+                result.settlement_amount = round(result.approved_amount - result.interchange_fee, 2)
+        return result
 
     def verify_intent(
+        self,
+        intent: CandidateTransactionIntent,
+        card: CardholderProfile,
+    ) -> RailVerificationResult:
+        """Evaluates candidate intent against banking rails, solvency, and multi-bank routing."""
+        routing = self.routing_mesh.route_transaction(
+            card_id=card.card_id,
+            merchant_id=intent.merchant_id,
+            channel_type=intent.channel_type,
+            amount=intent.amount,
+            is_fraud=intent.is_fraud,
+        )
+        raw_result = self._evaluate_intent_rules(intent, card)
+        return self._enrich_result(raw_result, routing)
+
+    def _evaluate_intent_rules(
         self,
         intent: CandidateTransactionIntent,
         card: CardholderProfile,

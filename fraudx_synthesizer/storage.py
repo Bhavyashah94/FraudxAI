@@ -237,6 +237,7 @@ class StreamingDatasetWriter:
 
         # Create table subdirectories
         self.tables = {
+            "master": (self.output_dir / "master", None),
             "auth_stream": (self.output_dir / "auth_stream", AUTH_STREAM_COLUMNS),
             "threat_intel_graph": (self.output_dir / "threat_intel_graph", THREAT_INTEL_GRAPH_COLUMNS),
             "gateway_telemetry": (self.output_dir / "gateway_telemetry", GATEWAY_TELEMETRY_COLUMNS),
@@ -247,7 +248,7 @@ class StreamingDatasetWriter:
             table_dir.mkdir(parents=True, exist_ok=True)
 
     def write_chunk(self, records: List[Dict[str, Any]]) -> None:
-        """Flushes a batch of transactions across all 5 institutional tables."""
+        """Flushes a batch of transactions across all tables and institutional views."""
         if not records:
             return
 
@@ -259,11 +260,13 @@ class StreamingDatasetWriter:
 
         part_name = f"part_{self.chunk_idx:05d}"
 
-        # 3. Write each institutional view table
+        # 3. Write master table and each institutional view table
         for table_name, (table_dir, cols) in self.tables.items():
-            # Select available columns
-            avail_cols = [c for c in cols if c in df_batch.columns]
-            table_df = df_batch.select(avail_cols)
+            if cols is None:
+                table_df = df_batch
+            else:
+                avail_cols = [c for c in cols if c in df_batch.columns]
+                table_df = df_batch.select(avail_cols)
 
             if self.export_parquet:
                 pq_path = table_dir / f"{part_name}.parquet"
@@ -532,3 +535,247 @@ class ParallelSimulationCoordinator:
             pass
 
         return master
+
+
+def _entity_worker_simulation_task(
+    worker_id: int,
+    n_cards: int,
+    n_merchants: int,
+    time_span_days: int,
+    region: str,
+    output_dir: str,
+    chunk_size: int,
+    adversary_mode: str,
+    base_seed: int,
+    annual_seasonality: bool,
+    p2p_enabled: bool,
+    start_time_seconds: float,
+) -> Dict[str, Any]:
+    """Isolated worker process simulating 100% of the lifecycle for an assigned card partition."""
+    from fraudx_synthesizer.engine import DiscreteEventEngine
+    from fraudx_synthesizer.world import WorldEnvironment
+    from fraudx_synthesizer.syndicates import SyndicateRegistry
+
+    worker_dir = Path(output_dir) / f"worker_{worker_id}"
+    writer = StreamingDatasetWriter(
+        output_dir=worker_dir,
+        export_parquet=True,
+        export_csv=False,
+        chunk_size=chunk_size,
+    )
+
+    # Deterministic shared merchant world and syndicate infrastructure
+    shared_world = WorldEnvironment(
+        n_merchants=n_merchants,
+        region=region,
+        seed=base_seed + 99999,
+    )
+    shared_syndicates = SyndicateRegistry(
+        region=region,
+        seed=base_seed + 88888,
+    )
+
+    engine = DiscreteEventEngine(
+        n_cards=n_cards,
+        n_merchants=n_merchants,
+        region=region,
+        adversary_mode=adversary_mode,
+        seed=base_seed + worker_id * 1000,
+        annual_seasonality=annual_seasonality,
+        p2p_enabled=p2p_enabled,
+        id_prefix=f"W{worker_id}",
+        world=shared_world,
+        syndicates=shared_syndicates,
+    )
+
+    engine.generate_batch(
+        time_span_days=time_span_days,
+        start_time_seconds=start_time_seconds,
+        simulation_mode="days",
+        enforce_invariants=False,
+        chunk_callback=writer.write_chunk,
+        chunk_size=chunk_size,
+    )
+
+    summary = writer.finalize()
+    return {
+        "worker_id": worker_id,
+        "n_cards": n_cards,
+        "generated": summary["total_transactions"],
+        "summary": summary,
+        "worker_dir": str(worker_dir),
+    }
+
+
+class EntityPartitionedParallelCoordinator:
+    """Coordinates high-throughput entity-partitioned parallel simulations across CPU cores.
+
+    Key Architectural Invariants:
+    1. Zero Clock Overlaps: All workers advance the identical 365-day physical calendar timeline.
+    2. Zero ID Collisions: Card IDs ('CARD_W{w}_...') and Tx IDs ('TX_W{w}_...') are namespaced by worker.
+    3. Causal Continuity: 100% of transactions for a card occur on a single worker core.
+    4. Deterministic Shared Universe: Merchants and syndicates share deterministic seeds without locks.
+    5. Streaming Out-of-Core Merge: Shards are merged via Polars LazyFrame and written to master views.
+    """
+
+    def __init__(
+        self,
+        total_cards: int = 100000,
+        time_span_days: int = 365,
+        num_workers: Optional[int] = None,
+        region: str = "US",
+        output_dir: str | Path = "data/simulation_annual",
+        chunk_size: int = 10000,
+        adversary_mode: str = "playbook",
+        annual_seasonality: bool = True,
+        p2p_enabled: bool = True,
+        base_seed: int = 42,
+        export_csv: bool = False,
+        start_time_seconds: float = 1704067200.0,
+    ):
+        self.total_cards = total_cards
+        self.time_span_days = time_span_days
+        # Default to min(10, os.cpu_count() or 4) on modern multi-core systems
+        self.num_workers = num_workers or min(10, os.cpu_count() or 4)
+        self.region = region.upper()
+        self.output_dir = Path(output_dir)
+        self.chunk_size = chunk_size
+        self.adversary_mode = adversary_mode
+        self.annual_seasonality = annual_seasonality
+        self.p2p_enabled = p2p_enabled
+        self.base_seed = base_seed
+        self.export_csv = export_csv
+        self.start_time_seconds = start_time_seconds
+
+    def run(self) -> Dict[str, Any]:
+        """Executes parallel simulation pool and merges shards into master views."""
+        import shutil
+
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+        cards_per_worker = math.ceil(self.total_cards / self.num_workers)
+        n_merchants = min(1500, max(50, self.total_cards // 100))
+
+        t0 = time.perf_counter()
+        print(f"[*] Starting Entity-Partitioned Simulation: {self.total_cards:,} cards across {self.time_span_days} days")
+        print(f"   Workers: {self.num_workers} | Cards/worker: {cards_per_worker:,} | Chunk: {self.chunk_size:,}")
+        print(f"   Region: {self.region} | Mode: {self.adversary_mode} | Annual: {self.annual_seasonality} | P2P: {self.p2p_enabled}")
+        print(f"   Output Directory: {self.output_dir}")
+
+        worker_results = []
+        mp_ctx = multiprocessing.get_context("spawn")
+        with ProcessPoolExecutor(max_workers=self.num_workers, mp_context=mp_ctx) as executor:
+            futures = [
+                executor.submit(
+                    _entity_worker_simulation_task,
+                    worker_id=w,
+                    n_cards=cards_per_worker if w < self.num_workers - 1 else (self.total_cards - cards_per_worker * (self.num_workers - 1)),
+                    n_merchants=n_merchants,
+                    time_span_days=self.time_span_days,
+                    region=self.region,
+                    output_dir=str(self.output_dir),
+                    chunk_size=self.chunk_size,
+                    adversary_mode=self.adversary_mode,
+                    base_seed=self.base_seed,
+                    annual_seasonality=self.annual_seasonality,
+                    p2p_enabled=self.p2p_enabled,
+                    start_time_seconds=self.start_time_seconds,
+                )
+                for w in range(self.num_workers)
+            ]
+
+            completed_tx = 0
+            for future in as_completed(futures):
+                res = future.result()
+                worker_results.append(res)
+                completed_tx += res["generated"]
+                elapsed = time.perf_counter() - t0
+                rate = completed_tx / max(0.001, elapsed)
+                print(f"   -> Worker {res['worker_id']} done ({res['generated']:,} tx) | Total: {completed_tx:,} tx | Rate: {rate:,.0f} tx/sec | Elapsed: {elapsed:.1f}s")
+
+        sim_elapsed = time.perf_counter() - t0
+        print(f"\n[*] All {self.num_workers} workers finished in {sim_elapsed:.2f}s ({sim_elapsed/60:.2f} min).")
+        print(f"[*] Merging worker shards into master table and 5 institutional views...")
+
+        # Sequential Polars LazyFrame external merge
+        t_merge_start = time.perf_counter()
+        view_names = [
+            "master",
+            "auth_stream",
+            "gateway_telemetry",
+            "clearing_settlement",
+            "dispute_recovery",
+            "threat_intel_graph",
+        ]
+
+        for view in view_names:
+            shard_paths = []
+            for w in range(self.num_workers):
+                shard_dir = self.output_dir / f"worker_{w}" / view
+                if shard_dir.exists():
+                    pqs = list(shard_dir.glob("*.parquet"))
+                    shard_paths.extend([str(p) for p in pqs])
+
+            if not shard_paths:
+                continue
+
+            if len(shard_paths) == 1:
+                lf = pl.scan_parquet(shard_paths[0])
+            else:
+                lf = pl.concat([pl.scan_parquet(p) for p in shard_paths], how="diagonal_relaxed")
+
+            if "tx_time_seconds" in lf.collect_schema().names():
+                lf = lf.sort("tx_time_seconds")
+
+            out_view_dir = self.output_dir / view
+            out_view_dir.mkdir(parents=True, exist_ok=True)
+            final_pq = out_view_dir / f"{view}.parquet"
+            lf.sink_parquet(final_pq, compression="zstd")
+            if self.export_csv:
+                try:
+                    final_csv = out_view_dir / f"{view}.csv"
+                    schema = lf.collect_schema()
+                    flat_cols = [col for col, dt in schema.items() if not dt.is_nested()]
+                    lf.select(flat_cols).sink_csv(final_csv)
+                except Exception:
+                    pass
+
+        merge_elapsed = time.perf_counter() - t_merge_start
+        print(f"[+] Out-of-Core Merge complete in {merge_elapsed:.2f}s!")
+
+        # Consolidate master metadata
+        total_wall_time = time.perf_counter() - t0
+        overall_throughput = completed_tx / max(0.001, total_wall_time)
+        coordinator_legacy = ParallelSimulationCoordinator(
+            total_transactions=completed_tx,
+            num_workers=self.num_workers,
+            region=self.region,
+            output_dir=self.output_dir,
+            adversary_mode=self.adversary_mode,
+            base_seed=self.base_seed,
+        )
+        consolidated = coordinator_legacy._consolidate_worker_summaries(
+            worker_results, total_wall_time, overall_throughput
+        )
+        consolidated["total_cards"] = self.total_cards
+        consolidated["time_span_days"] = self.time_span_days
+        consolidated["annual_seasonality"] = self.annual_seasonality
+        consolidated["p2p_enabled"] = self.p2p_enabled
+
+        # Save master metadata
+        master_meta_path = self.output_dir / "master_simulation_metadata.json"
+        with open(master_meta_path, "w", encoding="utf-8") as f:
+            json.dump(consolidated, f, indent=2)
+
+        # Clean up temporary worker folders
+        for w in range(self.num_workers):
+            w_dir = self.output_dir / f"worker_{w}"
+            if w_dir.exists():
+                shutil.rmtree(w_dir, ignore_errors=True)
+
+        print(f"[+] Cleaned up intermediate worker directories.")
+        print(f"[+] Dataset generated successfully at: {self.output_dir}")
+        print(f"   Total Transactions: {completed_tx:,}")
+        print(f"   Total Time: {total_wall_time:.2f}s ({total_wall_time/60:.2f} min)")
+        print(f"   Overall Throughput: {overall_throughput:,.1f} tx/sec")
+
+        return consolidated

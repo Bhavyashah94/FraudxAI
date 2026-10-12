@@ -81,8 +81,13 @@ import pandas as pd
 import lightgbm as lgb
 from sklearn.metrics import classification_report, average_precision_score, roc_auc_score
 
-# 1. Load the Indian dataset
-df = pd.read_csv('fraudxai_india_100k_seed42.csv')
+# 1. Load the Indian dataset (preserving zero-padded ISO 8583 and string codes)
+str_cols = {
+    'mti': str, 'stan': str, 'rrn': str, 'response_code': str,
+    'auth_response_code': str, 'pos_entry_mode': str, 'pos_condition_code': str,
+    'eci': str, 'clearing_mti': str, 'postal_code': str, 'pan_masked': str
+}
+df = pd.read_csv('fraudxai_india_100k_seed42.csv', dtype=str_cols)
 
 # 2. Time-ordered train/test split (never shuffle time-series payment data!)
 df = df.sort_values('tx_time_seconds').reset_index(drop=True)
@@ -290,6 +295,7 @@ To regenerate this exact 100k Indian dataset deterministically:
 
 ```bash
 git clone https://github.com/Bhavyashah94/FraudxAI && cd FraudxAI
+git checkout df7ca60
 uv run fraudx generate \
   -n 100000 \
   --region IN \

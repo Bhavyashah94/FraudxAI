@@ -71,6 +71,7 @@ from .rails import (
     RailVerifierSwitch,
 )
 from .storage import (
+    EntityPartitionedParallelCoordinator,
     ParallelSimulationCoordinator,
     SimulationAggregates,
     StreamingDatasetWriter,
@@ -244,6 +245,7 @@ __all__ = [
     "render_standalone_html",
     "ForensicGraphTransformer",
     "StreamingDatasetWriter",
+    "EntityPartitionedParallelCoordinator",
     "ParallelSimulationCoordinator",
     "SimulationAggregates",
     "AdversarialPrivacyScorecard",

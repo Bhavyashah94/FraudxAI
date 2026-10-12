@@ -44,19 +44,19 @@ Unlike legacy synthetic datasets that rely on static, ungrounded tabular distrib
 FraudxAI establishes an immutable, machine-readable contract (**version 1**) governing all interactions between the simulation and external detection models. The contract guarantees zero target label leakage by decoupling streaming transactions into three distinct feeds:
 * **Authorisation Request Feed (35 fields):** The exact pre-decision data an acquirer or payment gateway passes to an issuer risk switch in sub-50ms (combining `auth_stream` and `gateway_telemetry` on `transaction_id`). Strictly excludes issuer outcomes, scenario tags, and internal generator scores (`NEVER_IN_A_REQUEST`).
 * **Authorisation Outcome Feed (3 fields):** The issuer host's decision (`response_code`, `auth_response_code`, `auth_code`), released only *after* the detector has scored the request.
-* **Label Event Feed (7 fields):** The supervision verdict (`INVESTIGATOR_ALERT` within 0.5–72 hours, `CHARGEBACK_DISPUTE` within 3–120 days, or `UNLABELLED` for dark fraud), released strictly in chronological discovery order.
+* **Label Event Feed (7 fields):** The supervision verdict (`INVESTIGATOR_ALERT` within 0.5-72 hours, `CHARGEBACK_DISPUTE` within 3-120 days, or `UNLABELLED` for dark fraud), released strictly in chronological discovery order.
 
 All CLI exports, storage formats, and streaming daemons take their columns directly from `load_contract()`.
 
 ### 2. Closed-Loop Streaming Daemon & Active Learning
 `python -m fraudx_synthesizer.stream` posts authorization requests to an external REST endpoint and releases labels on a dedicated feed as the bank would naturally discover them.
 * **Detector-Driven Supervision Queue:** When an endpoint responds with a prediction score (`risk_score` or `--score-field`), that score directly determines which transactions enter the bank's daily investigator review budget (top-$K$ alerts).
-* **Operational Feedback Loop:** If the detector under test achieves high precision, true frauds are verified and added to the bank's training pool within hours. If the detector has blind spots, fraudulent transactions escape into the 3–120 day chargeback delay or dark fraud pool. The training stream dynamically mirrors the operational performance of the detector under test.
+* **Operational Feedback Loop:** If the detector under test achieves high precision, true frauds are verified and added to the bank's training pool within hours. If the detector has blind spots, fraudulent transactions escape into the 3-120 day chargeback delay or dark fraud pool. The training stream dynamically mirrors the operational performance of the detector under test.
 
 ### 3. Dual-Region Payment Rail Kinematics
 * **United States Payment Infrastructure (USD Cents):**
-  * Models the two-stage lifecycle: Authorization (`MTI 0100` $\to$ `0110`) followed by Financial Presentment/Clearing (`MTI 0200` $\to$ `0210`) with 24–72h settlement delays.
-  * Real-world pre-authorization mechanics: Automated Fuel Dispenser (AFD, MCC 5542) \$175 hold vs. final nozzle cutoff; Dining (MCC 5812) post-auth 10–20% tip tolerances; Hotel/Lodging (MCC 7011) incidental folio holds.
+  * Models the two-stage lifecycle: Authorization (`MTI 0100` $\to$ `0110`) followed by Financial Presentment/Clearing (`MTI 0200` $\to$ `0210`) with 24-72h settlement delays.
+  * Real-world pre-authorization mechanics: Automated Fuel Dispenser (AFD, MCC 5542) \$175 hold vs. final nozzle cutoff; Dining (MCC 5812) post-auth 10-20% tip tolerances; Hotel/Lodging (MCC 7011) incidental folio holds.
   * Stand-In Processing (STIP) floor limits when issuer cores timeout ($> 2.0\,\text{s}$).
   * Address Verification Service (AVS) numeric street + ZIP matrix adjudication (`Y`, `A`, `Z`, `N`, `U`).
 * **Indian Payment Rails (INR Paisa):**
@@ -75,7 +75,7 @@ To prevent machine learning models from exploiting synthetic artifact shortcuts:
 ### 5. Stepped Underwriting Credit Lines & Attack Diversity
 * **Discrete Credit Limit Steps:** Credit lines round to authentic issuer underwriting steps (`spec/01` and `spec/05`), replacing continuous random floats with discrete financial tiers (e.g., ₹25k, ₹50k, ₹1L; \$100, \$250, \$500, \$5k). Measured across 1,000 cards: 77 distinct limits in the IN ecosystem and 88 in the US (seed 42), instead of 1,000 distinct random floats.
 * **Attack Channel Diversity:** Attacks realistically span Web (`012`), In-App Mobile (`102`), Chip (`051`), and Contactless NFC (`071`).
-* **Prevalence Pacing:** A trailing 24-hour window re-estimates competing Poisson attack arrival intensity, ensuring small batches (1,000–5,000 rows) accurately hit the requested fraud prevalence.
+* **Prevalence Pacing:** A trailing 24-hour window re-estimates competing Poisson attack arrival intensity, ensuring small batches (1,000-5,000 rows) accurately hit the requested fraud prevalence.
 
 ### 6. Closed-Form Pearlian Causal Ground Truth ($\phi^*$)
 * **Exact Counterfactual Baseline Twins:** For every simulated fraudulent transaction, the engine computes:
@@ -121,8 +121,8 @@ To prevent machine learning models from exploiting synthetic artifact shortcuts:
                       │                               │                               │
                       ▼                               ▼                               ▼
        [Authorisation Request Feed]      [Authorisation Outcome Feed]      [Delayed Label Event Feed]
-       • 35 strictly pre-decision fields • Response code (00, 51, 63)      • Investigator alert (0.5–72h)
-       • Joined auth + gateway telemetry • Approval code (auth_code)       • Chargeback dispute (3–120d)
+       • 35 strictly pre-decision fields • Response code (00, 51, 63)      • Investigator alert (0.5-72h)
+       • Joined auth + gateway telemetry • Approval code (auth_code)       • Chargeback dispute (3-120d)
        • ZERO target label leakage       • Revealed ONLY after scoring     • Dark fraud never released
                       │                                                               ▲
                       ▼                                                               │
@@ -149,7 +149,7 @@ Rather than exporting a single flat table with unrealistic columns, FraudxAI par
 | :--- | :--- | :--- |
 | **`auth_stream.csv`** | ISO 8583 / ISO 20022 | Real-time authorization switch feed containing MTI, STAN, RRN, Auth Code, Response Code, POS Entry Mode, ECI, 3DS status, available balances, and minor currency units. |
 | **`gateway_telemetry.csv`** | Gateway Risk Telemetry | Network & device telemetry containing Client IP, ASN type, geo risk scores, device canvas hashes, AVS codes, CVV match flags, and cross-border flags. |
-| **`clearing_settlement.csv`** | Dual-Message Settlement | Financial presentment feed (`MTI 0200`) with 24–72h delay windows, actual captured amounts (AFD pump vs hold, dining tips), and interchange fees. |
+| **`clearing_settlement.csv`** | Dual-Message Settlement | Financial presentment feed (`MTI 0200`) with 24-72h delay windows, actual captured amounts (AFD pump vs hold, dining tips), and interchange fees. |
 | **`dispute_recovery.csv`** | Scheme & Statutory Disputes | Chargeback logs with reason codes (Visa 10.4, Mastercom), Visa CE 3.0 pre-dispute deflection, arbitration fees, and RBI Limited Liability Customer Tiers (`RBI/2017-18/15`). |
 
 ---
@@ -251,16 +251,16 @@ Sample Benchmark Output (`fraudx benchmark -n 2000 --model lightgbm --seed 42`, 
 =================================================================
   Model Architecture:           LIGHTGBM
   Explainer Method:             TreeSHAP (Interventional)
-  Evaluated Fraud Samples:      25
-  Classifier ROC-AUC:           0.9849
-  Classifier PR-AUC:            0.8470
+  Evaluated Fraud Samples:      29
+  Classifier ROC-AUC:           0.9587
+  Classifier PR-AUC:            0.6544
 -----------------------------------------------------------------
-  Ranking Concordance (Kendall Tau):      0.3668
-  Rank Correlation (Spearman Rho):        0.4209
-  Top-3 Support Recovery (Precision@3):   0.4533
-  Intervention Precision (P@3):           0.6400
-  Intervention Recall (R@3):              0.5600
-  Relative Attribution Error (RAE):       17.5234
+  Ranking Concordance (Kendall Tau):      0.3801
+  Rank Correlation (Spearman Rho):        0.4293
+  Top-3 Support Recovery (Precision@3):   0.4483
+  Intervention Precision (P@3):           0.6092
+  Intervention Recall (R@3):              0.5431
+  Relative Attribution Error (RAE):       26.1183
 =================================================================
 ```
 
@@ -280,7 +280,7 @@ fraudx benchmark -n 2000 --unified --seed 42 --output-dir reports/benchmark
 list of seeds to repeat the run over. A run that deviates is reported as **OFF-PROTOCOL**
 with each deviation named, so its violation count cannot be mistaken for the pinned one.
 
-Because several gates rest on small denominators (2–8 streaming test days; a handful of
+Because several gates rest on small denominators (2-8 streaming test days; a handful of
 attack simulations), **one seed's violation count is not a result.** On-protocol runs
 therefore re-execute every pinned seed and print a per-gate table instead. Verbatim from
 the run above (the `#` is where the observed value and the limit are stripped, so the same

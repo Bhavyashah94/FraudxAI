@@ -670,3 +670,137 @@ class DoubleEntryWorldLedger:
 
         return worst < abs_tol, worst
 
+
+@dataclass
+class NetSettlementReport:
+    """Multilateral Net Settlement Position (MNSP) for a commercial bank in a clearing window."""
+    bank_id: str
+    cycle_id: str
+    region: str
+    gross_receivable: float
+    gross_payable: float
+    net_position: float  # gross_receivable - gross_payable (positive = creditor, negative = debtor)
+    settlement_account_id: str
+    interchange_net: float
+    switch_fee_payable: float
+    transaction_count: int
+
+
+class InterbankClearingLedger:
+    """Manages bilateral clearing accumulation and executes Multilateral Net Settlement (MNSP).
+    Enforces the zero-sum conservation invariant: sum(net_positions) == 0.00 across all clearing windows.
+    """
+
+    def __init__(self, region: str = "US"):
+        self.region = region.upper()
+        self.specs = load_all_specs()
+        # cycle_id -> (acquirer_bank, issuer_bank) -> {amount: float, interchange: float, count: int}
+        self.cycle_flows: Dict[str, Dict[Tuple[str, str], Dict[str, float]]] = collections.defaultdict(
+            lambda: collections.defaultdict(lambda: {"amount": 0.0, "interchange": 0.0, "count": 0.0})
+        )
+        self.settlement_history: List[Dict[str, Any]] = []
+
+    def record_clearing_presentment(
+        self,
+        cycle_id: str,
+        acquiring_bank_id: str,
+        issuing_bank_id: str,
+        settled_amount: float,
+        interchange_fee: float,
+        is_on_us: bool = False,
+    ) -> None:
+        """Records a clearing presentment (MTI 0200) into the active clearing cycle."""
+        if is_on_us or acquiring_bank_id == issuing_bank_id:
+            return
+
+        flow = self.cycle_flows[cycle_id][(acquiring_bank_id, issuing_bank_id)]
+        flow["amount"] = round(flow["amount"] + settled_amount, 2)
+        flow["interchange"] = round(flow["interchange"] + interchange_fee, 2)
+        flow["count"] += 1
+
+    def execute_multilateral_netting(
+        self,
+        cycle_id: str,
+        banks: Optional[List[Dict[str, Any]]] = None,
+        sim_time_sec: float = 0.0,
+        abs_tol: float = 1e-4,
+    ) -> List[NetSettlementReport]:
+        """Calculates Multilateral Net Settlement Positions (MNSP) for all participating banks.
+        Asserts zero-sum conservation invariant: sum(net_positions) == 0.00.
+        """
+        if banks is None:
+            interbank = self.specs.interbank
+            banks = interbank.commercial_banks.get(self.region, []) if interbank else []
+            if not banks:
+                banks = [
+                    {"id": "BANK_US_CHASE", "central_bank_rtgs_id": "FEDWIRE_CHASE_01"},
+                    {"id": "BANK_US_BOFA", "central_bank_rtgs_id": "FEDWIRE_BOFA_02"},
+                    {"id": "BANK_US_WELLS", "central_bank_rtgs_id": "FEDWIRE_WELLS_03"},
+                    {"id": "BANK_US_CITI", "central_bank_rtgs_id": "FEDWIRE_CITI_04"},
+                ]
+
+        flows = self.cycle_flows.get(cycle_id, {})
+        reports: List[NetSettlementReport] = []
+        net_sum = 0.0
+
+        for b in banks:
+            bid = b["id"]
+            receivable = 0.0
+            payable = 0.0
+            interchange_net = 0.0
+            tx_count = 0
+
+            for (acq, iss), data in flows.items():
+                amt = data["amount"]
+                ich = data["interchange"]
+                net_transfer = amt - ich
+                cnt = int(data["count"])
+
+                if acq == bid:
+                    receivable += net_transfer
+                    interchange_net -= ich
+                    tx_count += cnt
+                if iss == bid:
+                    payable += net_transfer
+                    interchange_net += ich
+                    tx_count += cnt
+
+            receivable = round(receivable, 2)
+            payable = round(payable, 2)
+            net_pos = round(receivable - payable, 2)
+            interchange_net = round(interchange_net, 2)
+            net_sum += net_pos
+
+            rtgs_id = b.get("central_bank_rtgs_id", f"RTGS_{bid}")
+            reports.append(
+                NetSettlementReport(
+                    bank_id=bid,
+                    cycle_id=cycle_id,
+                    region=self.region,
+                    gross_receivable=receivable,
+                    gross_payable=payable,
+                    net_position=net_pos,
+                    settlement_account_id=rtgs_id,
+                    interchange_net=interchange_net,
+                    switch_fee_payable=0.0,
+                    transaction_count=tx_count,
+                )
+            )
+
+        net_sum = round(net_sum, 2)
+        if abs(net_sum) > abs_tol:
+            raise ValueError(
+                f"Multilateral Net Settlement zero-sum invariant violated in cycle {cycle_id}: "
+                f"net sum = {net_sum} != 0.00"
+            )
+
+        self.settlement_history.append({
+            "cycle_id": cycle_id,
+            "sim_time_sec": sim_time_sec,
+            "zero_sum_conserved": True,
+            "residual": net_sum,
+            "reports": reports,
+        })
+        return reports
+
+

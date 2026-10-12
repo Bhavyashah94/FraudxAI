@@ -354,7 +354,31 @@ class TelemetryCalibrationSpec:
 
 
 # ----------------------------------------------------------------------
-# 8. Calibration Targets (spec/08)
+# 8. Annual Seasonality & Macro Drift Models (spec/13)
+# ----------------------------------------------------------------------
+@dataclass(frozen=True)
+class AnnualSeasonalitySpec:
+    """Canonical 365-day annual seasonality, holiday calendars, and DoW dynamics."""
+    day_of_week_multipliers: Dict[int, float]
+    payday_cycles: Dict[str, Dict[str, Any]]
+    mcc_monthly_scaling: Dict[str, Dict[str, Any]]
+    calendar_macro_shocks: Dict[str, List[Dict[str, Any]]]
+    wallet_hierarchy: Dict[str, Any]
+    adversarial_drift_schedule: Dict[str, Any]
+
+
+@dataclass(frozen=True)
+class InterbankSwitchSpec:
+    """Multi-bank routing mesh, central switches, ISO 8583 MTI family, and multilateral net settlement."""
+    commercial_banks: Dict[str, List[Dict[str, Any]]]
+    central_switching_networks: Dict[str, Dict[str, Any]]
+    routing_rules: Dict[str, Dict[str, Any]]
+    iso8583_message_types: Dict[str, str]
+    clearing_and_settlement: Dict[str, Any]
+
+
+# ----------------------------------------------------------------------
+# 9. Calibration Targets (spec/08)
 # ----------------------------------------------------------------------
 @dataclass(frozen=True)
 class CalibrationTargetSpec:
@@ -404,6 +428,8 @@ class SpecRegistry:
         calibration_profiles: Optional[Dict[str, CalibrationProfileSpec]] = None,
         supervision: Optional[OperationalSupervisionSpec] = None,
         credit_limit_steps: Optional[Dict[str, List[Tuple[Optional[float], float]]]] = None,
+        seasonality: Optional[AnnualSeasonalitySpec] = None,
+        interbank: Optional[InterbankSwitchSpec] = None,
     ):
         self.products = products
         self.cohorts = cohorts
@@ -422,6 +448,8 @@ class SpecRegistry:
         self.supervision = supervision or OperationalSupervisionSpec()
         # Per region, (upper bound or None, step) in major units: the grid credit lines are assigned on.
         self.credit_limit_steps: Dict[str, List[Tuple[Optional[float], float]]] = credit_limit_steps or {}
+        self.seasonality = seasonality
+        self.interbank = interbank
 
     def get_cohort(self, cohort_id: str) -> CohortPersonaSpec:
         """Looks up a cohort specification, handling legacy alias names."""
@@ -469,6 +497,8 @@ def load_all_specs(spec_dir: Optional[str] = None) -> SpecRegistry:
     raw_07 = _read_yaml("07_export_leakage_gate.yaml")
     raw_08 = _read_yaml("08_india_calibration_targets.yaml")
     raw_09 = _read_yaml("09_us_calibration_targets.yaml") if (base_dir / "09_us_calibration_targets.yaml").exists() else {}
+    raw_13 = _read_yaml("13_annual_seasonality_and_drift.yaml") if (base_dir / "13_annual_seasonality_and_drift.yaml").exists() else {}
+    raw_14 = _read_yaml("14_interbank_switch_and_clearing.yaml") if (base_dir / "14_interbank_switch_and_clearing.yaml").exists() else {}
     raw_16 = _read_yaml("16_operational_supervision.yaml")
 
     # 1. Parse 01_financial_instruments.yaml
@@ -825,6 +855,29 @@ def load_all_specs(spec_dir: Optional[str] = None) -> SpecRegistry:
         clean_maturity_days=float(dark_raw.get("clean_maturity_days", 90.0)),
     )
 
+    # 10. Parse 13_annual_seasonality_and_drift.yaml
+    seasonality_spec = None
+    if raw_13:
+        seasonality_spec = AnnualSeasonalitySpec(
+            day_of_week_multipliers={int(k): float(v) for k, v in raw_13.get("day_of_week_multipliers", {}).items()},
+            payday_cycles=dict(raw_13.get("payday_cycles", {})),
+            mcc_monthly_scaling=dict(raw_13.get("mcc_monthly_scaling", {})),
+            calendar_macro_shocks=dict(raw_13.get("calendar_macro_shocks", {})),
+            wallet_hierarchy=dict(raw_13.get("wallet_hierarchy", {})),
+            adversarial_drift_schedule=dict(raw_13.get("adversarial_drift_schedule", {})),
+        )
+
+    # 11. Parse 14_interbank_switch_and_clearing.yaml
+    interbank_spec = None
+    if raw_14:
+        interbank_spec = InterbankSwitchSpec(
+            commercial_banks=dict(raw_14.get("commercial_banks", {})),
+            central_switching_networks=dict(raw_14.get("central_switching_networks", {})),
+            routing_rules=dict(raw_14.get("routing_rules", {})),
+            iso8583_message_types=dict(raw_14.get("iso8583_message_types", {})),
+            clearing_and_settlement=dict(raw_14.get("clearing_and_settlement", {})),
+        )
+
     return SpecRegistry(
         products=products,
         cohorts=cohorts,
@@ -843,6 +896,8 @@ def load_all_specs(spec_dir: Optional[str] = None) -> SpecRegistry:
             "05": raw_05,
             "07": raw_07,
             "08": raw_08,
+            "13": raw_13,
+            "14": raw_14,
             "16": raw_16,
         },
         circadian=circadian_spec,
@@ -851,4 +906,6 @@ def load_all_specs(spec_dir: Optional[str] = None) -> SpecRegistry:
         calibration_profiles=calibration_profiles,
         supervision=supervision_spec,
         credit_limit_steps=credit_limit_steps,
+        seasonality=seasonality_spec,
+        interbank=interbank_spec,
     )

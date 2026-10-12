@@ -43,7 +43,7 @@ from .hawkes import (
     RecursiveCircadianHawkesEngine,
 )
 from .invariants import verify_transaction_invariants
-from .ledger import StreamingLedger
+from .ledger import InterbankClearingLedger, StreamingLedger
 from .syndicates import SyndicateRegistry
 from .world import MCC_TAXONOMY, MerchantProfile, WorldEnvironment
 from .rails import (
@@ -144,30 +144,45 @@ class DiscreteEventEngine:
         adversary_mimicry: float = 0.55,
         adversary_mode: str = "playbook",
         seed: int = 42,
+        annual_seasonality: bool = False,
+        p2p_enabled: bool = False,
+        id_prefix: Optional[str] = None,
+        world: Optional[WorldEnvironment] = None,
+        syndicates: Optional[SyndicateRegistry] = None,
     ):
         self.region = region.upper()
         self.seed = seed
         self.adversary_mimicry = adversary_mimicry
         self.adversary_mode = str(adversary_mode).lower()
+        self.annual_seasonality = annual_seasonality
+        self.p2p_enabled = p2p_enabled
+        self.id_prefix = id_prefix
         self.rng = np.random.default_rng(seed)
-        self.world = WorldEnvironment(
-            n_merchants=n_merchants,
-            region=self.region,
-            center_lat=center_lat,
-            center_lon=center_lon,
-            radius_km=radius_km,
-            seed=seed,
-        )
+        if world is not None:
+            self.world = world
+        else:
+            self.world = WorldEnvironment(
+                n_merchants=n_merchants,
+                region=self.region,
+                center_lat=center_lat,
+                center_lon=center_lon,
+                radius_km=radius_km,
+                seed=seed,
+            )
         self.causal_engine = StructuralCausalEngine(base_prevalence=0.0020)
         # Batch generation skips the per-record flow round-trip self-check (see
         # HeuristicBankScorer.verify_flow_consistency); the attributions and the
         # counterfactual twins themselves are still computed for every record.
         self.causal_engine.verify_flow_consistency = False
         self.fraudster = AdaptiveFraudsterAgent(self.rng, adversary_mimicry=adversary_mimicry)
-        self.syndicate_registry = SyndicateRegistry(region=self.region, seed=seed)
+        if syndicates is not None:
+            self.syndicate_registry = syndicates
+        else:
+            self.syndicate_registry = SyndicateRegistry(region=self.region, seed=seed)
         self.ledger = StreamingLedger(seed=seed)
         self.rail_switch = RailVerifierSwitch(region=self.region, seed=seed)
         self.double_entry_ledger = self.ledger.double_entry
+        self.interbank_clearing = InterbankClearingLedger(region=self.region)
 
         self.specs = load_all_specs()
         self.cards: List[CardholderProfile] = []
@@ -298,15 +313,48 @@ class DiscreteEventEngine:
         """Computes arrival rate multiplier based on calendar day-of-month and macro regimes."""
         dt = datetime.fromtimestamp(t_sec, tz=timezone.utc)
         multiplier = 1.0
-        # 1. Payday surges: 1st, 2nd, 15th, 16th of each month
-        if dt.day in (1, 2, 15, 16):
-            multiplier *= 1.35
 
-        # 2. Macro seasonal regimes
-        if active_regime == "HOLIDAY_SURGE" or (self.region == "US" and dt.month == 11 and 22 <= dt.day <= 30):
-            multiplier *= 2.50
-        elif active_regime == "DHANTERAS_DIWALI" or (self.region == "IN" and ((dt.month == 10 and dt.day >= 25) or (dt.month == 11 and dt.day <= 5))):
-            multiplier *= 1.80
+        if not self.annual_seasonality:
+            # Backwards-compatible legacy logic
+            if dt.day in (1, 2, 15, 16):
+                multiplier *= 1.35
+            if active_regime == "HOLIDAY_SURGE" or (self.region == "US" and dt.month == 11 and 22 <= dt.day <= 30):
+                multiplier *= 2.50
+            elif active_regime == "DHANTERAS_DIWALI" or (self.region == "IN" and ((dt.month == 10 and dt.day >= 25) or (dt.month == 11 and dt.day <= 5))):
+                multiplier *= 1.80
+            return multiplier
+
+        # Full 365-day annual seasonality from spec/13
+        seasonality = self.specs.seasonality
+        if seasonality:
+            # 1. Day of Week multiplier (Mon 0.88x to Sat 1.34x)
+            dow = dt.weekday()
+            multiplier *= seasonality.day_of_week_multipliers.get(dow, 1.0)
+
+            # 2. Regional Payday Surges
+            payday_cfg = seasonality.payday_cycles.get(self.region, {})
+            paydays = payday_cfg.get("primary_days_of_month", [1, 15])
+            if dt.day in paydays:
+                multiplier *= float(payday_cfg.get("surge_multiplier", 1.35))
+
+            # 3. Calendar Macro Shocks (Holidays, Black Friday, Diwali, etc.)
+            day_of_year = dt.timetuple().tm_yday
+            shocks = seasonality.calendar_macro_shocks.get(self.region, [])
+            for shock in shocks:
+                if "day_of_year" in shock and shock["day_of_year"] == day_of_year:
+                    multiplier *= float(shock.get("volume_multiplier", 1.0))
+                    break
+                elif "start_day" in shock and "end_day" in shock:
+                    if shock["start_day"] <= day_of_year <= shock["end_day"]:
+                        multiplier *= float(shock.get("volume_multiplier", 1.0))
+                        break
+
+            # 4. Explicit active_regime overrides
+            if active_regime == "HOLIDAY_SURGE":
+                multiplier *= 2.50
+            elif active_regime == "DHANTERAS_DIWALI":
+                multiplier *= 2.65
+
         return multiplier
 
     def _initialize_cardholders(self, n_cards: int) -> None:
@@ -328,7 +376,7 @@ class DiscreteEventEngine:
         cohort_weights_norm = np.array(cohort_weights) / sum(cohort_weights)
 
         for i in range(n_cards):
-            card_id = f"CARD_{i:06d}"
+            card_id = f"CARD_{self.id_prefix}_{i:06d}" if self.id_prefix else f"CARD_{i:06d}"
             cohort_spec = self.rng.choice(cohort_specs, p=cohort_weights_norm)
             cohort_id = cohort_spec.id
 
@@ -490,6 +538,13 @@ class DiscreteEventEngine:
             )
             self.cards.append(card)
             self.card_map[card_id] = card
+
+        if self.annual_seasonality:
+            wallet_tiers = ["PRIMARY", "SECONDARY", "BACKUP"]
+            wallet_probs = [0.68, 0.24, 0.08]
+            assigned_tiers = self.rng.choice(wallet_tiers, size=len(self.cards), p=wallet_probs)
+            for idx, c in enumerate(self.cards):
+                setattr(c, "wallet_tier", str(assigned_tiers[idx]))
 
     def _schedule_event(
         self,
@@ -727,9 +782,12 @@ class DiscreteEventEngine:
         loop_iterations = 0
         if simulation_mode == "days":
             end_time_seconds = start_time_seconds + time_span_days * day_seconds
-            tx_target_limit = max_transactions
+            effective_limit = max_transactions
+            if max_transactions == 100000 and time_span_days > 30:
+                effective_limit = max(100000, int(len(self.cards) * time_span_days * 2.5))
+            tx_target_limit = effective_limit
             target_total = max(50, int(len(self.cards) * time_span_days * 2.13))
-            max_loop_iterations = max(50000, max_transactions * 25)
+            max_loop_iterations = max(50000, tx_target_limit * 25)
         else:
             end_time_seconds = float("inf")
             target_n = n_transactions if n_transactions is not None else 5000
@@ -803,6 +861,16 @@ class DiscreteEventEngine:
                     merchant_id=payload.get("merchant_id", "M_DEFAULT"),
                     settled_amount=payload["settled_amount"],
                     sim_time_sec=tx_time_sec,
+                )
+                cycle_num = ((int(tx_time_sec) % 86400) // 21600) + 1
+                clearing_cycle_id = f"CYCLE_{int(tx_time_sec // 86400):04d}_C{cycle_num}"
+                self.interbank_clearing.record_clearing_presentment(
+                    cycle_id=clearing_cycle_id,
+                    acquiring_bank_id=payload.get("acquiring_bank_id", "BANK_DEFAULT"),
+                    issuing_bank_id=payload.get("issuing_bank_id", "BANK_DEFAULT"),
+                    settled_amount=payload["settled_amount"],
+                    interchange_fee=payload.get("interchange_fee", 0.0),
+                    is_on_us=payload.get("is_on_us", False),
                 )
                 continue
 
@@ -881,6 +949,10 @@ class DiscreteEventEngine:
             vaai_score = self._sample_network_risk_score("legitimate")
             override_avs = None
             override_cvv = None
+            override_lat = None
+            override_lon = None
+            is_p2p = False
+            recipient = None
             asn_type = "residential"
 
             factual_tx = None
@@ -1157,7 +1229,17 @@ class DiscreteEventEngine:
                     else:
                         # Routine organic transaction with macro-regime channel & spend dynamics
                         scenario_tag = FraudScenario.ORGANIC_NORMAL.value
-                        if is_us_holiday_window and self.rng.random() < 0.40:
+                        if (self.p2p_enabled or self.annual_seasonality) and len(self.cards) > 1 and self.rng.random() < (0.20 if self.region == "IN" else 0.07):
+                            is_p2p = True
+                            recip_idx = int(self.rng.integers(0, len(self.cards)))
+                            recipient = self.cards[recip_idx]
+                            channel = "UPI_P2P" if self.region == "IN" else "P2P_PUSH"
+                            preferred_mcc = 4829 if self.region == "IN" else 6538
+                            p2p_mu = 7.1 if self.region == "IN" else 3.6
+                            amount = max(1.0, round(float(self.rng.lognormal(mean=p2p_mu, sigma=0.6)), 2))
+                            override_lat = card.home_lat
+                            override_lon = card.home_lon
+                        elif is_us_holiday_window and self.rng.random() < 0.40:
                             # Elevated online shopping during Black Friday / Cyber Week
                             channel = "CNP_WEB"
                             preferred_mcc = int(self.rng.choice([5732, 5311, 5651]))  # Electronics / Department Stores
@@ -1196,7 +1278,20 @@ class DiscreteEventEngine:
                         is_cross_border = True
 
             # Route merchant
-            if override_lat is not None and override_lon is not None:
+            if is_p2p and recipient is not None:
+                merchant_lat = float(override_lat)
+                merchant_lon = float(override_lon)
+                merchant_id = f"P2P_{recipient.card_id}"
+                merchant_name = f"P2P Transfer ({recipient.card_id})"
+                mcc = preferred_mcc or (4829 if self.region == "IN" else 6538)
+                category = "P2P Money Transfer"
+                mid = f"MID_P2P_{recipient.card_id}"
+                tid = "TID_P2P"
+                acquirer_bin = "400099"
+                gateway_provider = "NPCI_UPI" if self.region == "IN" else "ZELLE_NETWORK"
+                country_code = self.region
+                postal_code = "400001" if self.region == "IN" else "10001"
+            elif override_lat is not None and override_lon is not None:
                 merchant_lat = float(override_lat)
                 merchant_lon = float(override_lon)
                 merchant_id = f"M_EXT_{tx_counter:06d}"
@@ -1250,7 +1345,7 @@ class DiscreteEventEngine:
                 country_code = merchant.country_code
                 postal_code = merchant.postal_code
 
-            tx_id = f"TX_{tx_counter:08d}"
+            tx_id = f"TX_{self.id_prefix}_{tx_counter:08d}" if self.id_prefix else f"TX_{tx_counter:08d}"
             record = self.ledger.enrich_transaction(
                 tx_id=tx_id,
                 card=card,
@@ -1392,6 +1487,15 @@ class DiscreteEventEngine:
             record["trans_status_3ds"] = trans_status_3ds or "Y"
             record["vaai_score"] = vaai_score
             record["hop_origin"] = rail_result.hop_origin
+            record["issuing_bank_id"] = rail_result.issuing_bank_id
+            record["acquiring_bank_id"] = rail_result.acquiring_bank_id
+            record["is_on_us"] = int(rail_result.is_on_us)
+            record["central_switch_id"] = rail_result.central_switch_id
+            record["switch_network_fee"] = rail_result.switch_network_fee
+            record["interbank_latency_ms"] = rail_result.interbank_latency_ms
+            record["mti_request"] = rail_result.mti_request
+            record["mti_response"] = rail_result.mti_response
+            record["hop_sequence"] = ";".join(rail_result.hop_sequence)
 
             # Dual-Message Clearing & Settlement ($T+1$ to $T+3$)
             record["clearing_mti"] = "0200"
@@ -1408,7 +1512,13 @@ class DiscreteEventEngine:
 
             record["settled_amount"] = settled_amount
             record["settled_amount_minor"] = int(round(settled_amount * 100))
-            record["interchange_fee_minor"] = int(round(settled_amount * 0.0175 * 100))
+            if rail_result.is_on_us:
+                interchange_fee = 0.0
+            elif hasattr(rail_result, "interchange_fee") and rail_result.interchange_fee > 0.0:
+                interchange_fee = rail_result.interchange_fee
+            else:
+                interchange_fee = round(settled_amount * 0.0175, 2)
+            record["interchange_fee_minor"] = int(round(interchange_fee * 100))
 
             # Post-Auth Hold and Settlement Scheduling
             if auth_response in (ISO8583Response.APPROVED_00, ISO8583Response.PARTIAL_APPROVAL_10):
@@ -1430,7 +1540,15 @@ class DiscreteEventEngine:
                     time_us=clearing_t_us,
                     event_type=EVT_CLEARING,
                     card_id=card.card_id,
-                    payload={"tx_id": tx_id, "settled_amount": settled_amount, "merchant_id": merchant_id},
+                    payload={
+                        "tx_id": tx_id,
+                        "settled_amount": settled_amount,
+                        "merchant_id": merchant_id,
+                        "acquiring_bank_id": rail_result.acquiring_bank_id,
+                        "issuing_bank_id": rail_result.issuing_bank_id,
+                        "interchange_fee": interchange_fee,
+                        "is_on_us": rail_result.is_on_us,
+                    },
                 )
             else:
                 card.consecutive_declines += 1
@@ -1536,9 +1654,10 @@ class DiscreteEventEngine:
 
             # Update lock-ahead timestamp for cardholder (enforce 120s dwell on legitimate CP swipes)
             if channel.startswith("CP") and is_fraud == 0:
-                self.card_avail_time_us[card.card_id] = t_us + 120_000_000
+                lock_us = t_us + 120_000_000
             else:
-                self.card_avail_time_us[card.card_id] = t_us + 10_000_000
+                lock_us = t_us + 10_000_000
+            self.card_avail_time_us[card.card_id] = max(self.card_avail_time_us[card.card_id], lock_us)
 
             # Schedule cardholder's next routine event
             if not is_fraud_evt:

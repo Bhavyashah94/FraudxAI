@@ -7,7 +7,7 @@ Every paper can now be directly inspected, searched, and cited using plain Markd
 ### Local copies removed (audit, 2026-10-10)
 
 21 entries previously carried a PDF and a Markdown transcription whose **content was a
-different paper entirely** — for example the file catalogued as Dal Pozzolo's
+different paper entirely**: for example, the file catalogued as Dal Pozzolo's
 *Credit Card Fraud Detection: A Realistic Modeling and a Novel Learning Strategy*
 actually contained Bzdak & Koch's nuclear-physics paper *Rapidity dependence of proton
 cumulants*, and the *Quant GANs* entry contained a marine-mammal classification paper.
@@ -17,6 +17,20 @@ local copy exists; where another file in this directory holds the correct paper,
 the duplicate row was dropped. Every remaining `.md` was checked against its own PDF's
 first page before this audit passed.
 
+
+---
+
+## 🏛️ Central Bank, Macro Payment Systems & Empirical Diary Benchmarks
+
+| Year | File stem | Paper / Report Title | Local copies |
+| :--- | :--- | :--- | :--- |
+| **2024** | **2024 Findings from the Diary of Consumer Payment Choice** | Berhan Bayeh, Emily Cubides, Shaun O'Brien (Federal Reserve Financial Services) | [📖 Read .md](2024_fed_diary_consumer_payment_choice.md) | [📄 Open .pdf](2024_fed_diary_consumer_payment_choice.pdf) |
+| **2024** | **Reserve Bank of India Annual Report 2023-24: Chapter IX - Payment and Settlement Systems** | Reserve Bank of India (RBI) | [📖 Read .md](2024_rbi_annual_report_payment_systems.md) | [📄 Open .pdf](2024_rbi_annual_report_payment_systems.pdf) |
+| **2024** | **Tap, click and pay: how digital payments seize the day (CPMI Brief No 3)** | Alberto Di Iorio, Anneke Kosse, Robert Szemere (BIS CPMI) | [📖 Read .md](2024_bis_cpmi_tap_click_pay_digital_payments.md) | [📄 Open .pdf](2024_bis_cpmi_tap_click_pay_digital_payments.pdf) |
+| **2021** | **Developments in Noncash Payments for 2019 and 2020: Findings from the Federal Reserve Payments Study** | Board of Governors of the Federal Reserve System | [📖 Read .md](2021_fed_developments_noncash_payments.md) | [📄 Open .pdf](2021_fed_developments_noncash_payments.pdf) |
+| **2019** | **The 2019 Federal Reserve Payments Study** | Board of Governors of the Federal Reserve System | [📖 Read .md](2019_fed_payments_study.md) | [📄 Open .pdf](2019_fed_payments_study.pdf) |
+| **2018** | **Changes in U.S. Payments Fraud from 2012 to 2016: Evidence from the Federal Reserve Payments Study** | Board of Governors of the Federal Reserve System | [📖 Read .md](2018_fed_changes_us_payments_fraud.md) | [📄 Open .pdf](2018_fed_changes_us_payments_fraud.pdf) |
+| **2016** | **Fast payments - Enhancing the speed and availability of retail payments (CPMI Report No 154)** | Committee on Payments and Market Infrastructures (CPMI), Bank for International Settlements | [📖 Read .md](2016_bis_cpmi_fast_payments.md) | [📄 Open .pdf](2016_bis_cpmi_fast_payments.pdf) |
 
 ---
 
@@ -53,6 +67,9 @@ first page before this audit passed.
 | 2025 | `2025_walauskis_shap_feature_selection_unsupervised_fraud_labeling` | SHAP-Based Feature Selection for Enhanced Unsupervised Labeling | [📖 .md](2025_walauskis_shap_feature_selection_unsupervised_fraud_labeling.md) &bull; [📄 .pdf](2025_walauskis_shap_feature_selection_unsupervised_fraud_labeling.pdf) |
 | 2025 | `2025_unknown_fraudrla_reinforcement_learning_att` | FRAUD-RLA: Reinforcement Learning Attacks on Fraud Detection Systems | [📖 .md](2025_unknown_fraudrla_reinforcement_learning_att.md) &bull; [📄 .pdf](2025_unknown_fraudrla_reinforcement_learning_att.pdf) |
 | 2025 | `2025_finance_new_money_a_systematic_review_of_sy` | New Money: A Systematic Review of Synthetic Data Generation for Finance | [📖 .md](2025_finance_new_money_a_systematic_review_of_sy.md) &bull; [📄 .pdf](2025_finance_new_money_a_systematic_review_of_sy.pdf) |
+| 2024 | `2024_fed_diary_consumer_payment_choice` | 2024 Findings from the Diary of Consumer Payment Choice | [📖 .md](2024_fed_diary_consumer_payment_choice.md) &bull; [📄 .pdf](2024_fed_diary_consumer_payment_choice.pdf) |
+| 2024 | `2024_rbi_annual_report_payment_systems` | Reserve Bank of India Annual Report 2023-24: Chapter IX - Payment and Settlement Systems | [📖 .md](2024_rbi_annual_report_payment_systems.md) &bull; [📄 .pdf](2024_rbi_annual_report_payment_systems.pdf) |
+| 2024 | `2024_bis_cpmi_tap_click_pay_digital_payments` | Tap, click and pay: how digital payments seize the day (CPMI Brief No 3) | [📖 .md](2024_bis_cpmi_tap_click_pay_digital_payments.md) &bull; [📄 .pdf](2024_bis_cpmi_tap_click_pay_digital_payments.pdf) |
 | 2024 | `2024_unknown_financial_tabular_data_synthesis_wi` | Financial Tabular Data Synthesis with Large Language Models | _local copy removed: the download did not match this paper_ |
 | 2024 | `2024_networks_catgnn_enhancing_credit_card_fraud` | CaT-GNN: Enhancing Credit Card Fraud Detection via Causal Temporal Graph Neural Networks | [📖 .md](2024_networks_catgnn_enhancing_credit_card_fraud.md) &bull; [📄 .pdf](2024_networks_catgnn_enhancing_credit_card_fraud.pdf) |
 | 2024 | `2024_duan_cat_gnn_causal_temporal_graph_fraud_detection` | CaT-GNN: Enhancing Credit Card Fraud Detection via Causal Temporal Graph Neural Networks | [📖 .md](2024_duan_cat_gnn_causal_temporal_graph_fraud_detection.md) &bull; [📄 .pdf](2024_duan_cat_gnn_causal_temporal_graph_fraud_detection.pdf) |
@@ -77,6 +94,7 @@ first page before this audit passed.
 | 2022 | `2022_evaluation_turning_the_tables_biased_imbalance` | Turning the Tables: Biased, Imbalanced, Dynamic Tabular Datasets for ML Evaluation | [📖 .md](2022_evaluation_turning_the_tables_biased_imbalance.md) &bull; [📄 .pdf](2022_evaluation_turning_the_tables_biased_imbalance.pdf) |
 | 2022 | `2022_data_mining_for_credit_card_fraud_a` | Financial Fraud Detection Using Value-at-Risk with Machine Learning in Skewed Data | [📖 .md](2022_data_mining_for_credit_card_fraud_a.md) &bull; [📄 .pdf](2022_data_mining_for_credit_card_fraud_a.pdf) |
 | 2022 | `2022_be_tabddpm_modelling_tabular_data_with` | TabDDPM: Modelling Tabular Data with Diffusion Models | [📖 .md](2022_be_tabddpm_modelling_tabular_data_with.md) &bull; [📄 .pdf](2022_be_tabddpm_modelling_tabular_data_with.pdf) |
+| 2021 | `2021_fed_developments_noncash_payments` | Developments in Noncash Payments for 2019 and 2020: Findings from the Federal Reserve Payments Study | [📖 .md](2021_fed_developments_noncash_payments.md) &bull; [📄 .pdf](2021_fed_developments_noncash_payments.pdf) |
 | 2021 | `2021_zhao_ctabgan_effective_table_data_synthe` | CTAB-GAN: Effective Table Data Synthesizing | [📖 .md](2021_zhao_ctabgan_effective_table_data_synthe.md) &bull; [📄 .pdf](2021_zhao_ctabgan_effective_table_data_synthe.pdf) |
 | 2021 | `2021_unknown_alternative_microfoundations_for_st` | Alternative Microfoundations for Strategic Classification | _local copy removed: the download did not match this paper_ |
 | 2021 | `2021_unknown_adversarial_attacks_on_graph_neural` | Adversarial Attacks on Graph Neural Networks in Financial Networks: Evasion via Fast Multi-Hop Splitting | _local copy removed: the download did not match this paper_ |
@@ -110,6 +128,7 @@ first page before this audit passed.
 | 2020 | `2020_data_synthesis_based_on_generative` | Synthesizing Tabular Data | [📖 .md](2020_data_synthesis_based_on_generative.md) &bull; [📄 .pdf](2020_data_synthesis_based_on_generative.pdf) |
 | 2020 | `2020_conditional_wasserstein_gan_for_cat` | Improved Training of Wasserstein GANs | [📖 .md](2020_conditional_wasserstein_gan_for_cat.md) &bull; [📄 .pdf](2020_conditional_wasserstein_gan_for_cat.pdf) |
 | 2019 | `2019_yoon_timeseries_generative_adversarial_n` | Time-series Generative Adversarial Networks | [📖 .md](2019_yoon_timeseries_generative_adversarial_n.md) &bull; [📄 .pdf](2019_yoon_timeseries_generative_adversarial_n.pdf) |
+| 2019 | `2019_fed_payments_study` | The 2019 Federal Reserve Payments Study | [📖 .md](2019_fed_payments_study.md) &bull; [📄 .pdf](2019_fed_payments_study.pdf) |
 | 2019 | `2019_xu_modeling_tabular_data_using_conditi` | Modeling Tabular Data using Conditional GAN | [📖 .md](2019_xu_modeling_tabular_data_using_conditi.md) &bull; [📄 .pdf](2019_xu_modeling_tabular_data_using_conditi.pdf) |
 | 2019 | `2019_unknown_the_explanation_game_explaining_mac` | The Explanation Game: Explaining Machine Learning Models Using Shapley Values | _local copy removed: the download did not match this paper_ |
 | 2019 | `2019_unknown_the_dangers_of_posthoc_interpretabi` | The Dangers of Post-hoc Interpretability: Unjustified Counterfactual Explanations | _local copy removed: the download did not match this paper_ |
@@ -125,6 +144,7 @@ first page before this audit passed.
 | 2019 | `2019_forensics_antimoney_laundering_in_bitcoin_exp` | Anti-Money Laundering in Bitcoin: Experimenting with Graph Convolutional Networks for Financial Forensics | [📖 .md](2019_forensics_antimoney_laundering_in_bitcoin_exp.md) &bull; [📄 .pdf](2019_forensics_antimoney_laundering_in_bitcoin_exp.pdf) |
 | 2019 | `2019_explainability_asymmetric_shapley_values_incorpora` | Asymmetric Shapley Values: Incorporating Causal Knowledge into Model-Agnostic Explainability | [📖 .md](2019_explainability_asymmetric_shapley_values_incorpora.md) &bull; [📄 .pdf](2019_explainability_asymmetric_shapley_values_incorpora.pdf) |
 | 2019 | `2019_ark_tabnet_attentive_interpretable_tabu` | TabNet: Attentive Interpretable Tabular Learning | [📖 .md](2019_ark_tabnet_attentive_interpretable_tabu.md) &bull; [📄 .pdf](2019_ark_tabnet_attentive_interpretable_tabu.pdf) |
+| 2018 | `2018_fed_changes_us_payments_fraud` | Changes in U.S. Payments Fraud from 2012 to 2016: Evidence from the Federal Reserve Payments Study | [📖 .md](2018_fed_changes_us_payments_fraud.md) &bull; [📄 .pdf](2018_fed_changes_us_payments_fraud.pdf) |
 | 2018 | `2018_unknown_from_local_explanations_to_global_u` | From local explanations to global understanding with explainable AI for trees | [📖 .md](2018_unknown_from_local_explanations_to_global_u.md) &bull; [📄 .pdf](2018_unknown_from_local_explanations_to_global_u.pdf) |
 | 2018 | `2018_representation_learning_on_large_no` | A Comprehensive Survey on Machine Learning for Networking: Evolution, Applications and Research Opportunities | [📖 .md](2018_representation_learning_on_large_no.md) &bull; [📄 .pdf](2018_representation_learning_on_large_no.pdf) |
 | 2018 | `2018_networks_a_benchmark_for_interpretability_me` | A Benchmark for Interpretability Methods | [📖 .md](2018_networks_a_benchmark_for_interpretability_me.md) &bull; [📄 .pdf](2018_networks_a_benchmark_for_interpretability_me.pdf) |
@@ -140,6 +160,7 @@ first page before this audit passed.
 | 2017 | `2017_mittelstadt_counterfactual_explanations_without` | Counterfactual Explanations Without Opening the Black Box: Automated Decisions and the GDPR | [📖 .md](2017_mittelstadt_counterfactual_explanations_without.md) &bull; [📄 .pdf](2017_mittelstadt_counterfactual_explanations_without.pdf) |
 | 2017 | `2017_lundberg_unified_approach_interpreting_model_predictions_shap` | A Unified Approach to Interpreting Model Predictions (SHAP) | [📖 .md](2017_lundberg_unified_approach_interpreting_model_predictions_shap.md) &bull; [📄 .pdf](2017_lundberg_unified_approach_interpreting_model_predictions_shap.pdf) |
 | 2017 | `2017_ghorbani_interpretation_of_neural_networks_i` | Interpretation of Neural Networks is Fragile | [📖 .md](2017_ghorbani_interpretation_of_neural_networks_i.md) &bull; [📄 .pdf](2017_ghorbani_interpretation_of_neural_networks_i.pdf) |
+| 2016 | `2016_bis_cpmi_fast_payments` | Fast payments - Enhancing the speed and availability of retail payments (CPMI Report No 154) | [📖 .md](2016_bis_cpmi_fast_payments.md) &bull; [📄 .pdf](2016_bis_cpmi_fast_payments.pdf) |
 | 2016 | `2016_unknown_anomalous_flocks_in_financial_netwo` | Anomalous Flocks in Financial Networks: Community Detection and Evasion in Banking Rails | _local copy removed: the download did not match this paper_ |
 | 2016 | `2016_process_the_neural_hawkes_process_a_neurall` | The Neural Hawkes Process: A Neurally Self-Modulating Multivariate Point Process | [📖 .md](2016_process_the_neural_hawkes_process_a_neurall.md) &bull; [📄 .pdf](2016_process_the_neural_hawkes_process_a_neurall.pdf) |
 | 2016 | `2016_lipton_the_mythos_of_model_interpretabilit` | The Mythos of Model Interpretability | [📖 .md](2016_lipton_the_mythos_of_model_interpretabilit.md) &bull; [📄 .pdf](2016_lipton_the_mythos_of_model_interpretabilit.pdf) |

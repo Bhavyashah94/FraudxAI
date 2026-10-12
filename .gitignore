@@ -62,8 +62,10 @@ venv.bak/
 data/production_*.csv
 data/batch_*.csv
 data/test_*.csv
-data/*_production.csv
 data/*simulation*/
+data/*sim*/
+data/annual_sim_*/
+data/smoke_test_*/
 data/smoke_test_parallel/
 # External reference corpora stay out of the repo: corpora/creditcard.arff is ~150 MB and the
 # ULB corpus it is built from is DbCL-1.0, so committing it would redistribute third-party
@@ -90,4 +92,7 @@ gui/frontend/node_modules/
 
 # Archives
 *.zip
+
+# Local staged dataset outputs
+staging_*/
 
