@@ -365,6 +365,9 @@ class AnnualSeasonalitySpec:
     calendar_macro_shocks: Dict[str, List[Dict[str, Any]]]
     wallet_hierarchy: Dict[str, Any]
     adversarial_drift_schedule: Dict[str, Any]
+    topology_seasonality: Dict[str, Any] = field(default_factory=dict)
+    cross_bank_smurfing: Dict[str, Any] = field(default_factory=dict)
+
 
 
 @dataclass(frozen=True)
@@ -391,6 +394,11 @@ class CalibrationTargetSpec:
     tolerance_relative: Optional[float] = None
     tolerance_absolute: Optional[float] = None
     reason_not_gated: str = ""
+    # Below this many fraud rows the batch cannot support a verdict on this target, because the
+    # statistic's own sampling spread exceeds the tolerance band. None means no limit has been
+    # measured, NOT that no limit exists -- see AGENTS.md 4, an unmeasured limit is a hypothesis.
+    reliable_from_fraud_rows: Optional[int] = None
+    reliability_basis: str = ""
 
 
 @dataclass(frozen=True)
@@ -814,9 +822,18 @@ def load_all_specs(spec_dir: Optional[str] = None) -> SpecRegistry:
                 tolerance_relative=float(t["tolerance_relative"]) if "tolerance_relative" in t else None,
                 tolerance_absolute=float(t["tolerance_absolute"]) if "tolerance_absolute" in t else None,
                 reason_not_gated=str(t.get("reason_not_gated", "")),
+                reliable_from_fraud_rows=int(t["reliable_from_fraud_rows"]) if "reliable_from_fraud_rows" in t else None,
+                reliability_basis=str(t.get("reliability_basis", "")),
             )
             for t in prof.get("targets", [])
         )
+        for t in targets:
+            if t.reliable_from_fraud_rows is not None and not t.reliability_basis.strip():
+                raise ValueError(
+                    f"Target {t.id} declares reliable_from_fraud_rows={t.reliable_from_fraud_rows} "
+                    f"without a reliability_basis. A threshold nobody derived is an invented number "
+                    f"(AGENTS.md 4): state the measurement it came from, or drop it."
+                )
         rng_lo, rng_hi = prof.get("fraud_prevalence_range_2025_26", [0.0, 0.0])
         calibration_profiles[str(prof["id"])] = CalibrationProfileSpec(
             id=str(prof["id"]),
@@ -865,7 +882,10 @@ def load_all_specs(spec_dir: Optional[str] = None) -> SpecRegistry:
             calendar_macro_shocks=dict(raw_13.get("calendar_macro_shocks", {})),
             wallet_hierarchy=dict(raw_13.get("wallet_hierarchy", {})),
             adversarial_drift_schedule=dict(raw_13.get("adversarial_drift_schedule", {})),
+            topology_seasonality=dict(raw_13.get("topology_seasonality", {})),
+            cross_bank_smurfing=dict(raw_13.get("cross_bank_smurfing", {})),
         )
+
 
     # 11. Parse 14_interbank_switch_and_clearing.yaml
     interbank_spec = None

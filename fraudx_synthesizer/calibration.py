@@ -86,7 +86,9 @@ def _within_tolerance(target: CalibrationTargetSpec, observed: float) -> Optiona
     return None
 
 
-def _evaluate(target: CalibrationTargetSpec, observed: Optional[float]) -> Dict[str, Any]:
+def _evaluate(
+    target: CalibrationTargetSpec, observed: Optional[float], fraud_rows: int
+) -> Dict[str, Any]:
     within = _within_tolerance(target, observed) if observed is not None else None
     if observed is None:
         status = "REPORTED"
@@ -97,6 +99,20 @@ def _evaluate(target: CalibrationTargetSpec, observed: Optional[float]) -> Dict[
     else:
         status = "PASS" if within else "FAIL"
         note = ""
+
+    # The verdict is always reported, even when the batch is too small to support it: hiding a
+    # failure behind a sample-size rule would let an underpowered batch look clean. The warning
+    # says the verdict may be the sample's rather than the generator's.
+    reliability_warning = ""
+    reliability_basis = target.reliability_basis
+    if target.reliable_from_fraud_rows is not None and fraud_rows < target.reliable_from_fraud_rows:
+        reliability_warning = (
+            f"{target.id} was graded {status} on {fraud_rows} fraud rows, below the "
+            f"{target.reliable_from_fraud_rows} this statistic needs before that verdict means "
+            f"anything; treat it as indicative, not a result. Derivation in the JSON report "
+            f"under reliability_basis."
+        )
+
     return {
         "id": target.id,
         "statistic": target.statistic,
@@ -109,6 +125,9 @@ def _evaluate(target: CalibrationTargetSpec, observed: Optional[float]) -> Dict[
         "status": status,
         "note": note,
         "source": target.source,
+        "reliable_from_fraud_rows": target.reliable_from_fraud_rows,
+        "reliability_warning": reliability_warning,
+        "reliability_basis": reliability_basis,
     }
 
 
@@ -136,10 +155,11 @@ def calibration_report(
         )
 
     stats = observed_statistics(records, specs)
-    targets = [_evaluate(t, stats.get(t.id)) for t in profile.targets]
-    gated_failures = [t["id"] for t in targets if t["gate"] and t["status"] == "FAIL"]
     n = len(records)
     fraud_rows = sum(int(r.get("is_fraud", 0)) for r in records)
+    targets = [_evaluate(t, stats.get(t.id), fraud_rows) for t in profile.targets]
+    gated_failures = [t["id"] for t in targets if t["gate"] and t["status"] == "FAIL"]
+    warnings = [t["reliability_warning"] for t in targets if t["reliability_warning"]]
 
     return {
         "profile": profile.id,
@@ -159,6 +179,7 @@ def calibration_report(
         "out_of_scope": [dict(item) for item in profile.out_of_scope],
         "overall": "FAIL" if gated_failures else "PASS",
         "gated_failures": gated_failures,
+        "warnings": warnings,
     }
 
 
@@ -174,5 +195,7 @@ def format_report(report: Dict[str, Any]) -> str:
     for t in report["targets"]:
         observed = "n/a" if t["observed"] is None else f"{t['observed']:.4g}"
         lines.append(f"  {t['status']:8s} {t['id']:34s} target {t['target']:<10.4g} observed {observed:<10s} {t['note']}")
+    for w in report.get("warnings", []):
+        lines.append(f"  WARNING {w}")
     lines.append(f"  overall {report['overall']}")
     return "\n".join(lines)

@@ -78,12 +78,92 @@ profiles:
         statistic: "share of fraud amount in card-not-present channels"
         target: 0.785
         tolerance_absolute: 0.15
-        gate: false
-        reason_not_gated: "depends on active cybercrime playbook allocation"
+        gate: true
         source: "Federal Reserve Payments Study 2022: CNP accounts for 78.5% of card fraud value"
+        corroboration: >
+          Independently confirmed on 2026-10-13 against UK Finance Annual Fraud Report 2026
+          (data for 2025): remote purchase GBP 423.5m of GBP 594.9m total UK-issued card fraud
+          = 0.712, and 0.81 in the 2022 report. The target of 0.785 sits between the two.
+        measured_2026_10_13: >
+          Published US 100k seed 42 gives a realized fraud value share of 0.7187 in CNP
+          channels and 0.7783 by row count, measured on channel_type. Inside the band, and
+          within 0.007 of the UK Finance 2025 value. This is why the gate is on.
+        # Below this many fraud rows the statistic's own sampling spread exceeds the tolerance
+        # band, so a verdict is the sample's rather than the generator's. Still reported, never
+        # suppressed -- only annotated as unreliable.
+        reliable_from_fraud_rows: 600
+        reliability_basis: >
+          Derived by bootstrap, not chosen. Resampling 4,000 subsamples of the published US 100k
+          at each size gives the false-failure rate of a generator that is in fact correct:
+          44 fraud rows sd 0.167, P(false FAIL) 29.4 percent; 100 rows 0.108 and 21.3 percent;
+          300 rows 0.059 and 8.3 percent; 600 rows 0.037 and 1.1 percent. The band is plus or
+          minus 0.15, so below roughly 300 rows the sampling spread exceeds a third of the band
+          and the number is mostly noise. 600 is the first size at which the false-failure rate
+          falls to about 1 percent. This statistic is a value-weighted ratio, which is why it
+          needs far more rows than a plain mean: heavy-tailed amounts make it converge slowly.
+          CAVEAT, measured the same day: three independently generated 20,000-row batches
+          holding 600 to 635 fraud rows gave 0.8549, 0.7476 and 0.8760, an implied standard
+          deviation of 0.069 and a mean of 0.826. Both are larger than the bootstrap predicts,
+          and the mean sits above the 0.7187 of the published 100k, so the share may also
+          depend on batch configuration and not on fraud-row count alone. If so, 600 is
+          optimistic and the true floor is higher. Unexplained; carried as a hypothesis.
 
     out_of_scope:
       - payment_system: "ACH / FedNow"
         reason: "instant account-to-account push payments; outside card switch scope"
       - payment_system: "Wire / Fedwire"
         reason: "high-value gross settlement; outside consumer retail card switch scope"
+
+# ----------------------------------------------------------------------------------------------
+# 9. Parameters this spec CANNOT ground, and what would replace each
+# Recorded 2026-10-13 after a search that reached the FTC Consumer Sentinel Data Book,
+# UK Finance Annual Fraud Report 2026, the ECB report on card fraud, the JPMorgan
+# card-testing white paper and OCC guidance. Those sources ground the attack lifecycle,
+# the dollar sizing of card tests, the CNP share and average case values. They do NOT
+# ground the three quantities below. None is presented as fact.
+# ----------------------------------------------------------------------------------------------
+ungroundable_fraud_parameters:
+  hypothesis: true
+  parameters:
+    - id: "authorized_fraud_typology_mix"
+      value_at_2026_10_13: >
+        INTENT_OMEGA_PROBE 45.5 percent, INTENT_OMEGA_HARVEST 39.7 percent,
+        INTENT_OMEGA_BISECT_DRAIN 14.8 percent of fraud rows, published US 100k seed 42.
+      why_not_grounded: >
+        OCC and JPMorgan describe card testing as "zero or small dollar" and as preceding
+        much larger activity, which establishes that a probe-then-drain lifecycle exists.
+        Neither gives the share of COMPLETED fraud that is testing. Testing overwhelmingly
+        produces declined authorizations, so the share admitted into an authorized-fraud
+        population is issuer data that no public source reports.
+      measured_consequence: >
+        The 45.5 percent probe share is the reason the fraud-amount distribution is bimodal
+        against a smoother real distribution (IEEE-CIS 2019: p50 0.811 of the card's typical
+        ticket, 1.77 percent above 5 times; this generator: p50 0.363, 16.70 percent above
+        5 times). Reported as a measured discrepancy, not tuned away, because tuning to
+        IEEE would be fitting to the validation corpus.
+      replace_with: >
+        Case-level fraud data from an issuer's fraud-operations function, giving the count
+        of completed fraud transactions by typology.
+
+    - id: "fraud_amount_distribution_shape"
+      why_not_grounded: >
+        No public source publishes a fraud transaction amount distribution, and the FTC
+        Consumer Sentinel Data Book reports victim-REPORTED LOSSES, which are a different
+        quantity from transaction ticket sizes. Central Bank of Ireland reports an average
+        fraudulent POS transaction of EUR 97.5 for 2025, which is a mean and constrains
+        level but not shape.
+      replace_with: >
+        A published binned fraud amount histogram, conditional on channel and typology.
+
+    - id: "typology_conditional_amount_ratio"
+      why_not_grounded: >
+        The relationship between a fraud ticket and the cardholder's own typical spend,
+        conditional on attack typology, is not published anywhere reachable.
+      replace_with: >
+        Paired legitimate and fraudulent transactions on the same card, which only an
+        issuer or network holds.
+
+  consequence_for_claiming: >
+    The generator's attack structure is grounded; three of its amplitude and mix parameters
+    are not. A claim of behavioural realism is therefore not supported by this spec, and the
+    cards state the discrepancy instead of asserting realism.

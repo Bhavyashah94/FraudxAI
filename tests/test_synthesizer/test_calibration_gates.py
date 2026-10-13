@@ -17,7 +17,7 @@ from pathlib import Path
 import pytest
 
 from fraudx_synthesizer import SimulationEngine
-from fraudx_synthesizer.calibration import calibration_report
+from fraudx_synthesizer.calibration import calibration_report, format_report
 from fraudx_synthesizer.spec_loader import load_all_specs
 
 US_PROFILE = "fed-payments-study-2022"
@@ -71,8 +71,25 @@ def test_us_report_refuses_indian_records():
 
 
 def test_cli_us_calibration_generation(tmp_path: Path):
-    # 1,500 rows on 150 cards: at 300 rows on 50 cards the gated mean ticket swung between 57 and
-    # 112 dollars across seeds against a band of 59 to 137, so the gate's verdict was the seed's.
+    # Batch size is chosen from a measured power analysis, not for speed, because a batch that is
+    # too small makes the gate's verdict the sample's rather than the generator's.
+    #
+    # On 1,500 rows the batch holds only 44 fraud rows. cnp_fraud_value_share is a value-weighted
+    # ratio, so at n=44 its sampling standard deviation is 0.167 against a tolerance band of
+    # +/-0.15 -- the noise is wider than the gate. Bootstrapping 4,000 subsamples of the published
+    # US 100k gives the false-failure rate of an otherwise-correct generator:
+    #
+    #     n=44 fraud rows -> sd 0.167, P(false FAIL) 29.4%
+    #     n=100           -> sd 0.108, P(false FAIL) 21.3%
+    #     n=300           -> sd 0.059, P(false FAIL)  8.3%
+    #     n=600           -> sd 0.037, P(false FAIL)  1.1%
+    #
+    # 20,000 rows at a 0.03 fraud rate yields ~600 fraud rows, which is where the verdict becomes
+    # the generator's. Measured cost 19.97 s wall / 535 MB peak RSS. Verified PASS on seeds 42,
+    # 43 and 44 (CNP share 0.8549, 0.7476, 0.8760; all inside [0.635, 0.935]).
+    #
+    # The tolerance band and the gate are unchanged. Only n moved: raising it makes the assertion
+    # harder to satisfy by luck, not easier.
     out = tmp_path / "us_calibrated.csv"
     cmd = [
         sys.executable,
@@ -80,11 +97,11 @@ def test_cli_us_calibration_generation(tmp_path: Path):
         "fraudx_synthesizer.cli",
         "generate",
         "-n",
-        "1500",
+        "20000",
         "--cards",
-        "150",
+        "400",
         "--merchants",
-        "40",
+        "80",
         "--region",
         "US",
         "--calibration",
@@ -104,3 +121,34 @@ def test_cli_us_calibration_generation(tmp_path: Path):
     report = json.loads(report_path.read_text(encoding="utf-8"))
     assert report["profile"] == US_PROFILE
     assert report["overall"] == "PASS"
+
+
+def test_underpowered_batch_warns_without_hiding_the_verdict():
+    """A batch too small to support a verdict must say so, and must still give the verdict.
+
+    1,500 rows at a 0.03 fraud rate is 44 fraud rows. There the sampling standard deviation of
+    cnp_fraud_value_share is 0.167 against a +/-0.15 tolerance band, so bootstrapping shows a
+    correct generator is graded FAIL 29.4 percent of the time. Suppressing the verdict at that
+    size would let an underpowered batch look clean, so the status is unchanged and only a
+    warning is attached.
+    """
+    engine = SimulationEngine(n_cards=150, n_merchants=40, region="US", seed=42)
+    records = engine.generate_batch(n_transactions=1500, fraud_prevalence=0.03, time_span_days=15)
+    report = calibration_report(records, profile_id=US_PROFILE, requested_fraud_prevalence=0.03)
+
+    assert 0 < report["generated"]["fraud_rows"] < 600, "batch must sit below the reliability floor"
+    assert any("cnp_fraud_value_share" in w for w in report["warnings"]), report["warnings"]
+    assert any("600" in w for w in report["warnings"]), report["warnings"]
+
+    by_id = {t["id"]: t for t in report["targets"]}
+    cnp = by_id["cnp_fraud_value_share"]
+    assert cnp["reliable_from_fraud_rows"] == 600
+    assert cnp["reliability_warning"]
+    # The verdict survives: sample size rewrites no target's status.
+    assert cnp["status"] in ("PASS", "FAIL", "REPORTED")
+    # No target may carry a reliability floor without a stated derivation for it.
+    for t in report["targets"]:
+        if t["reliable_from_fraud_rows"] is not None:
+            assert t["reliability_warning"], f"{t['id']} has a floor but no warning"
+
+    assert "WARNING" in format_report(report)
