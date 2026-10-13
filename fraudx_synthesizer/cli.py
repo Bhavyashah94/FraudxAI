@@ -24,7 +24,10 @@ THREAT_INTEL_GRAPH_COLUMNS = [
     "beneficiary_account_id",
     "ip_subnet_prefix",
     "device_fingerprint_id",
+    "mule_bank_id",
+    "layering_hop_latency_seconds",
 ]
+
 
 
 CLEARING_SETTLEMENT_COLUMNS = [

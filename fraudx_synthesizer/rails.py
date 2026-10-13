@@ -185,8 +185,13 @@ class BankRoutingMesh:
         is_fraud: int = 0,
     ) -> Dict[str, Any]:
         issuing_bank = self.resolve_issuing_bank(card_id)
-        acquiring_bank = self.resolve_acquiring_bank(merchant_id)
+        if merchant_id.startswith("P2P_"):
+            recip_card = merchant_id[4:]
+            acquiring_bank = self.resolve_issuing_bank(recip_card)
+        else:
+            acquiring_bank = self.resolve_acquiring_bank(merchant_id)
         is_on_us = (issuing_bank.id == acquiring_bank.id)
+
 
         interbank = self.specs.interbank
         cfg_switch = interbank.central_switching_networks.get(self.region, {}) if interbank else {}
@@ -203,7 +208,7 @@ class BankRoutingMesh:
             mti_resp = "0110"
         else:
             if self.region == "IN":
-                if "UPI" in channel_type:
+                if "UPI" in channel_type or merchant_id.startswith("P2P_"):
                     central_switch_id = cfg_switch.get("instant_payments_switch", "NPCI_UPI_SWITCH")
                     switch_network_fee = 0.0
                     interchange_fee = 0.0
@@ -218,7 +223,7 @@ class BankRoutingMesh:
                         rate = float(cfg_switch.get("off_us_interchange_rate_credit", 0.0180))
                         interchange_fee = round(amount * rate, 2)
             else:  # US
-                if "P2P" in channel_type:
+                if "P2P" in channel_type or merchant_id.startswith("P2P_"):
                     central_switch_id = cfg_switch.get("instant_payments_switch", "FEDNOW_SERVICE")
                     switch_network_fee = 0.0010
                     interchange_fee = 0.0

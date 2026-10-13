@@ -299,10 +299,11 @@ def test_inr_currency_and_minor_units_precision():
 
 
 def test_two_sample_ks_spend_marginals_against_rbi():
-    """Verify that sampled ticket sizes for all 5 Indian card products match calibrated LogNormal distributions (KS p > 0.05)."""
+    """Verify that sampled ticket sizes for all Indian card products match calibrated LogNormal distributions (KS p > 0.05)."""
     sample_size = 500
 
     products = [
+        ("IN_PROD_RETAIL_RUPAY_DEBIT", 7.8620, 0.75, 0.0),
         ("IN_PROD_PMJDY_RUPAY_DEBIT", 6.50, 0.65, 10000.0),
         ("IN_PROD_ENTRY_FD_BACKED", 6.95, 0.70, 25000.0),
         ("IN_PROD_SALARIED_PRIME_REWARDS", 7.65, 0.70, 150000.0),
@@ -321,9 +322,19 @@ def test_two_sample_ks_spend_marginals_against_rbi():
         # Generate empirical samples from CardholderProfile
         empirical_samples = np.array([card.sample_spend_amount(rng) for _ in range(sample_size)])
 
-        # Generate reference theoretical draws
+        # Generate reference theoretical draws, censored exactly the way
+        # CardholderProfile.sample_spend_amount censors them. The engine stopped deriving a
+        # debit instrument's ticket ceiling from a credit line on 2026-10-12 (a debit card has
+        # no credit line, and the old rule made the RBI debit mean unreachable by
+        # construction), so mirroring the old `credit_limit * 0.5` here would compare the
+        # engine against a censoring rule it does not use -- which is exactly what produced
+        # KS=1.0 for IN_PROD_RETAIL_RUPAY_DEBIT when this test still assumed a credit line.
+        is_credit_instrument = not any(
+            m in prod_id for m in ("DEBIT", "PREPAID", "EBT", "HSA", "PNJ")
+        )
+        ceiling = cred_limit * 0.50 if (is_credit_instrument and cred_limit > 0) else 250000.0
         ref_samples = rng.lognormal(mean=ref_mu, sigma=ref_sigma, size=sample_size)
-        ref_samples = np.clip(ref_samples, 10.0, cred_limit * 0.50)
+        ref_samples = np.clip(ref_samples, 10.0, ceiling)
 
         # Two-sample Kolmogorov-Smirnov test
         ks_stat, p_value = stats.ks_2samp(empirical_samples, ref_samples)

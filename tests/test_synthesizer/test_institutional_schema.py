@@ -60,13 +60,11 @@ def test_india_institutional_records():
 
     assert len(records) == 500
 
-    indian_products = {
-        "IN_PROD_SALARIED_PRIME_REWARDS",
-        "IN_PROD_ENTRY_FD_BACKED",
-        "IN_PROD_PMJDY_RUPAY_DEBIT",
-        "IN_PROD_KISAN_CREDIT_CARD",
-        "IN_PROD_SUPER_PREMIUM_HNI",
-    }
+    # Derived from spec/05 rather than a hand-copied list, so the invariant under test is
+    # "every emitted Indian product is a declared Indian product" and stays true as
+    # spec/05 gains products (IN_PROD_RETAIL_RUPAY_DEBIT was added 2026-10-12 and a
+    # hard-coded list had to be edited, which is how such lists rot).
+    indian_products = set(load_all_specs().indian_products)
     address_space = load_all_specs().telemetry.address_space
     indian_octets = {
         str(o) for o in address_space["residential_first_octets"]["IN"] + address_space["datacenter_first_octets"]["IN"]

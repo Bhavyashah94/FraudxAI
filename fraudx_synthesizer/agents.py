@@ -175,6 +175,9 @@ class CardholderProfile:
     travel_lon: float = 0.0
     unauthorized_alert_time: float = -1.0
     total_tx_count: int = 0
+    # Simulation time of this card's most recent emitted transaction. Used to weight
+    # attack targeting by recency; see the note at the victim-selection site in engine.py.
+    last_tx_time_sec: float = -1.0
     consecutive_declines: int = 0
 
     # Shopping trip & Life-stage episode tracking
@@ -359,7 +362,19 @@ class CardholderProfile:
 
     def sample_spend_amount(self, rng: np.random.Generator) -> float:
         """Samples ticket amount according to cohort specification (LogNormal vs Spliced GPD)."""
-        max_spend = self.credit_limit * 0.50 if self.credit_limit > 0 else 5000.0
+        # A debit instrument has no credit line, so capping its ticket by
+        # `credit_limit * 0.50` is meaningless -- and for a PMJDY account (Rs 6,000
+        # limit) that cap sat below the mean debit ticket the RBI reports, making the
+        # reference unreachable by construction. Non-credit instruments get a
+        # ceiling expressed in rupees instead.
+        is_credit_instrument = not any(
+            marker in self.product_id
+            for marker in ("DEBIT", "PREPAID", "EBT", "HSA", "PNJ")
+        )
+        if is_credit_instrument and self.credit_limit > 0:
+            max_spend = self.credit_limit * 0.50
+        else:
+            max_spend = 250000.0  # Rs 2,50,000 ceiling for non-credit instruments
 
         if not self.is_spliced_gpd:
             val = float(rng.lognormal(mean=self.spend_mean_log, sigma=self.spend_sigma_log))

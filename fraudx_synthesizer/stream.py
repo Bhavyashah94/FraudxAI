@@ -825,6 +825,8 @@ class ZeroLeakageDataPartitioner:
             "beneficiary_account_id": record.get("beneficiary_account_id", ""),
             "ip_subnet_prefix": record.get("ip_subnet_prefix", ""),
             "device_fingerprint_id": record.get("device_fingerprint_id", ""),
+            "mule_bank_id": record.get("mule_bank_id", ""),
+            "layering_hop_latency_seconds": float(record.get("layering_hop_latency_seconds", 0.0)),
             "asn_type": record.get("asn_type", "residential"),
             "client_ip": record.get("client_ip", "127.0.0.1"),
             "is_fraud": int(record.get("is_fraud", 0)),
@@ -863,11 +865,14 @@ class ZeroLeakageDataPartitioner:
                 "beneficiary_account_id": r.get("beneficiary_account_id", ""),
                 "ip_subnet_prefix": r.get("ip_subnet_prefix", ""),
                 "device_fingerprint_id": r.get("device_fingerprint_id", ""),
+                "mule_bank_id": r.get("mule_bank_id", ""),
+                "layering_hop_latency_seconds": float(r.get("layering_hop_latency_seconds", 0.0)),
                 "asn_type": r.get("asn_type", "residential"),
                 "client_ip": r.get("client_ip", "127.0.0.1"),
                 "is_fraud": int(r.get("is_fraud", 0)),
                 "scenario_tag": str(r.get("scenario_tag", "")),
             }
+
 
             inf_batch.append(inf)
             labels_batch.append(lbl)

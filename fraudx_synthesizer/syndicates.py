@@ -52,6 +52,170 @@ class BotnetCluster:
 
 
 @dataclass
+class SmurfTransferLeg:
+    """Represents one discrete structured transfer leg in a cross-bank smurfing ring."""
+    victim_account_id: str
+    victim_bank_id: str
+    mule_account_id: str
+    mule_bank_id: str
+    amount: float
+    currency: str
+    dispatch_time_sec: float
+    liquidation_time_sec: float
+    offramp_channel: str
+
+
+class CrossBankSmurfingSynthesizer:
+    """Synthesizes multi-stage cross-bank smurfing operations across commercial banks.
+
+    Grounded in FinCEN Advisory FIN-2020-A003, BSA 31 CFR 1010.311, and I4C CFCFRMS 1930.
+    Enforces strict institutional diversity: Bank(M_k) != Bank(M_j) and Bank(M_k) != Bank(V_0).
+    """
+
+    def __init__(self, region: str = "US", seed: int = 42):
+        self.region = region.upper()
+        self.rng = np.random.default_rng(seed)
+        # Only an ImportError is tolerated here. A malformed or partial spec previously
+        # raised here, was swallowed by a bare `except Exception: pass`, and the engine
+        # silently continued on a hardcoded bank list with invented market-share weights.
+        # A spec regression is exactly the thing that must not fail quietly, so it now
+        # propagates. ImportError is the one case where an unavailable module is a
+        # legitimate reason to fall back rather than a defect.
+        try:
+            from .spec_loader import load_all_specs
+        except ImportError:  # pragma: no cover - only hit if the package is broken
+            import warnings
+            warnings.warn(
+                "spec_loader could not be imported; cross-bank smurfing falls back to a "
+                "built-in bank list with illustrative market shares",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+            specs = None
+        else:
+            specs = load_all_specs()
+
+        interbank = specs.interbank if specs else None
+        banks_raw = interbank.commercial_banks.get(self.region, []) if interbank else []
+        if banks_raw:
+            self.bank_ids = [str(b["id"]) for b in banks_raw]
+            weights = np.array([float(b.get("market_share_weight", 0.20)) for b in banks_raw])
+            self.bank_weights = weights / weights.sum()
+        else:
+            if self.region == "IN":
+                self.bank_ids = ["BANK_IN_SBI", "BANK_IN_HDFC", "BANK_IN_ICICI", "BANK_IN_AXIS", "BANK_IN_PNB"]
+                self.bank_weights = np.array([0.26, 0.24, 0.20, 0.16, 0.14])
+            else:
+                self.bank_ids = ["BANK_US_CHASE", "BANK_US_BOFA", "BANK_US_WELLS", "BANK_US_CITI", "BANK_US_CAPITALONE"]
+                self.bank_weights = np.array([0.28, 0.24, 0.20, 0.16, 0.12])
+
+        # spec/13 cross_bank_smurfing.offramp_probabilities. This mix lived only in
+        # generate_smurfing_ring_operation before 2026-10-13, so the spec declared the
+        # set of channels and the engine chose their weights invisibly.
+        if specs is not None:
+            smurf_spec = getattr(specs, "cross_bank_smurfing", None) or {}
+        else:
+            smurf_spec = {}
+        offramp_probs = dict(smurf_spec.get("offramp_probabilities", {}))
+        if offramp_probs:
+            self.offramp_channels = list(offramp_probs)
+            p = np.array([float(offramp_probs[c]) for c in self.offramp_channels])
+            self.offramp_weights = p / p.sum()
+        else:
+            self.offramp_channels = ["P2P_CRYPTO_USDT_ESCROW", "ATM_CLONED_CARD_CASHOUT"]
+            self.offramp_weights = np.array([0.65, 0.35])
+
+    def sample_fan_out_degree(self) -> int:
+        """Samples number of branches K in {2, 3, 4, 5}. Expected value = 3.2."""
+        degrees = [2, 3, 4, 5]
+        probs = [0.25, 0.40, 0.25, 0.10]
+        return int(self.rng.choice(degrees, p=probs))
+
+    def sample_destination_banks(self, source_bank: str, k: int) -> List[str]:
+        """Selects K distinct destination banks strictly excluding source bank."""
+        available = [b for b in self.bank_ids if b != source_bank]
+        if not available:
+            return [self.bank_ids[0]]
+        k_clamped = min(k, len(available))
+        indices = [self.bank_ids.index(b) for b in available]
+        weights = self.bank_weights[indices]
+        norm_weights = weights / weights.sum()
+        chosen = self.rng.choice(available, size=k_clamped, replace=False, p=norm_weights)
+        return list(chosen)
+
+    def sample_structuring_ticket(self) -> float:
+        """Draws structuring ticket size from Truncated Log-Normal distribution.
+
+        Strictly bounded below BSA ($10,000 USD) and PMLA (Rs 200,000 INR) reporting thresholds.
+        """
+        if self.region == "IN":
+            mu, sigma, low, high = 11.150, 0.450, 25000.0, 180000.0
+        else:
+            mu, sigma, low, high = 8.150, 0.420, 1500.0, 8500.0
+
+        for _ in range(50):
+            val = float(self.rng.lognormal(mean=mu, sigma=sigma))
+            if low <= val <= high:
+                return round(val, 2)
+        return round(float(np.clip(val, low, high)), 2)
+
+    def sample_hop_latency_seconds(self) -> float:
+        """Samples off-ramp liquidation hop latency in seconds. Median = 22.5 minutes (1,350s)."""
+        mu = 7.2078  # ln(1350)
+        sigma = 0.450
+        for _ in range(50):
+            val = float(self.rng.lognormal(mean=mu, sigma=sigma))
+            if 600.0 <= val <= 3600.0:  # Truncated between 10m and 60m
+                return round(val, 1)
+        return round(float(np.clip(val, 600.0, 3600.0)), 1)
+
+    def generate_smurfing_ring_operation(
+        self,
+        victim_id: str,
+        victim_bank: str,
+        t_ingress_sec: float,
+    ) -> List[SmurfTransferLeg]:
+        """Generates a complete multi-stage cross-bank smurfing operation."""
+        k = self.sample_fan_out_degree()
+        dest_banks = self.sample_destination_banks(victim_bank, k)
+        currency = "INR" if self.region == "IN" else "USD"
+        legs = []
+
+        for idx, dest_bank in enumerate(dest_banks):
+            ticket_amt = self.sample_structuring_ticket()
+            # Stagger interbank transfers by 10 to 45 seconds to mimic bot/manual sequencing
+            stagger_sec = float(self.rng.uniform(10.0, 45.0)) * idx
+            dispatch_time = t_ingress_sec + stagger_sec
+            hop_latency = self.sample_hop_latency_seconds()
+            liquidation_time = dispatch_time + hop_latency
+            mule_id = f"MULE_{dest_bank}_{self.rng.integers(1000, 9999)}"
+            # Weights come from spec/13 cross_bank_smurfing.offramp_probabilities.
+            # Written as a Bernoulli on the first channel's weight rather than an
+            # rng.choice over the array, so the draw consumes one uniform exactly as
+            # before and the generated stream is unchanged.
+            offramp = str(
+                self.offramp_channels[0]
+                if self.rng.random() < self.offramp_weights[0]
+                else self.offramp_channels[1]
+            )
+
+            legs.append(
+                SmurfTransferLeg(
+                    victim_account_id=victim_id,
+                    victim_bank_id=victim_bank,
+                    mule_account_id=mule_id,
+                    mule_bank_id=dest_bank,
+                    amount=ticket_amt,
+                    currency=currency,
+                    dispatch_time_sec=dispatch_time,
+                    liquidation_time_sec=liquidation_time,
+                    offramp_channel=offramp,
+                )
+            )
+        return legs
+
+
+@dataclass
 class MuleRing:
     """Represents a coordinated money-mule laundering network receiving fraudulent proceeds."""
     ring_id: str
@@ -63,6 +227,7 @@ class MuleRing:
     fee_cut_ratio: float = 0.10
     layering_hop_latency_seconds: float = 300.0
     is_frozen: bool = False
+    bank_id: str = ""
 
     def sample_beneficiary(self, rng: np.random.Generator) -> str:
         """Draws a target mule beneficiary account."""
@@ -81,7 +246,7 @@ class SyndicateEntity:
     botnets: List[BotnetCluster] = field(default_factory=list)
     mule_rings: List[MuleRing] = field(default_factory=list)
 
-    def sample_telemetry(self, rng: np.random.Generator) -> Dict[str, Any]:
+    def sample_telemetry(self, rng: np.random.Generator, victim_bank_id: str = "") -> Dict[str, Any]:
         """Samples persistent technical markers and mule destination for an attack event."""
         res: Dict[str, Any] = {
             "syndicate_id": self.syndicate_id,
@@ -98,6 +263,8 @@ class SyndicateEntity:
             "mule_tier": "",
             "beneficiary_account_id": "",
             "liquidation_channel": "",
+            "mule_bank_id": "",
+            "layering_hop_latency_seconds": 0.0,
         }
 
         if self.botnets:
@@ -113,13 +280,18 @@ class SyndicateEntity:
             res["ja4_signature"] = net_tel["ja4_signature"]
 
         if self.mule_rings:
-            ring = rng.choice(self.mule_rings)
+            # Enforce institutional diversity: mule bank != victim bank if multiple rings available
+            eligible = [r for r in self.mule_rings if not victim_bank_id or r.bank_id != victim_bank_id]
+            ring = rng.choice(eligible) if eligible else rng.choice(self.mule_rings)
             res["mule_ring_id"] = ring.ring_id
             res["mule_tier"] = ring.tier.value
             res["beneficiary_account_id"] = ring.sample_beneficiary(rng)
             res["liquidation_channel"] = ring.liquidation_channel
+            res["mule_bank_id"] = ring.bank_id
+            res["layering_hop_latency_seconds"] = ring.layering_hop_latency_seconds
 
         return res
+
 
 
 class SyndicateRegistry:
@@ -133,6 +305,7 @@ class SyndicateRegistry:
         self._playbook_to_syndicates: Dict[str, List[SyndicateEntity]] = {}
         # spec/07 section 16: the proxy pools ride on the prefixes the cardholders use
         self.address_space = ClientAddressSpace(seed=seed)
+        self.smurfing_synthesizer = CrossBankSmurfingSynthesizer(region=self.region, seed=seed)
         self._initialize_syndicates()
 
     def _initialize_syndicates(self) -> None:
@@ -166,6 +339,7 @@ class SyndicateRegistry:
             bank_routing="021000021",
             fee_cut_ratio=0.10,
             layering_hop_latency_seconds=300.0,
+            bank_id="BANK_US_CHASE",
         )
         ato_mule_t2 = MuleRing(
             ring_id="MULE_US_AGGREGATOR_LLC_02",
@@ -173,10 +347,12 @@ class SyndicateRegistry:
             account_type="COMMERCIAL_SHELL_LLC",
             liquidation_channel="SAME_DAY_ACH_CONSOLIDATION",
             beneficiary_accounts=[f"MULE_BOA_CORP_{i:05d}" for i in range(200, 208)],
-            bank_routing="026009593",
+            bank_routing="011000138",
             fee_cut_ratio=0.15,
             layering_hop_latency_seconds=1200.0,
+            bank_id="BANK_US_BOFA",
         )
+
 
         # 1. SYN_US_CARDING_BOT: Automated micro-auth card testing botnet
         checker_botnet = BotnetCluster(
@@ -204,7 +380,7 @@ class SyndicateRegistry:
             target_mccs=[8398, 4899, 5815],
             credential_tiers=["TIER_TRACK_2_DUMP", "TIER_CNP_FULLZ"],
             botnets=[checker_botnet],
-            mule_rings=[ato_mule_t1],  # Connects card checking hits to smurf ingress
+            mule_rings=[ato_mule_t1, ato_mule_t2],  # Connects card checking hits to smurf ingress across Chase & BofA
         )
 
         # 2. SYN_US_ATO_SYNDICATE: Account Takeover & Session Hijacking Syndicate
@@ -259,6 +435,7 @@ class SyndicateRegistry:
             bank_routing="121000247",
             fee_cut_ratio=0.18,
             layering_hop_latency_seconds=1800.0,
+            bank_id="BANK_US_WELLS",
         )
         syn_bustout = SyndicateEntity(
             syndicate_id="SYN_US_SYNTHETIC_BUSTOUT",
@@ -272,7 +449,7 @@ class SyndicateRegistry:
             target_mccs=[6051, 5944, 5732],
             credential_tiers=["TIER_CNP_FULLZ"],
             botnets=[ato_botnet_comcast],
-            mule_rings=[bustout_mule_t2],
+            mule_rings=[bustout_mule_t2, ato_mule_t2],
         )
 
         # 4. SYN_US_RESHIP_GIFT: CNP Reship & Gift Card Drain Ring
@@ -293,10 +470,11 @@ class SyndicateRegistry:
             tier=MuleTier.TIER_1_SMURF,
             account_type="PERSONAL_CHECKING",
             liquidation_channel="SECONDARY_GIFT_CARD_P2P",
-            beneficiary_accounts=[f"MULE_USAA_{i:05d}" for i in range(400, 408)],
-            bank_routing="314074269",
+            beneficiary_accounts=[f"MULE_CAPONE_{i:05d}" for i in range(400, 408)],
+            bank_routing="051405515",
             fee_cut_ratio=0.25,
             layering_hop_latency_seconds=600.0,
+            bank_id="BANK_US_CAPITALONE",
         )
         syn_reship = SyndicateEntity(
             syndicate_id="SYN_US_RESHIP_GIFT",
@@ -309,7 +487,7 @@ class SyndicateRegistry:
             target_mccs=[5947, 5310, 5732],
             credential_tiers=["TIER_CNP_FULLZ", "TIER_TRACK_2_DUMP"],
             botnets=[reship_botnet],
-            mule_rings=[reship_mule],
+            mule_rings=[reship_mule, ato_mule_t1],
         )
 
         # 5. SYN_US_IAB_STEALER: Initial Access Broker & Stealer Log Distributor
@@ -333,7 +511,7 @@ class SyndicateRegistry:
             target_mccs=[5815, 8398],
             credential_tiers=["TIER_SESSION_COOKIE", "TIER_CNP_FULLZ"],
             botnets=[stealer_botnet],
-            mule_rings=[ato_mule_t1],
+            mule_rings=[ato_mule_t1, ato_mule_t2],
         )
 
         # 6. SYN_US_FINCEN_MULE_NET: Multi-Tier Layering & Crypto Off-Ramp Network
@@ -343,9 +521,10 @@ class SyndicateRegistry:
             account_type="P2P_CRYPTO_ESCROW",
             liquidation_channel="BINANCE_BYBIT_P2P_USDT_TRC20",
             beneficiary_accounts=[f"MULE_CRYPTO_USDT_{i:05d}" for i in range(500, 515)],
-            bank_routing="P2P_TRON_USDT",
+            bank_routing="021000089",
             fee_cut_ratio=0.05,
             layering_hop_latency_seconds=900.0,
+            bank_id="BANK_US_CITI",
         )
         syn_fincen_mule = SyndicateEntity(
             syndicate_id="SYN_US_FINCEN_MULE_NET",
@@ -355,7 +534,7 @@ class SyndicateRegistry:
             target_mccs=[6051, 6012],
             credential_tiers=["TIER_SESSION_COOKIE", "TIER_DEVICE_TOKEN"],
             botnets=[ato_botnet_att],
-            mule_rings=[ato_mule_t1, ato_mule_t2, fincen_crypto_offramp],
+            mule_rings=[ato_mule_t1, ato_mule_t2, bustout_mule_t2, fincen_crypto_offramp, reship_mule],
         )
 
         self.syndicates = [
@@ -366,6 +545,7 @@ class SyndicateRegistry:
             syn_iab,
             syn_fincen_mule,
         ]
+
 
     def _init_india_syndicates(self) -> None:
         """Configures 5 empirical India cybercrime threat actors grounded in I4C/CFCFRMS reports."""
@@ -391,6 +571,29 @@ class SyndicateRegistry:
             bank_routing="SBIN0001234",
             fee_cut_ratio=0.10,
             layering_hop_latency_seconds=120.0,
+            bank_id="BANK_IN_SBI",
+        )
+        axis_mule_t1 = MuleRing(
+            ring_id="MULE_IN_SMURF_AXIS_04",
+            tier=MuleTier.TIER_1_SMURF,
+            account_type="PERSONAL_CHECKING",
+            liquidation_channel="INSTANT_UPI_P2P",
+            beneficiary_accounts=[f"MULE_AXIS_{i:05d}" for i in range(400, 415)],
+            bank_routing="UTIB0000123",
+            fee_cut_ratio=0.10,
+            layering_hop_latency_seconds=150.0,
+            bank_id="BANK_IN_AXIS",
+        )
+        pnb_mule_t2 = MuleRing(
+            ring_id="MULE_IN_AGGREGATOR_PNB_05",
+            tier=MuleTier.TIER_2_AGGREGATOR,
+            account_type="COMMERCIAL_SHELL_LLC",
+            liquidation_channel="IMPS_COMMERCIAL_SETTLEMENT",
+            beneficiary_accounts=[f"MULE_PNB_{i:05d}" for i in range(500, 510)],
+            bank_routing="PUNB0000456",
+            fee_cut_ratio=0.12,
+            layering_hop_latency_seconds=240.0,
+            bank_id="BANK_IN_PNB",
         )
         syn_mewat = SyndicateEntity(
             syndicate_id="SYN_IN_MEWAT_VISH",
@@ -407,7 +610,7 @@ class SyndicateRegistry:
             target_mccs=[4899, 8398, 5815],
             credential_tiers=["TIER_PHISHED_OTP", "TIER_TRACK_2_DUMP"],
             botnets=[apk_botnet],
-            mule_rings=[mewat_mule_t1],
+            mule_rings=[mewat_mule_t1, axis_mule_t1],
         )
 
         # 2. SYN_IN_JAMTARA_VISH: Jamtara Telephony Social Engineering Crew
@@ -431,7 +634,7 @@ class SyndicateRegistry:
             target_mccs=[5311, 5732],
             credential_tiers=["TIER_PHISHED_OTP", "TIER_CNP_FULLZ"],
             botnets=[airtel_botnet],
-            mule_rings=[mewat_mule_t1],
+            mule_rings=[mewat_mule_t1, pnb_mule_t2],
         )
 
         # 3. SYN_IN_RENT_DRAIN: Credit-to-Bank Rent Portal Arbitrage Ring
@@ -444,6 +647,7 @@ class SyndicateRegistry:
             bank_routing="HDFC0000456",
             fee_cut_ratio=0.12,
             layering_hop_latency_seconds=180.0,
+            bank_id="BANK_IN_HDFC",
         )
         syn_rent = SyndicateEntity(
             syndicate_id="SYN_IN_RENT_DRAIN",
@@ -458,7 +662,7 @@ class SyndicateRegistry:
             target_mccs=[6513, 5311, 5732],
             credential_tiers=["TIER_CNP_FULLZ", "TIER_DEVICE_TOKEN"],
             botnets=[apk_botnet],
-            mule_rings=[rent_mule_t2],
+            mule_rings=[rent_mule_t2, axis_mule_t1],
         )
 
         # 4. SYN_IN_P2P_MULE_HERDER: P2P Crypto Laundering Ring
@@ -468,9 +672,10 @@ class SyndicateRegistry:
             account_type="P2P_CRYPTO_ESCROW",
             liquidation_channel="BINANCE_P2P_USDT_ESCROW",
             beneficiary_accounts=[f"MULE_USDT_TRC_{i:05d}" for i in range(300, 312)],
-            bank_routing="P2P_TRON_USDT",
+            bank_routing="ICIC0000789",
             fee_cut_ratio=0.06,
             layering_hop_latency_seconds=600.0,
+            bank_id="BANK_IN_ICICI",
         )
         syn_p2p_crypto = SyndicateEntity(
             syndicate_id="SYN_IN_P2P_MULE_HERDER",
@@ -480,7 +685,7 @@ class SyndicateRegistry:
             target_mccs=[6051, 6012],
             credential_tiers=["TIER_CNP_FULLZ"],
             botnets=[airtel_botnet],
-            mule_rings=[mewat_mule_t1, rent_mule_t2, crypto_mule_t3],
+            mule_rings=[mewat_mule_t1, rent_mule_t2, crypto_mule_t3, axis_mule_t1, pnb_mule_t2],
         )
 
         # 5. SYN_IN_INTL_BYPASS: Foreign Non-3DS Gateway Bypass Syndicate
@@ -508,7 +713,7 @@ class SyndicateRegistry:
             target_mccs=[4722, 5999, 7011],
             credential_tiers=["TIER_CNP_FULLZ"],
             botnets=[intl_botnet],
-            mule_rings=[],
+            mule_rings=[crypto_mule_t3, pnb_mule_t2],
         )
 
         self.syndicates = [
@@ -518,6 +723,7 @@ class SyndicateRegistry:
             syn_p2p_crypto,
             syn_intl,
         ]
+
 
     def get_syndicate_by_id(self, syndicate_id: str) -> Optional[SyndicateEntity]:
         """Returns the syndicate entity with the given ID, if known."""

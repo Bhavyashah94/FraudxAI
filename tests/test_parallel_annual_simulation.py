@@ -128,9 +128,12 @@ def test_entity_partitioned_parallel_simulation(temp_output_dir):
     assert (df_clearing["clearing_mti"] == "0200").all(), "Clearing MTI must be 0200"
     assert (df_clearing["interchange_fee_minor"] > 0).any(), "Expected non-zero interchange fees"
 
-    # 8. P2P Channel Presence
-    channels = df_master["channel_type"].unique().to_list()
-    assert any("P2P" in ch for ch in channels), f"Expected P2P channel in output, got: {channels}"
+    # 8. P2P Transaction Presence
+    categories = df_master["merchant_category"].unique().to_list()
+    mids = df_master["merchant_id"].to_list()
+    assert "P2P Money Transfer" in categories or any("P2P_" in m for m in mids), (
+        f"Expected P2P transfers in output, got categories: {categories}"
+    )
 
 
 def test_engine_backwards_compatibility():
