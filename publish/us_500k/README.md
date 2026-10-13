@@ -34,6 +34,60 @@ Designed specifically for **prequential time-ordered evaluation**, **rolling mod
 
 ---
 
+## 0. Read This First: This Dataset Is Deliberately Enriched
+
+**The fraud rate in this dataset is roughly 19 times higher than the real-world rate.**
+That is on purpose, and you need to know it before you use it.
+
+Real US general-purpose card fraud runs about **10.5 basis points of purchase value**
+(0.105% of transactions by count) - this is the Federal Reserve Payments Study figure
+recorded in the project's `spec/09_us_calibration_targets.yaml`. This dataset delivers:
+
+| | Real world (spec/09) | This dataset | Ratio |
+| :--- | ---: | ---: | ---: |
+| Fraud as a share of transactions | 0.105% | **2.006%** | **19x** |
+| Fraud as a share of purchase value | 10.5 bps | **1,134 bps** | **108x** |
+| Average amount on a fraud transaction | $185 | **$383** | 2.1x |
+
+At a real 0.105% rate, a 500,000-row batch would contain about 525 fraud cases - too few
+to train or benchmark against. The generator is run with an explicitly raised
+`--fraud-rate` so the batch carries enough labelled positives to be useful.
+
+**What this means for you:**
+
+- **Use it to build and compare models.** That is what it is for, and the enrichment is
+  what makes a prequential/streaming benchmark of this size viable at all.
+- **Do not read its fraud rate as a claim about the real world.** It is a modelling
+  convenience, stated here rather than left for you to discover.
+- **Reported precision/recall will not match production.** Enrichment inflates the
+  positive class, which flatters recall and shifts the precision threshold. The PR-AUC in
+  the quickstart below is measured on this enriched batch only.
+- **If you need real-world prevalence,** generate your own batch at the registry rate
+  and expect the realised rate to land slightly under the requested one:
+
+  ```bash
+  uv run fraudx generate -n 500000 --region US --seed 42 --days 90 \
+      --fraud-rate 0.00105 --export-institutional-views
+  ```
+
+  Check your own batch's realised rate before quoting it - that is the number to report,
+  not the requested one.
+
+Every number in that table is measured from the published bytes, not asserted. To
+reproduce it, clone the generator (which carries the spec file) and point the script at
+your downloaded CSV:
+
+```bash
+git clone https://github.com/Bhavyashah94/FraudxAI && cd FraudxAI
+python publish/measure_enrichment.py path/to/fraudxai_us_500k_seed42.csv \
+    spec/09_us_calibration_targets.yaml US
+```
+
+The script re-reads the file three times and refuses to print if the figures are not
+identical across repeats.
+
+---
+
 ## 1. What is this dataset?
 
 Most fraud detection datasets are static, shuffled tables that ignore how payment systems actually operate in production. Real fraud detection is a **streaming problem**:
@@ -98,14 +152,42 @@ df = df.sort_values('tx_time_seconds').reset_index(drop=True)
 split_idx = int(len(df) * 0.8)
 train, test = df.iloc[:split_idx], df.iloc[split_idx:]
 
-# 3. Select pre-decision features (drop identifiers, future post-settlement fields, and target labels)
+# 3. Select PRE-DECISION features only.
+#
+#    Leaving any of the excluded groups in inflates this baseline to a meaningless
+#    ROC-AUC of 1.0000 on the out-of-time split. Verify before you reuse this feature
+#    list on another batch:
+#        df.groupby('asn')['is_fraud'].agg(['size','mean'])
+#        df.groupby('mule_tier')['is_fraud'].agg(['size','mean'])
+#
+#    (a) Identifiers and label/counterfactual ground truth.
+#    (b) Adversary-attribution columns. Populated on every row here, but their value
+#        sets are disjoint between classes: the SYN_US_* syndicates and the TIER_*_*
+#        mule tiers occur only on fraud rows, the single organic value only on
+#        legitimate ones. The same holds for the ASNs, ISPs, JA4 signatures and DEV_*
+#        devices in this batch -- every row carrying one is fraudulent. That is a
+#        property of the generator, not of fraud in the real world, where a residential
+#        ISP carries overwhelmingly legitimate traffic. Keep them if you want to measure
+#        "did this come from known-bad infrastructure", which is a legitimate but far
+#        easier problem -- just do not report that AUC as fraud-detection performance.
+#        Note that asn_type is NOT in this group: its fraud rate ranges 0.4% to 17.9%
+#        across residential/mobile/datacenter, which is realistic signal.
+#    (c) risk_score / base_risk, the decision engine's own output. Feeding a model the
+#        score that already decided the label is circular.
 drop_cols = [
+    # (a) identifiers and ground truth
     'transaction_id', 'card_id', 'pan_masked', 'merchant_id', 'merchant_name',
-    'mid', 'tid', 'client_ip', 'device_canvas_hash', 'device_fingerprint_id',
-    'is_fraud', 'scenario_tag', 'syndicate_id', 'botnet_cluster_id', 'mule_ring_id',
-    'beneficiary_account_id', 'dominant_causal_driver', 'analytical_shapley_probability',
-    'analytical_shapley_log_odds', 'counterfactual_input_deltas', 'counterfactual_mode',
-    'counterfactual_twin', 'normative_baseline', 'explanation_narrative'
+    'mid', 'tid', 'is_fraud', 'scenario_tag', 'dominant_causal_driver',
+    'analytical_shapley_probability', 'analytical_shapley_log_odds',
+    'counterfactual_input_deltas', 'counterfactual_mode', 'counterfactual_twin',
+    'normative_baseline', 'explanation_narrative',
+    # (b) adversary attribution and 100%-pure network identity
+    'syndicate_id', 'botnet_cluster_id', 'mule_ring_id', 'beneficiary_account_id',
+    'mule_tier', 'liquidation_channel',
+    'client_ip', 'ip_subnet_prefix', 'asn', 'asn_type', 'isp',
+    'device_fingerprint_id', 'device_canvas_hash', 'ja4_signature',
+    # (c) decision-engine outputs
+    'risk_score', 'base_risk',
 ]
 features = [c for c in train.columns if c not in drop_cols]
 
@@ -125,7 +207,22 @@ model.fit(X_train, y_train)
 preds_prob = model.predict_proba(X_test)[:, 1]
 print(f"ROC-AUC: {roc_auc_score(y_test, preds_prob):.4f}")
 print(f"PR-AUC (Average Precision): {average_precision_score(y_test, preds_prob):.4f}")
+print(classification_report(y_test, (preds_prob > 0.5).astype(int), digits=3))
 ```
+
+Expected output on this batch (58 features, 400,000 train / 100,000 test rows):
+
+```
+ROC-AUC: 0.9793
+PR-AUC (Average Precision): 0.8142
+```
+
+At a 2.006% fraud rate, PR-AUC 0.8142 is roughly 406x random guessing at this
+prevalence. It runs higher than the 100k US card's 0.7541 because a 10x larger batch
+gives the model steadier estimates, not because the task is easier. A baseline
+reporting ROC-AUC 1.0000 on fraud data is almost always reading the label through one
+of the columns excluded above; treat that as a bug report on your feature list rather
+than an achievement.
 
 ---
 
