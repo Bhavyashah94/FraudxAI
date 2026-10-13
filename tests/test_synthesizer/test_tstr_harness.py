@@ -31,7 +31,9 @@ def test_temporal_self_tstr_ordering_and_metrics():
     assert summary.tstr_pr_auc >= 0.15, f"PR-AUC {summary.tstr_pr_auc:.4f} is too low"
     assert summary.tstr_pr_auc <= 0.985, f"PR-AUC {summary.tstr_pr_auc:.4f} leaked (too high)"
     assert summary.tstr_roc_auc >= 0.65, f"ROC-AUC {summary.tstr_roc_auc:.4f} is too low"
-    assert summary.precision_at_k >= 0.0, f"Precision@K negative: {summary.precision_at_k}"
+    # A validity contract, not a quality bar: precision@k is a proportion, so >= 0.0 could
+    # never fail and asserted nothing. The quality signal is carried by the two AUC bounds above.
+    assert 0.0 <= summary.precision_at_k <= 1.0, f"Precision@K {summary.precision_at_k:.4f} is not a proportion"
     assert summary.cost_savings >= 0.0, f"Cost savings negative: {summary.cost_savings}"
     assert summary.utility_passed is True
 

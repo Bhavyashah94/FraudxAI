@@ -47,7 +47,7 @@ def test_adversary_amount_decay_on_insufficient_funds():
     assert fraudster.current_amount == pytest.approx(700.0, abs=1e-3)
 
 
-def test_adversary_gateway_hop_on_3ds_challenge():
+def test_adversary_aborts_session_and_hops_to_soft_gateway_on_3ds_challenge():
     """Fraudster must abort session and hop to soft gateway upon encountering 3DS Challenge."""
     rng = np.random.default_rng(456)
     fraudster = AdaptiveFraudsterAgent(rng)
