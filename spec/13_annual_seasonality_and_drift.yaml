@@ -367,3 +367,122 @@ adversarial_drift_schedule:
       duration_days: 6
       target_channel: "CNP_WEB"
       attack_rate_multiplier: 3.20
+
+# ------------------------------------------------------------------------------
+# 7. CALENDAR-DRIVEN TOPOLOGY DYNAMICS (P2P VS P2M SEASONALITY)
+# Evaluates dynamic logistic link: P(is_p2p | t) = 1 / (1 + exp(-z(t))) with
+#     z = beta_0 + beta_payday * K_payday(day) - beta_sale * I_sale(t) + beta_dow
+#
+# PROVENANCE, stated plainly because this section carried none before 2026-10-13:
+#
+#   (a) The beta_* values are NOT independent measurements. They are exact closed-form
+#       transforms of the *_share values above them, via the logit:
+#           beta_0     = logit(baseline_share)
+#           beta_payday= logit(payday_share)    - logit(baseline_share)
+#           beta_sale  = logit(megasale_share)  - logit(baseline_share)   [sign flipped in z]
+#       This was checked on 2026-10-13: all six betas reproduce to 4 decimals except
+#       US beta_payday, where the spec's 0.8678 and the transform's 0.8677 differ by
+#       0.0001, a rounding slip with no effect on behaviour. Reproduce with:
+#           python -c "import math; L=lambda p: math.log(p/(1-p)); \
+#             print(L(0.070), abs(L(0.029)-L(0.070)), L(0.152)-L(0.070))"
+#
+#   (b) The *_share values are HYPOTHESES. The Fed DCPC reports payment-instrument
+#       shares; it does not publish a "payday share" or a "megasale share". Those two
+#       quantities are constructed scenarios. baseline_share may be traceable to a DCPC
+#       table, but no table reference was recorded when the values were written, so it
+#       is carried as unverified too. Nothing here is a measured statistic.
+#
+#   (c) No table, page or retrieval date is recorded for either cited report. A citation
+#       naming a report without a table is a pointer, not a source.
+# ------------------------------------------------------------------------------
+topology_seasonality:
+  US:
+    baseline_share: 0.070
+    payday_share: 0.152
+    megasale_share: 0.029
+    beta_0: -2.5867
+    beta_payday: 0.8678
+    beta_sale: 0.9243
+    kernel_sigma: 0.85
+    payday_anchors: [1, 15]
+    weekend_adjustment: -0.1250
+  IN:
+    baseline_share: 0.200
+    payday_share: 0.340
+    megasale_share: 0.082
+    beta_0: -1.3863
+    beta_payday: 0.7230
+    beta_sale: 1.0292
+    kernel_sigma: 1.45
+    payday_anchors: [1]
+    weekend_adjustment: -0.0950
+  hypothesis: true
+  replace_with: >
+    The P2P share by day-of-month and by week from a published instrument-level series.
+    Concretely: the Fed DCPC Diary microdata, grouped by survey wave and day of month,
+    and RBI Annual Report Table IX.1 for India. Until a day-of-month P2P series exists,
+    the payday and megasale shares are scenarios, not observations, and the betas
+    inherit that status despite being exactly derivable from them.
+
+# ------------------------------------------------------------------------------
+# 8. CROSS-BANK MONEY MULE SMURFING RINGS
+# Models multi-stage interbank fan-out across distinct commercial banking silos.
+#
+# PROVENANCE, stated plainly because this section carried none before 2026-10-13:
+#
+#   (a) The cited instruments are real and the CONSTRAINTS they impose are real:
+#       31 CFR 1010.311 sets the $10,000 CTR filing threshold, and FinCEN and I4C both
+#       publish on mule schemes. But the citations establish that structuring below the
+#       threshold occurs. They do NOT supply any of the numbers below. No advisory was
+#       consulted that reports a fan-out degree distribution, a log-normal ticket shape,
+#       or an off-ramp mix, and no page reference was ever recorded.
+#
+#   (b) fan_out_probabilities, hop_latency.*, structuring_amounts.* and the off-ramp
+#       probability are all hand-chosen shapes. They are internally consistent --
+#       E[fan_out] = 3.2 and exp(7.2078) = 1,350s both reproduce -- but internal
+#       consistency is not grounding.
+#
+#   (c) The India reporting threshold of Rs 200,000 is carried from the code that
+#       introduced it. It was not re-verified against the PMLA instrument on
+#       2026-10-13 and should be treated as unchecked.
+# ------------------------------------------------------------------------------
+cross_bank_smurfing:
+  fan_out_degrees: [2, 3, 4, 5]
+  fan_out_probabilities: [0.25, 0.40, 0.25, 0.10]
+  hop_latency:
+    mu: 7.2078
+    sigma: 0.450
+    min_seconds: 600.0
+    max_seconds: 3600.0
+    median_seconds: 1350.0
+  structuring_amounts:
+    US:
+      currency: "USD"
+      mu: 8.150
+      sigma: 0.420
+      min_amount: 1500.0
+      max_amount: 8500.0
+      statutory_reporting_threshold: 10000.0
+    IN:
+      currency: "INR"
+      mu: 11.150
+      sigma: 0.450
+      min_amount: 25000.0
+      max_amount: 180000.0
+      statutory_reporting_threshold: 200000.0
+  offramp_channels:
+    - "P2P_CRYPTO_USDT_ESCROW"
+    - "ATM_CLONED_CARD_CASHOUT"
+  # Moved here from fraudx_synthesizer/syndicates.py on 2026-10-13. It lived in code
+  # only, so the spec declared the set of off-ramps and the engine silently chose the
+  # mix. The value is unchanged; only its location is new.
+  offramp_probabilities:
+    P2P_CRYPTO_USDT_ESCROW: 0.65
+    ATM_CLONED_CARD_CASHOUT: 0.35
+  hypothesis: true
+  replace_with: >
+    Observed interbank mule transfers from a FinCEN 314(b) sharing programme or an
+    issuer's fraud-investigation dataset, binned by fan-out degree, inter-hop latency and
+    ticket size. The statutory thresholds are facts and stay regardless. Everything above
+    them is a shape choice that a case-level mule dataset would replace wholesale.
+

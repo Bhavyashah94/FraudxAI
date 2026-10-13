@@ -473,6 +473,46 @@ indian_card_products:
       - "BC_KIOSK_SKIMMING"
       - "LAND_PATTA_IDENTITY_THEFT"
 
+  # Mainstream retail debit. Added 2026-10-12: until this existed, the only debit
+  # product was PMJDY (a financial-inclusion card, mean ticket ~Rs 822), so the
+  # synthetic debit slice could not represent India's debit population and the
+  # RBI PSI debit aggregate (mean Rs 3,719) was not like-for-like against it.
+  #
+  # Grounding: the RBI PSI July 2026 payment-modes table reports a credit-card mean
+  # of Rs 3,440. That is an INDEPENDENT number from the same table -- it is not the
+  # debit target, and it is not back-solved from it. A mainstream retail debit card
+  # and a mainstream retail credit card are both ordinary retail payment instruments
+  # in India, so the credit-card mean is used as the anchor for the retail-debit
+  # ticket level, and the mixture of PMJDY and this product is then checked against
+  # the debit aggregate as an independent test rather than fitted to it.
+  #
+  # Assumption to revisit: that retail-debit and retail-credit tickets are of a
+  # similar level. If RBI later splits debit by product tier, this should be
+  # re-anchored on the debit-specific figure instead.
+  - id: "IN_PROD_RETAIL_RUPAY_DEBIT"
+    name: "Mainstream Retail RuPay Debit Card"
+    category: "RETAIL_DEBIT"
+    regulatory_framework: "RBI_CARD_DIRECTIONS_2022"
+    account_balance_paisa:
+      min: 50000             # Rs 500.00
+      median: 4500000        # Rs 45,000.00
+      max: 90000000          # Rs 9,00,000.00
+    spend_distribution:
+      model: "LogNormal"
+      # mu = ln(3440) - 0.75^2/2, so E[X] = Rs 3,440 (RBI PSI credit-card mean)
+      mu_log: 7.8620
+      sigma_log: 0.75
+      median_inr: 2597.0
+      mean_inr: 3440.0
+      anchor: "RBI PSI July 2026 payment modes, credit cards: 605 million transactions, Rs 2,08,186 crore"
+    debit_attributes:
+      has_credit_line: false     # this is a debit instrument
+      atm_withdrawal_enabled: true
+      primary_adversarial_vulnerabilities:
+        - "ATM_SKIMMING"
+        - "P2P_SCAM_FRAUD"
+        - "CYBER_MONEY_MULE_RECRUITMENT"
+
   - id: "IN_PROD_PMJDY_RUPAY_DEBIT"
     name: "Pradhan Mantri Jan Dhan Yojana (PMJDY) RuPay Debit"
     category: "FINANCIAL_INCLUSION_DEBIT"

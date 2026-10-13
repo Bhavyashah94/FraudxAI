@@ -124,8 +124,25 @@ attack_amounts:
   optimizer_unit: "USD"
   reference_rate_inr_per_usd: 83.5     # the constant fraudx_synthesizer/agents.py already uses for IN_ADV_INTL_NON_3DS_BYPASS
   reference_rate_hypothesis: true      # replace with the RBI reference rate of the simulated date
+  # Probe sizing is the one part of the attack-amplitude model that is externally
+  # corroborated, so it is recorded as such. OCC, Credit Card and Debit Card Fraud:
+  # "Small dollar authorizations or transactions are used to 'test' an account prior to
+  # much larger transaction activity." JPMorgan, A Merchant's Guide to Preventing Card
+  # Testing Attacks: "Card testing transactions are typically conducted with zero or small
+  # dollar values to avoid triggering fraud detection measures." Measured 2026-10-13: the
+  # INTENT_OMEGA_PROBE rows of the published US 100k sit at a median of 0.089 times the
+  # card's typical ticket, which is the arithmetic consequence of a dollar ticket of this
+  # size on the simulated card population. The ratio is an output, not a tuning knob, and
+  # this range is unchanged.
   micro_probe_ticket_range_usd: [0.50, 1.99]   # spec/04 ADV_MICRO_AUTH_PROBE ticket_size_range_cents
+  # NOT corroborated. This is the range used when the adversary mimics a genuine purchase,
+  # so unlike micro_probe it is not a documented property of card testing at all. It is
+  # carried as a hypothesis.
   mimicry_probe_ticket_range_usd: [3.50, 18.50]   # the band the playbook adversary already uses when mimicking a real purchase (agents.py); drawn with probability adversary_mimicry
+  mimicry_probe_ticket_hypothesis: true
+  mimicry_probe_ticket_replace_with: >
+    The ticket distribution of genuine purchases on cards the adversary is known to hold,
+    which is issuer data. Until then this range is a design choice, not an observation.
   ladder_jitter_fraction: 0.15         # a ladder point is the optimiser's target; the merchant's price is not round
   jitter_hypothesis: true
   probe_for_indian_cards:
