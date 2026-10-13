@@ -33,6 +33,8 @@ export const NetworkGraph: React.FC<NetworkGraphProps> = ({
   const zoomBehaviorRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
   const particleLayerRef = useRef<d3.Selection<SVGGElement, unknown, null, undefined> | null>(null);
   const nodesRef = useRef<ThreatGraphNode[]>([]);
+  const declutterRef = useRef<(() => void) | null>(null);
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
 
   const getNodeColor = (type: string) => {
     switch (type) {
@@ -472,12 +474,53 @@ export const NetworkGraph: React.FC<NetworkGraphProps> = ({
       nodesRef.current = nodes;
     });
 
+    // Hub labels are always drawn, and they are far wider than the collision radius the force
+    // layout uses, so in a dense cluster they print on top of each other and become unreadable.
+    // Measure each label in screen space once the fit transform has been applied, keep the first
+    // label to claim a region, and hide the ones that land on top of it. Hubs are considered
+    // before minor labels so the labels that carry information win.
+    const declutterLabels = () => {
+      const placed: DOMRect[] = [];
+      const labels = Array.from(g.selectAll<SVGTextElement, unknown>('.node-label').nodes());
+      labels.sort(
+        (a, b) =>
+          Number(b.classList.contains('node-label-hub')) -
+          Number(a.classList.contains('node-label-hub'))
+      );
+      labels.forEach((t) => {
+        if (t.style.display === 'none') return;
+        const box = t.getBoundingClientRect();
+        if (box.width === 0 && box.height === 0) return;
+        const collides = placed.some(
+          (p) => !(box.right < p.left || box.left > p.right || box.bottom < p.top || box.top > p.bottom)
+        );
+        if (collides) {
+          t.style.display = 'none';
+        } else {
+          placed.push(box);
+        }
+      });
+    };
+    declutterRef.current = declutterLabels;
+
     simulation.on('end', () => {
       zoomToFit(true);
+      requestAnimationFrame(() => declutterLabels());
     });
 
     // Auto-fit to viewport without clipping
     zoomToFit(false);
+    requestAnimationFrame(() => declutterLabels());
+
+    // The canvas keeps its initial transform as the page layout changes, which is what clipped
+    // nodes at the panel edge after a resize or a late-loading font.
+    if (resizeObserverRef.current) resizeObserverRef.current.disconnect();
+    const observer = new ResizeObserver(() => {
+      zoomToFit(false);
+      declutterLabels();
+    });
+    observer.observe(container);
+    resizeObserverRef.current = observer;
 
     // Background click deselects
     svg.on('click', () => {
@@ -486,6 +529,7 @@ export const NetworkGraph: React.FC<NetworkGraphProps> = ({
 
     return () => {
       simulation.stop();
+      observer.disconnect();
     };
   }, [bundle]);
 
@@ -495,6 +539,9 @@ export const NetworkGraph: React.FC<NetworkGraphProps> = ({
     d3.select(svgRef.current)
       .selectAll('.node-label-minor')
       .style('display', showAllLabels ? 'block' : 'none');
+    // "All Labels" is an explicit request to see everything, so it is left alone. Collapsing
+    // back to hub-only re-applies the declutter, which is where the overlap actually mattered.
+    if (!showAllLabels) requestAnimationFrame(() => declutterRef.current?.());
   }, [showAllLabels]);
 
   // Authentic Real-Time Transaction Network Mutator

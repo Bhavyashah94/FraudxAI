@@ -81,7 +81,7 @@ def get_specs_summary():
         "regions": ["US", "IN"],
         "adversary_modes": ["intent", "playbook"],
         "calibration_profiles": ["rbi-psi-2026-07", "fed-payments-study-2022"],
-        "playbooks": list(specs.adversarial_playbooks.keys()) if hasattr(specs, "adversarial_playbooks") else [],
+        "playbooks": list(specs.playbooks.keys()),
         "models": ["lightgbm", "random_forest", "gradient_boosting"],
     }
 

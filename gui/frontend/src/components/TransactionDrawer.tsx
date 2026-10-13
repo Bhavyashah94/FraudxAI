@@ -27,6 +27,17 @@ export const TransactionDrawer: React.FC<TransactionDrawerProps> = ({ txId, onCl
       .catch(() => setLoading(false));
   }, [txId]);
 
+  // Escape closes the drawer. Without this the only ways out are the X button and the backdrop,
+  // and the panel is a full-height overlay on narrow screens where the backdrop is not visible.
+  useEffect(() => {
+    if (!txId) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [txId, onClose]);
+
   if (!txId) return null;
 
   const activeDict =
@@ -93,18 +104,20 @@ export const TransactionDrawer: React.FC<TransactionDrawerProps> = ({ txId, onCl
                     : 'bg-emerald-50 border-emerald-200 text-emerald-900'
                 }`}
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
+                {/* flex-wrap so the badge drops onto its own line instead of printing over the
+                    verdict text, which is what it did at the 390px breakpoint. */}
+                <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+                  <div className="flex items-center space-x-2 min-w-0">
                     {detail.is_fraud === 1 ? (
-                      <ShieldAlert className="w-5 h-5 text-red-600" />
+                      <ShieldAlert className="w-5 h-5 shrink-0 text-red-600" />
                     ) : (
-                      <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                      <CheckCircle2 className="w-5 h-5 shrink-0 text-emerald-600" />
                     )}
-                    <span className="font-bold text-sm">
+                    <span className="font-bold text-sm leading-snug">
                       {detail.is_fraud === 1 ? 'FRAUDULENT TRANSACTION' : 'LEGITIMATE CARDHOLDER SPEND'}
                     </span>
                   </div>
-                  <span className="font-mono text-xs px-2 py-0.5 rounded bg-white/80 border border-current font-medium">
+                  <span className="shrink-0 whitespace-nowrap font-mono text-xs px-2 py-0.5 rounded bg-white/80 border border-current font-medium">
                     ISO Field 39: {detail.response_code}
                   </span>
                 </div>
