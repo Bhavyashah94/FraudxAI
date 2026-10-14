@@ -1389,7 +1389,10 @@ class UnifiedBenchmarkRunner:
             if faith is not None:
                 faithfulnesses.append(faith)
 
-            p_val = float(stats.pearsonr(phi_hat, phi_star).statistic) if len(phi_hat) > 1 else 1.0
+            if len(phi_hat) > 1 and float(np.std(phi_hat)) > 1e-12 and float(np.std(phi_star)) > 1e-12:
+                p_val = float(stats.pearsonr(phi_hat, phi_star).statistic)
+            else:
+                p_val = 1.0 if np.allclose(phi_hat, phi_star) else 0.0
             pearsons.append(p_val if not np.isnan(p_val) else 0.0)
             all_phi_hat.append(phi_hat)
             all_phi_star.append(phi_star)

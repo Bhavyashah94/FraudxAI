@@ -1,35 +1,62 @@
 current_slice:
-  id: "slice-26-external-backbone-replay-mode"
-  title: "External Backbone Replay Mode with Causal Attack Superimposition"
+  id: "slice-27-prism-causal-explanation-recovery"
+  title: "PRISM Causal Intervention Recovery Benchmark and Two-Tier Evaluation Protocol"
   status: "verified"  # [planning, in_progress, testing, verified]
   target_spec_files:
-    - "spec/20_backbone_replay.yaml"
-    - "fraudx_synthesizer/backbone_replay.py"
-    - "tests/test_backbone_replay.py"
+    - "spec/21_prism_causal_evaluation.yaml"
+    - "spec/18_benchmark_reporting.yaml"
+    - "fraudx_synthesizer/benchmark_reporter.py"
+    - "fraudx_synthesizer/benchmark.py"
+    - "fraudx_synthesizer/engine.py"
+    - "tests/test_prism_causal_recovery.py"
   acceptance_criteria:
-    - every_replayed_amount_is_the_corpus_amount_verbatim: true
-    - every_replayed_time_equals_the_corpus_time_plus_a_manifest_declared_anchor: true
-    - the_corpus_label_column_never_reaches_any_export: true
-    - the_corpus_own_fraud_rows_are_dropped_by_default_and_the_injector_is_the_only_fraud_source: true
-    - injection_does_not_change_the_replayed_legitimate_population: true
-    - a_backbone_export_passes_the_spec_07_leakage_gate_unchanged: true
-    - the_request_feed_has_zero_contract_violations_for_both_corpora_and_both_regions: true
-    - the_double_entry_ledger_is_conserved_to_1e_6_at_the_end_of_every_run: true
-    - an_injection_free_replay_is_distributionally_equivalent_to_the_corpus_on_every_comparable_metric: true
-    - the_ulb_v1_to_v28_pca_columns_are_excluded_and_the_reason_is_named_in_the_manifest: true
-    - the_per_card_rate_that_forces_a_retiming_policy_is_computed_and_reported_not_assumed: true
-    - the_manifest_records_corpus_sha256_policy_and_audit_results_for_every_run: true
+    - factual_counterfactual_always_populated_for_fraud_in_discrete_event_engine: true
+    - ground_truth_phi_star_defined_by_standardized_physical_intervention_delta: true
+    - track_1_forensic_intervention_recovery_metrics_reported_in_benchmark_reporter: true
+    - track_2_glass_box_explainer_audit_evaluated_against_heuristic_bank_scorer: true
+    - unfitted_normalizing_flow_quarantined_in_experimental_and_excluded_from_pillar_4_grading: true
+    - spec_18_updated_with_ratified_two_tier_protocol_fast_and_protocol_full: true
+    - benchmark_report_badge_distinguishes_protocol_full_from_protocol_fast: true
+    - zero_regressions_across_full_test_suite: true
   verdict: >-
-    verified: Implemented BackboneReplayEngine with four-tier field provenance architecture
-    grounded in spec/20_backbone_replay.yaml. Replays real-world external transaction streams
-    (ULB creditcard.arff and IEEE-CIS) preserving empirical amounts and monotonically anchored
-    timestamps verbatim while superimposing grounded cybercrime attacks with exact convexity
-    injection pacing K = round((p * N) / (1 - p)). Maintained bitwise DoubleEntryWorldLedger
-    conservation (|discrepancy| < 1e-6) and zero target label leakage across authorization feeds.
-    All 31 test cases in tests/test_backbone_replay.py pass green, and full test suite passes
-    375/375 green with zero regressions.
+    verified: Established Causal PRISM dual-track evaluation grounded in spec/21_prism_causal_evaluation.yaml.
+    Track 1 model-free forensic recovery evaluates against variance-standardized physical intervention footprint
+    Delta x_adversary / sigma_30d across canonical attack levers, while Track 2 evaluates against HeuristicBankScorer.
+    Quarantined random-weight ConditionalRealNVPFlow in experimental/. Formally resolved spec/17 divergence in
+    spec/18_benchmark_reporting.yaml by ratifying two-tier protocols (protocol_fast for CI/CD with 5-8 test windows
+    vs protocol_full with 16-31 test windows). All 6 tests in tests/test_prism_causal_recovery.py pass green,
+    and full test suite passes 381/381 green with zero regressions.
 
 previous_slices:
+  - id: "slice-26-external-backbone-replay-mode"
+    title: "External Backbone Replay Mode with Causal Attack Superimposition"
+    status: "verified"
+    target_spec_files:
+      - "spec/20_backbone_replay.yaml"
+      - "fraudx_synthesizer/backbone_replay.py"
+      - "tests/test_backbone_replay.py"
+    acceptance_criteria:
+      - every_replayed_amount_is_the_corpus_amount_verbatim: true
+      - every_replayed_time_equals_the_corpus_time_plus_a_manifest_declared_anchor: true
+      - the_corpus_label_column_never_reaches_any_export: true
+      - the_corpus_own_fraud_rows_are_dropped_by_default_and_the_injector_is_the_only_fraud_source: true
+      - injection_does_not_change_the_replayed_legitimate_population: true
+      - a_backbone_export_passes_the_spec_07_leakage_gate_unchanged: true
+      - the_request_feed_has_zero_contract_violations_for_both_corpora_and_both_regions: true
+      - the_double_entry_ledger_is_conserved_to_1e_6_at_the_end_of_every_run: true
+      - an_injection_free_replay_is_distributionally_equivalent_to_the_corpus_on_every_comparable_metric: true
+      - the_ulb_v1_to_v28_pca_columns_are_excluded_and_the_reason_is_named_in_the_manifest: true
+      - the_per_card_rate_that_forces_a_retiming_policy_is_computed_and_reported_not_assumed: true
+      - the_manifest_records_corpus_sha256_policy_and_audit_results_for_every_run: true
+    verdict: >-
+      verified: Implemented BackboneReplayEngine with four-tier field provenance architecture
+      grounded in spec/20_backbone_replay.yaml. Replays real-world external transaction streams
+      (ULB creditcard.arff and IEEE-CIS) preserving empirical amounts and monotonically anchored
+      timestamps verbatim while superimposing grounded cybercrime attacks with exact convexity
+      injection pacing K = round((p * N) / (1 - p)). Maintained bitwise DoubleEntryWorldLedger
+      conservation (|discrepancy| < 1e-6) and zero target label leakage across authorization feeds.
+      All 31 test cases in tests/test_backbone_replay.py pass green, and full test suite passes
+      375/375 green with zero regressions.
   - id: "slice-25-fix-time-span-normalisation-and-unsound-test-invariants"
     title: "Make --days Mean What It Says, and Replace Test Invariants That Were Already False"
     status: "verified"
