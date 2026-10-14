@@ -1,6 +1,6 @@
 # FraudxAI: B.E. Major Project I Synopsis: Complete Content & Team Editing Guide
 
-> **Academic Year:** 2026–2027  
+> **Academic Year:** 2026-2027  
 > **Course:** Bachelor of Engineering (B.E.), Semester VII: Major Project I  
 > **Department:** Department of Information Technology  
 > **Institution:** AET's Atharva College of Engineering, Malad (West), Mumbai  
@@ -64,7 +64,7 @@ If editing or reviewing the Google Doc, strictly adhere to these typography and 
 | **Page 8** | List of Tables (Page `IV`) | ✅ **Completed & Verified** |
 | **Page 9** | List of Abbreviations (Page `V`) | ✅ **Completed & Verified** |
 | **Page 10** | **Chapter 1: Introduction (Starts Page `1`)** | ⏳ **CURRENT TARGET: READY TO PASTE** |
-| **Pages 11–27**| Chapters 2 to 12 + Acknowledgement + References | 📝 **Content verified below: ready for sequential paste** |
+| **Pages 11-27**| Chapters 2 to 12 + Acknowledgement + References | 📝 **Content verified below: ready for sequential paste** |
 
 ---
 
@@ -120,7 +120,7 @@ Review of Literature
 The research landscape in machine learning for financial fraud detection and explainability was surveyed across four foundational areas:
 
 1. Post-Hoc XAI and Label Latency in Fraud Detection (Walauskis & Khoshgoftaar, IEEE Access, 2025) [1]:
-Investigated post-hoc explainers (SHAP and LIME) applied to highly imbalanced payment fraud streams. Demonstrated that verification latency (30–90 day chargeback delays) severely degrades model retraining and explanation stability, and proposed SHAP-guided feature selection. Limitation: Evaluated solely on masked PCA components; lacks causal ground-truth explanations to verify whether SHAP attributions reflect true fraud mechanisms.
+Investigated post-hoc explainers (SHAP and LIME) applied to highly imbalanced payment fraud streams. Demonstrated that verification latency (30-90 day chargeback delays) severely degrades model retraining and explanation stability, and proposed SHAP-guided feature selection. Limitation: Evaluated solely on masked PCA components; lacks causal ground-truth explanations to verify whether SHAP attributions reflect true fraud mechanisms.
 
 2. Glass-Box Explainable Boosting Machines in Retail Banking (Fazel et al., arXiv / EN Bank & DTU, 2026) [2]:
 Evaluated Explainable Boosting Machines (EBMs) with Generalized Additive Models with pairwise interactions (GA²M) in a commercial retail bank. Demonstrated high detection performance (ROC-AUC 0.983) while providing exact additive interpretability. Limitation: Evaluated strictly on static tabular credit card data without considering real-time payment rails, streaming feedback latency, or adaptive syndicates.
@@ -265,7 +265,7 @@ Requirement Analysis
 2. Dual-Region Regulatory Validation: Validate authorizations against US AVS/ZIP rules and Indian RBI two-factor authentication requirements.
 3. Closed-Loop Adversarial Dynamics: Support 13 distinct fraud playbooks (8 US + 5 India) with dynamic behavior adaptation (e.g., transaction amount decay upon receiving ISO 51 insufficient funds).
 4. Causal Ground Truth Extraction: Produce exact closed-form Shapley values (φ*) and counterfactual delta vectors (Δx) for each transaction.
-5. Prequential Delayed Evaluation: Support sliding and expanding training windows with 24–72 hour analyst verification and 30–90 day chargeback latencies.
+5. Prequential Delayed Evaluation: Support sliding and expanding training windows with 24-72 hour analyst verification and 30-90 day chargeback latencies.
 
 Table 7.1: Hardware and Software Specifications
 
@@ -277,7 +277,7 @@ Table 7.1: Hardware and Software Specifications
 | Category | Component / Specification | Minimum Requirement | Recommended Specification |
 | :--- | :--- | :--- | :--- |
 | **Hardware** | Processor (CPU) | Intel Core i5 / AMD Ryzen 5 (4 Cores) | Intel Core i7 / AMD Ryzen 7 (8+ Cores) |
-| | System Memory (RAM) | 8 GB DDR4 | 16 GB – 32 GB DDR4/DDR5 |
+| | System Memory (RAM) | 8 GB DDR4 | 16 GB - 32 GB DDR4/DDR5 |
 | | Storage | 2 GB free SSD space | 10 GB NVMe SSD (for multi-million logs) |
 | | Display | 1366 x 768 resolution | 1920 x 1080 Full HD (for Dashboard UI) |
 | **Software** | Operating System | Linux (Ubuntu 22.04+) or Windows 10/11 | Linux (Ubuntu 22.04 LTS / CachyOS) |
@@ -339,7 +339,7 @@ Table 8.1: Feasibility Study Matrix
 
 ## CHAPTER 9: DESIGN DETAILS
 
-### [Pages 21–23 in Doc / Pages 17–20 in Numbering]
+### [Pages 21-23 in Doc / Pages 17-20 in Numbering]
 
 ```text
 Chapter 9
@@ -427,7 +427,7 @@ Figure 9.5: Control Flow Diagram of Multi-Agent Simulation Engine
 
 ## CHAPTER 10: IMPLEMENTATION PLAN & PRELIMINARY RESULTS
 
-### [Pages 24–25 in Doc / Pages 21–23 in Numbering]
+### [Pages 24-25 in Doc / Pages 21-23 in Numbering]
 
 ```text
 Chapter 10
@@ -547,16 +547,16 @@ Finally, we express our warmest appreciation to our faculty members, laboratory 
 ```text
 References
 
-1. M. A. Walauskis and T. M. Khoshgoftaar, "SHAP-based feature selection for enhanced unsupervised labeling," IEEE Access, vol. 13, pp. 130098–130114, 2025.
+1. M. A. Walauskis and T. M. Khoshgoftaar, "SHAP-based feature selection for enhanced unsupervised labeling," IEEE Access, vol. 13, pp. 130098-130114, 2025.
 2. R. E. Fazel, A. Bakhtiary, and S. A. Bigdeli, "Improving credit card fraud detection with an optimized explainable boosting machine," arXiv preprint arXiv:2602.04911, Credit & Collection Dept., EN Bank / DTU, 2026.
-3. Y. Duan, G. Zhang, S. Wang, X. Peng, Z. Wang, J. Mao, H. Wu, X. Jiang, and K. Wang, "CaT-GNN: Enhancing credit card fraud detection via causal temporal graph neural networks," in Proc. 33rd ACM Int. Conf. Inf. Knowl. Manage. (CIKM), 2024, pp. 542–551.
-4. A. Hedström, L. Weber, D. Bareeva, D. Krakowczyk, F. Motzkus, W. Samek, S. Lapuschkin, and M. M.-C. Höhne, "Quantus: An explainable AI toolkit for responsible evaluation of neural network explanations and beyond," J. Mach. Learn. Res., vol. 24, no. 34, pp. 1–11, 2023.
-5. A. Dal Pozzolo, G. Boracchi, O. Caelen, C. Alippi, and G. Bontempi, "Credit card fraud detection: A realistic modeling and a novel learning strategy," IEEE Trans. Neural Netw. Learn. Syst., vol. 29, no. 8, pp. 3784–3797, 2018.
-6. S. M. Lundberg and S.-I. Lee, "A unified approach to interpreting model predictions," in Adv. Neural Inf. Process. Syst. (NeurIPS), vol. 30, 2017, pp. 4765–4774.
-7. C. Rudin, "Stop explaining black box machine learning models for high stakes decisions and use interpretable models instead," Nat. Mach. Intell., vol. 1, no. 5, pp. 206–215, 2019.
-8. M. Sundararajan, A. Taly, and Q. Yan, "Axiomatic attribution for deep networks," in Proc. 34th Int. Conf. Mach. Learn. (ICML), 2017, pp. 3319–3328.
-9. S. Jesus, J. Pombal, M. Alves, A. Cruz, P. Saleiro, R. Ribeiro, J. Gama, and P. Bizarro, "Turning the tables: Biased, imbalanced, dynamic tabular datasets for ML evaluation," in Proc. NeurIPS Track Datasets Benchmarks, 2022, pp. 1–14.
+3. Y. Duan, G. Zhang, S. Wang, X. Peng, Z. Wang, J. Mao, H. Wu, X. Jiang, and K. Wang, "CaT-GNN: Enhancing credit card fraud detection via causal temporal graph neural networks," in Proc. 33rd ACM Int. Conf. Inf. Knowl. Manage. (CIKM), 2024, pp. 542-551.
+4. A. Hedström, L. Weber, D. Bareeva, D. Krakowczyk, F. Motzkus, W. Samek, S. Lapuschkin, and M. M.-C. Höhne, "Quantus: An explainable AI toolkit for responsible evaluation of neural network explanations and beyond," J. Mach. Learn. Res., vol. 24, no. 34, pp. 1-11, 2023.
+5. A. Dal Pozzolo, G. Boracchi, O. Caelen, C. Alippi, and G. Bontempi, "Credit card fraud detection: A realistic modeling and a novel learning strategy," IEEE Trans. Neural Netw. Learn. Syst., vol. 29, no. 8, pp. 3784-3797, 2018.
+6. S. M. Lundberg and S.-I. Lee, "A unified approach to interpreting model predictions," in Adv. Neural Inf. Process. Syst. (NeurIPS), vol. 30, 2017, pp. 4765-4774.
+7. C. Rudin, "Stop explaining black box machine learning models for high stakes decisions and use interpretable models instead," Nat. Mach. Intell., vol. 1, no. 5, pp. 206-215, 2019.
+8. M. Sundararajan, A. Taly, and Q. Yan, "Axiomatic attribution for deep networks," in Proc. 34th Int. Conf. Mach. Learn. (ICML), 2017, pp. 3319-3328.
+9. S. Jesus, J. Pombal, M. Alves, A. Cruz, P. Saleiro, R. Ribeiro, J. Gama, and P. Bizarro, "Turning the tables: Biased, imbalanced, dynamic tabular datasets for ML evaluation," in Proc. NeurIPS Track Datasets Benchmarks, 2022, pp. 1-14.
 10. J. S. Allen, "CardSim: A payment card transaction simulator," Finance Econ. Discuss. Ser. (FEDS) 2025-010, Board Governors Fed. Reserve Syst., 2025.
 11. International Organization for Standardization, Financial Transaction Card Originated Messages: Interchange Message Specifications (ISO 8583-1:2003), Geneva, Switzerland: ISO, 2003.
-12. Reserve Bank of India, "Master directions on customer protection – Limiting liability of customers in unauthorised electronic banking transactions," RBI Circular RBI/2017-18/15, DBR.No.Leg.BC.78/09.07.005/2017-18, Mumbai, India, Jul. 2017.
+12. Reserve Bank of India, "Master directions on customer protection - Limiting liability of customers in unauthorised electronic banking transactions," RBI Circular RBI/2017-18/15, DBR.No.Leg.BC.78/09.07.005/2017-18, Mumbai, India, Jul. 2017.
 ```
