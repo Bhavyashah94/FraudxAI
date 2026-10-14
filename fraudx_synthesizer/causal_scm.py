@@ -86,9 +86,10 @@ class HeuristicBankScorer(BankModel):
     and EMV cryptogram dampening).
     """
 
-    def __init__(self, base_prevalence: float = 0.0020):
+    def __init__(self, base_prevalence: float = 0.0020, seed: int = 42):
         self.base_prevalence = max(1e-5, min(0.999, base_prevalence))
         self.base_logit = math.log(self.base_prevalence / (1.0 - self.base_prevalence))
+        self.seed = seed
 
         # Baseline expected values for normal transactions E[X_i]
         self.feature_baselines: Dict[str, float] = {
@@ -164,7 +165,7 @@ class HeuristicBankScorer(BankModel):
         self._gl_wt = 0.5 * w_weights
 
         # Invertible Normalizing Flow for exact Pearlian abduction & on-manifold counterfactuals
-        self.flow = ConditionalRealNVPFlow(seed=42)
+        self.flow = ConditionalRealNVPFlow(seed=self.seed)
         self.codec = TransactionFlowFeatureCodec
         self.latent_attributor = LatentAumannShapleyAttributor(self.flow)
 

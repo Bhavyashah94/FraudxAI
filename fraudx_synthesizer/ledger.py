@@ -388,7 +388,9 @@ class StreamingLedger:
             card.last_merchant_id = merchant_id
 
         # Actively release any expired pre-auth holds
-        card.prune_expired_holds(tx_time)
+        expired_ids = card.prune_expired_holds(tx_time)
+        for exp_tx_id in expired_ids:
+            self.double_entry.release_hold(exp_tx_id, card.card_id, sim_time_sec=tx_time)
 
         return record
 
@@ -410,7 +412,9 @@ class StreamingLedger:
             state.tx_history_24h.append((tx_time, amount, merchant_id))
             state.welford_30d.update(amount)
         # Actively release any expired pre-auth holds
-        card.prune_expired_holds(tx_time)
+        expired_ids = card.prune_expired_holds(tx_time)
+        for exp_tx_id in expired_ids:
+            self.double_entry.release_hold(exp_tx_id, card.card_id, sim_time_sec=tx_time)
 
 
 class DoubleEntryWorldLedger:

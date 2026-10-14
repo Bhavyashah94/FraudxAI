@@ -364,7 +364,7 @@ The simulation is governed by 13 formal living specification files serving as th
 
 FraudxAI enforces strict, deterministic verification across the entire stack:
 
-### 1. PyTest Test Suite (**324 / 324 Passed, 100% Green**)
+### 1. PyTest Test Suite (**344 / 344 Passed, 100% Green**)
 ```bash
 pytest tests/ -v
 ```

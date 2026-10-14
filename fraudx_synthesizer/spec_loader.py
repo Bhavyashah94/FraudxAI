@@ -107,6 +107,7 @@ class CohortPersonaSpec:
     default_assigned_products: List[str]
     vigilance_weights: VigilanceTierWeights
     hawkes_dynamics: Optional[Dict[str, float]] = None
+    annual_income_inr: Optional[Tuple[float, float]] = None
 
 
 # ----------------------------------------------------------------------
@@ -572,6 +573,7 @@ def load_all_specs(spec_dir: Optional[str] = None) -> SpecRegistry:
             name=c_raw["name"],
             population_weight=float(c_raw["population_weight"]),
             annual_income_usd=tuple(c_raw.get("annual_income_usd", [0, 0])),
+            annual_income_inr=(tuple(c_raw.get("annual_income_inr")) if c_raw.get("annual_income_inr") else None),
             monthly_tx_volume_mean=float(c_raw["monthly_card_tx_volume"]["mean"]),
             monthly_tx_volume_std=float(c_raw["monthly_card_tx_volume"]["std"]),
             spend_distribution=spend_spec,

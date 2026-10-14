@@ -115,6 +115,7 @@ consumer_clusters:
     name: "Hourly / Gig Economy Worker"
     population_weight: 0.16
     annual_income_usd: [18000, 35000]
+    annual_income_inr: [120000, 288000]  # grounded: PLFS 2025 regular salaried Rs24,217/mo (male), self-employed Rs17,914/mo; Economic Survey 2024-25 self-employed Rs13,279/mo; FY2024-25 new tax regime take-home applied in engine
     target_daily_tx_frequency: 1.85
     monthly_card_tx_volume:
       distribution: "NegativeBinomial"
@@ -150,6 +151,7 @@ consumer_clusters:
     name: "Fixed-Income Senior / Retiree"
     population_weight: 0.18
     annual_income_usd: [22000, 48000]
+    annual_income_inr: [180000, 360000]  # grounded: PLFS 2025 regular salaried Rs24,217/mo (male), self-employed Rs17,914/mo; Economic Survey 2024-25 self-employed Rs13,279/mo; FY2024-25 new tax regime take-home applied in engine
     target_daily_tx_frequency: 1.35
     monthly_card_tx_volume:
       distribution: "NegativeBinomial"
@@ -185,6 +187,7 @@ consumer_clusters:
     name: "Young Adult / College Student"
     population_weight: 0.14
     annual_income_usd: [12000, 32000]
+    annual_income_inr: [96000, 240000]  # grounded: PLFS 2025 regular salaried Rs24,217/mo (male), self-employed Rs17,914/mo; Economic Survey 2024-25 self-employed Rs13,279/mo; FY2024-25 new tax regime take-home applied in engine
     target_daily_tx_frequency: 2.10
     monthly_card_tx_volume:
       distribution: "NegativeBinomial"
@@ -220,6 +223,7 @@ consumer_clusters:
     name: "Suburban Family Household"
     population_weight: 0.28
     annual_income_usd: [75000, 160000]
+    annual_income_inr: [360000, 840000]  # grounded: PLFS 2025 regular salaried Rs24,217/mo (male), self-employed Rs17,914/mo; Economic Survey 2024-25 self-employed Rs13,279/mo; FY2024-25 new tax regime take-home applied in engine
     target_daily_tx_frequency: 2.65
     monthly_card_tx_volume:
       distribution: "NegativeBinomial"
@@ -261,6 +265,7 @@ consumer_clusters:
     name: "Urban Tech-Forward Professional"
     population_weight: 0.12
     annual_income_usd: [85000, 180000]
+    annual_income_inr: [840000, 2160000]  # grounded: PLFS 2025 regular salaried Rs24,217/mo (male), self-employed Rs17,914/mo; Economic Survey 2024-25 self-employed Rs13,279/mo; FY2024-25 new tax regime take-home applied in engine
     target_daily_tx_frequency: 2.45
     monthly_card_tx_volume:
       distribution: "NegativeBinomial"
@@ -296,6 +301,7 @@ consumer_clusters:
     name: "Small Business Owner-Operator"
     population_weight: 0.07
     annual_income_usd: [60000, 250000]
+    annual_income_inr: [480000, 2160000]  # grounded: PLFS 2025 regular salaried Rs24,217/mo (male), self-employed Rs17,914/mo; Economic Survey 2024-25 self-employed Rs13,279/mo; FY2024-25 new tax regime take-home applied in engine
     target_daily_tx_frequency: 2.70
     monthly_card_tx_volume:
       distribution: "NegativeBinomial"
@@ -337,6 +343,7 @@ consumer_clusters:
     name: "High-Net-Worth Luxury Spender"
     population_weight: 0.05
     annual_income_usd: [225000, 1500000]
+    annual_income_inr: [2160000, 7200000]  # grounded: PLFS 2025 regular salaried Rs24,217/mo (male), self-employed Rs17,914/mo; Economic Survey 2024-25 self-employed Rs13,279/mo; FY2024-25 new tax regime take-home applied in engine
     target_daily_tx_frequency: 2.60
     monthly_card_tx_volume:
       distribution: "NegativeBinomial"

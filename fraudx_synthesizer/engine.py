@@ -99,6 +99,65 @@ EVT_BILLING_CYCLE_CLOSE = 6
 EVT_STATEMENT_PAYMENT = 7
 EVT_PAYROLL_DEPOSIT = 8
 
+# Recurring-cadence constants. These are the ONLY places the periods are
+# written down: the seeding loop and the reschedule handler both read them, so
+# the two cannot drift apart. A mismatch between the seeded period and the
+# rescheduled period is what previously produced a triangular pile-up of events.
+#
+# Both are grounded in spec/05_india_payment_rails.yaml
+# `indian_consumer_behavioral_quirks.payday_liquidity_cycle`:
+#   private_sector_salary_credit_days: [28, 29, 30, 31]  -> monthly, month-end
+#   government_salary_credit_days:     [1, 2, 3]         -> monthly, month-start
+# i.e. Indian salary credit is MONTHLY. A single global 14-day (biweekly) period
+# is a US convention (26 credits/year) applied to Indian cardholders, which
+# credited ~2.17x the intended monthly income and is a large part of why balances
+# ran away. Hence the period is per-currency, not global.
+PAYROLL_PERIOD_DAYS_US = 14.0   # US: biweekly direct deposit, 26 credits/year
+PAYROLL_PERIOD_DAYS_IN = 30.0   # IN: monthly salary credit (spec/05, above)
+
+
+def payroll_period_days(currency: str) -> float:
+    """Days between salary credits for a card in this currency.
+
+    Grounded per region rather than globally: Indian salary credit is monthly
+    (spec/05 payday_liquidity_cycle), US direct deposit is biweekly.
+    """
+    return PAYROLL_PERIOD_DAYS_US if currency == "USD" else PAYROLL_PERIOD_DAYS_IN
+
+
+# Statement cycle. Monthly, matching the 30-day close cadence the handler below
+# already reschedules on (spec/03_payment_rail_gaps.yaml chargeback windows and
+# spec/16_operational_supervision.yaml both assume a monthly statement).
+BILLING_CYCLE_DAYS = 30.0
+
+# Deposit amounts, in major units, per credit. TODO(grounding): these are the
+# next values to ground -- a flat per-card credit ignores cohort income entirely
+# (spec/02_human_personas.yaml annual_income_usd is loaded but never read).
+# Held here rather than inline so the fix is one line once income is wired in.
+PAYROLL_DEPOSIT_USD = 1500.0
+PAYROLL_DEPOSIT_INR = 25000.0
+
+# India FY2024-25 new tax regime (post 2024 Budget): standard deduction Rs 75,000,
+# slabs 0-3L nil, 3-7L 5%, 7-10L 10%, 10-12L 15%, 12-15L 20%, >15L 30%.
+# Used to convert a gross annual income into the net take-home that is actually
+# credited to a salary account. Without this the deposit would overstate
+# disposable cash and re-create the balance runaway the income grounding fixes.
+def in_new_regime_tax(gross_annual_inr: float) -> float:
+    taxable = max(0.0, gross_annual_inr - 75000.0)
+    slabs = [(300000.0, 0.0), (400000.0, 0.05), (300000.0, 0.10),
+             (200000.0, 0.15), (300000.0, 0.20), (float("inf"), 0.30)]
+    tax = 0.0
+    remaining = taxable
+    for width, rate in slabs:
+        if remaining <= 0:
+            break
+        chunk = min(remaining, width)
+        tax += chunk * rate
+        remaining -= chunk
+    # 4% health & education cess
+    tax *= 1.04
+    return max(0.0, gross_annual_inr - tax)
+
 # Calibrated Indian card product spend marginals (LogNormal parameters in INR nominal)
 # Grounded dynamically in canonical spec/05_india_payment_rails.yaml for backwards compatibility
 INDIAN_PRODUCT_SPEND_MARGINALS: Dict[str, Tuple[float, float]] = {
@@ -586,6 +645,24 @@ class DiscreteEventEngine:
             else:
                 initial_balance = float(self.rng.uniform(0.05, 0.20) * credit_limit)
 
+            # Ground the recurring payroll deposit in cohort income rather than a flat
+            # constant: spec/02 annual_income_usd (US) or annual_income_inr (IN, PLFS/
+            # Economic Survey 2024-25). For IN, apply the FY2024-25 new-regime tax so
+            # the credited amount is net take-home, matching what a salary account
+            # actually receives.
+            if self.region == "IN":
+                _income_range = cohort_spec.annual_income_inr
+            else:
+                _income_range = cohort_spec.annual_income_usd
+            if _income_range:
+                _gross = float(self.rng.uniform(float(_income_range[0]), float(_income_range[1])))
+                if self.region == "IN":
+                    annual_income = in_new_regime_tax(_gross)
+                else:
+                    annual_income = _gross
+            else:
+                annual_income = 0.0
+
             card = CardholderProfile(
                 card_id=card_id,
                 home_lat=float(home_lats[i]),
@@ -610,6 +687,7 @@ class DiscreteEventEngine:
                 cohort_id=cohort_id,
                 region=self.region,
                 currency=currency,
+                annual_income=annual_income,
                 pan_masked=pan_masked,
                 domestic_cnp_enabled=cnp_enabled,
                 international_enabled=intl_enabled,
@@ -838,11 +916,17 @@ class DiscreteEventEngine:
         for c in self.cards:
             if "PREPAID" not in c.product_id and "EBT" not in c.product_id:
                 if "DEBIT" in c.product_id:
-                    # Stagger paydays across first 14 days so workers don't all get paid on day 14
-                    stagger_day = (zlib.crc32(c.card_id.encode("utf-8")) % 14) + 1  # process-independent (spec/07 section 15)
-                    for p_day in range(stagger_day, time_span_days + 1, 14):
-                        p_us = int((start_time_seconds + p_day * day_seconds) * 1_000_000)
-                        self._schedule_event(time_us=p_us, event_type=EVT_PAYROLL_DEPOSIT, card_id=c.card_id)
+                    # Seed ONLY the first payday; the handler at EVT_PAYROLL_DEPOSIT
+                    # reschedules the next one every PAYROLL_PERIOD_DAYS, so the chain owns
+                    # the cadence. Seeding the whole span here as well double-booked every
+                    # payday: boundary k then held k events, giving a triangular 1+2+...+n
+                    # deposits per card instead of n (measured 406 vs 28 over 500 days).
+                    # Because posted_balance only ever rises from these credits, the runaway
+                    # disabled the ISO 51 solvency gate -- 3.1% of declines against the
+                    # spec/03 target of [0.40, 0.50].
+                    stagger_day = (zlib.crc32(c.card_id.encode("utf-8")) % int(payroll_period_days(c.currency))) + 1  # process-independent (spec/07 section 15)
+                    p_us = int((start_time_seconds + stagger_day * day_seconds) * 1_000_000)
+                    self._schedule_event(time_us=p_us, event_type=EVT_PAYROLL_DEPOSIT, card_id=c.card_id)
                 else:
                     # Schedule repayment for prior month's statement balance carried into simulation
                     if c.posted_balance > 0.0:
@@ -852,12 +936,13 @@ class DiscreteEventEngine:
                         self._schedule_event(time_us=p_us, event_type=EVT_STATEMENT_PAYMENT, card_id=c.card_id)
 
                     stmt_day = c.billing_cycle_day
-                    n_months = max(1, (time_span_days // 30) + 1)
-                    for month_idx in range(n_months):
-                        cycle_day = stmt_day + month_idx * 30
-                        if cycle_day <= time_span_days:
-                            c_us = int((start_time_seconds + cycle_day * day_seconds) * 1_000_000)
-                            self._schedule_event(time_us=c_us, event_type=EVT_BILLING_CYCLE_CLOSE, card_id=c.card_id)
+                    # Seed ONLY the first cycle. The EVT_BILLING_CYCLE_CLOSE handler
+                    # reschedules the next close every BILLING_CYCLE_DAYS, so seeding
+                    # every month here as well double-booked each close exactly as the
+                    # payroll chain did (measured 271,582 closes over a 500-day run).
+                    if stmt_day > 0:
+                        c_us = int((start_time_seconds + stmt_day * day_seconds) * 1_000_000)
+                        self._schedule_event(time_us=c_us, event_type=EVT_BILLING_CYCLE_CLOSE, card_id=c.card_id)
 
         card_last_tx: Dict[str, Dict[str, Any]] = {}
         last_global_tx_time = -1.0
@@ -1015,6 +1100,9 @@ class DiscreteEventEngine:
 
             # Monthly Billing Cycle Close Event
             if evt_type == EVT_BILLING_CYCLE_CLOSE:
+                expired_ids = card.prune_expired_holds(tx_time_sec)
+                for exp_tx_id in expired_ids:
+                    self.double_entry_ledger.release_hold(exp_tx_id, card.card_id, sim_time_sec=tx_time_sec)
                 stmt_bal, min_due, due_time = card.close_billing_statement(tx_time_sec)
                 if stmt_bal > 0.0:
                     if card.repayment_cohort == "TRANSACTOR":
@@ -1031,8 +1119,9 @@ class DiscreteEventEngine:
                         event_type=EVT_STATEMENT_PAYMENT,
                         card_id=card.card_id,
                     )
-                # Reschedule next monthly cycle in 30 days
-                next_stmt_us = t_us + 30 * 86400 * 1_000_000
+                # Reschedule next monthly cycle (single owner of the cadence -- the
+                # seeding loop schedules only the FIRST cycle, see BILLING_CYCLE_DAYS)
+                next_stmt_us = t_us + int(BILLING_CYCLE_DAYS * 86400 * 1_000_000)
                 self._schedule_event(
                     time_us=next_stmt_us,
                     event_type=EVT_BILLING_CYCLE_CLOSE,
@@ -1047,10 +1136,19 @@ class DiscreteEventEngine:
 
             # Direct Deposit Payroll Replenishment
             if evt_type == EVT_PAYROLL_DEPOSIT:
-                dep_amt = 1500.0 if card.currency == "USD" else 25000.0
+                if getattr(card, "annual_income", 0.0) and card.annual_income > 0.0:
+                    # Income-grounded recurring credit: per-payday slice of annual
+                    # take-home, per the region's pay cadence (biweekly US / monthly
+                    # IN). Falls back to the flat constant only for legacy/test cards
+                    # that carry no income (annual_income == 0).
+                    periods_per_year = 365.25 / payroll_period_days(card.currency)
+                    dep_amt = card.annual_income / periods_per_year
+                else:
+                    dep_amt = PAYROLL_DEPOSIT_USD if card.currency == "USD" else PAYROLL_DEPOSIT_INR
                 card.apply_payroll_deposit(dep_amt)
-                # Reschedule next bi-weekly payroll in 14 days
-                next_pay_us = t_us + 14 * 86400 * 1_000_000
+                # Reschedule the next credit (single owner of the cadence -- the seeding
+                # loop schedules only the FIRST credit, see payroll_period_days)
+                next_pay_us = t_us + int(payroll_period_days(card.currency) * 86400 * 1_000_000)
                 self._schedule_event(
                     time_us=next_pay_us,
                     event_type=EVT_PAYROLL_DEPOSIT,

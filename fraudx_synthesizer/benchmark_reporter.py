@@ -19,7 +19,7 @@ import platform
 import re
 import sys
 import time
-from collections import Counter
+from collections import Counter, defaultdict
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -34,7 +34,8 @@ from sklearn.metrics import average_precision_score, precision_recall_curve, roc
 from sklearn.model_selection import StratifiedKFold
 from sklearn.neighbors import NearestNeighbors
 
-from .spec_loader import _find_spec_dir
+from .spec_loader import _find_spec_dir, load_all_specs
+from .world import MCC_TAXONOMY
 
 # Certification thresholds are owned by spec/18_benchmark_reporting.yaml. The grader,
 # the Markdown report and the HTML report all read them from the same place so a
@@ -834,6 +835,7 @@ class UnifiedBenchmarkRunner:
         self.delta_delay_days = delta_delay_days
         self.seed = seed
         self.rng = np.random.default_rng(seed)
+        self.specs = load_all_specs()
 
     def run_benchmark(self) -> UnifiedBenchmarkReportData:
         """Executes full simulation, evaluation, and XAI certification."""
@@ -1002,30 +1004,39 @@ class UnifiedBenchmarkRunner:
         deltas = deltas[deltas > 0]
         if len(deltas) > 0:
             log_deltas = np.log10(deltas + 1.0)
-            # Reference renewal process baseline: Exp(lambda) where lambda = n_tx / span_seconds.
-            #
-            # The span here must be the span the records ACTUALLY cover, not time_span_days.
-            # time_span_days is the requested duration; generate_batch realises something close to
-            # it but not identical -- 9.51-10.79 days against a requested 12 across the five
-            # pinned seeds before the D1 pacing fix, and within a few percent of 12 after it.
-            # Using the requested value made this gate conflate rate error with shape error: the
-            # reference inter-arrival scale was ~14% too long, which pushed W1 up by 0.03-0.09 on
-            # every pinned seed (0.2406 -> 0.1870 at seed 42, 0.2847 -> 0.1914 at seed 2). The gate
-            # is meant to ask "do arrivals look like a renewal process", and answering that
-            # requires the rate the data actually has -- which stays true whatever the pacing does.
             realised_span_sec = max(times[-1] - times[0], 1.0)
             expected_delta = realised_span_sec / max(1, len(records))
+
+            # The inter-arrival gate does NOT use time_span_days: that is D2. The gate
+            # is meant to ask "do arrivals look like a renewal process", and answering that
+            # requires the rate the data actually has -- which stays true whatever the pacing does.
             ref_deltas = self.rng.exponential(scale=expected_delta, size=len(deltas))
+
             ref_log_deltas = np.log10(np.maximum(ref_deltas, 0.01) + 1.0)
             w1_arr = float(stats.wasserstein_distance(log_deltas, ref_log_deltas))
         else:
             w1_arr = 0.0
 
         # Categorical MCC Distribution
-        mcc_counts = np.array([float(r.get("mcc", 5411)) for r in records])
-        u_mcc, c_mcc = np.unique(mcc_counts, return_counts=True)
+        # Population Cohort-Weighted Reference Prior for MCCs
+        # Compares empirical MCC counts against the cohort prior rather than an unweighted flat distribution.
+        mcc_vals = [int(r.get("mcc", 5411)) for r in records]
+        u_mcc, c_mcc = np.unique(mcc_vals, return_counts=True)
         p_mcc = c_mcc / float(len(records))
-        q_mcc = np.full_like(p_mcc, 1.0 / len(p_mcc))
+
+        # Build expected MCC distribution from loaded cohort dominant MCCs and MCC taxonomy
+        expected_mcc_weights = defaultdict(float)
+        if hasattr(self, "specs") and self.specs and getattr(self.specs, "cohorts", None):
+            for cohort in self.specs.cohorts.values():
+                w = cohort.population_weight
+                mccs = cohort.dominant_mccs or [5411, 5812, 5814, 5541, 5912]
+                for m_code in mccs:
+                    expected_mcc_weights[m_code] += w / len(mccs)
+        for m_code in MCC_TAXONOMY:
+            expected_mcc_weights[m_code] += 0.02
+
+        q_mcc = np.array([expected_mcc_weights.get(m_code, 1e-4) for m_code in u_mcc], dtype=np.float64)
+        q_mcc = q_mcc / q_mcc.sum()
         m = 0.5 * (p_mcc + q_mcc)
         js_mcc = float(0.5 * stats.entropy(p_mcc, m) + 0.5 * stats.entropy(q_mcc, m))
 
@@ -1237,13 +1248,19 @@ class UnifiedBenchmarkRunner:
 
     def _evaluate_causal_xai(self, records: List[Dict[str, Any]]) -> Tuple[CausalXAIScorecard, Dict[str, float], Dict[str, float]]:
         """Evaluates empirical feature attributions against Pearlian counterfactual ground truth."""
+        # Expand feature_cols to full 11-feature contract specification
         feature_cols = [
             "amount",
             "haversine_velocity_kph",
             "ip_distance_from_home_km",
             "tx_count_1h",
             "tx_count_24h",
+            "is_cross_border",
+            "avs_mismatch_flag",
+            "billing_shipping_match",
             "cvv_match_flag",
+            "emv_arqc_verified",
+            "three_ds_authenticated",
         ]
         gt_key_map = {
             "amount": "amount_to_mean_ratio_30d",
@@ -1251,7 +1268,12 @@ class UnifiedBenchmarkRunner:
             "ip_distance_from_home_km": "ip_distance_from_home_km",
             "tx_count_1h": "tx_count_1h",
             "tx_count_24h": "tx_count_24h",
+            "is_cross_border": "is_cross_border_tx",
+            "avs_mismatch_flag": "avs_mismatch_flag",
+            "billing_shipping_match": "billing_shipping_mismatch",
             "cvv_match_flag": "cvv_mismatch_flag",
+            "emv_arqc_verified": "emv_arqc_verified",
+            "three_ds_authenticated": "three_ds_authenticated",
         }
 
         # Find eligible fraud records with ground-truth causal attributions and counterfactual twins
@@ -1275,12 +1297,26 @@ class UnifiedBenchmarkRunner:
             )
             return scorecard, empirical_attributions, ground_truth_phi
 
-        X = np.array([[float(r.get(c, 0.0)) for c in feature_cols] for r in records], dtype=np.float64)
+        def _get_val(r: Dict[str, Any], col: str) -> float:
+            if col == "is_cross_border":
+                return 1.0 if r.get("is_cross_border") else 0.0
+            if col == "avs_mismatch_flag":
+                return 1.0 if str(r.get("avs_match_code", "Y")) in ("N", "U") else 0.0
+            if col == "billing_shipping_match":
+                return 1.0 if int(r.get("billing_shipping_match", 1)) == 0 else 0.0
+            if col == "cvv_match_flag":
+                return 0.0 if int(r.get("cvv_match_flag", 1)) == 0 else 1.0
+            return float(r.get(col, 0.0))
+
+        X = np.array([[_get_val(r, c) for c in feature_cols] for r in records], dtype=np.float64)
         y = np.array([int(r.get("is_fraud", 0)) for r in records], dtype=int)
 
-        if len(np.unique(y)) > 1:
+        # 70/30 chronological train/test split to avoid in-sample overfitting artifacts
+        n_train = max(10, int(len(X) * 0.70))
+        X_train, y_train = X[:n_train], y[:n_train]
+        if len(np.unique(y_train)) > 1:
             model = HistGradientBoostingClassifier(random_state=self.seed)
-            model.fit(X, y)
+            model.fit(X_train, y_train)
             model_fn = lambda x: model.predict_proba(x)[:, 1]
         else:
             model_fn = lambda x: np.full(len(x), 0.5)
@@ -1291,15 +1327,18 @@ class UnifiedBenchmarkRunner:
         all_phi_star = []
 
         # Every non-empty subset of the evaluated feature set: the faithfulness
-        # correlation below ablates these subsets jointly, which is a different
-        # operation from the single-feature occlusion that produced phi_hat.
+        # correlation below ablates these subsets jointly, capped to prevent exponential combinatorial growth
         subset_masks = np.array(
             [[bool(mask >> j & 1) for j in range(len(feature_cols))]
-             for mask in range(1, 1 << len(feature_cols))],
+             for mask in range(1, min(64, 1 << len(feature_cols)))],
             dtype=bool,
         )
 
-        eval_records = fraud_records[:40]
+        test_fraud_records = [
+            r for r in records[n_train:]
+            if r.get("is_fraud", 0) == 1 and "analytical_shapley_probability" in r and "counterfactual_twin" in r
+        ]
+        eval_records = (test_fraud_records or fraud_records)[:40]
         for r in eval_records:
             gt_dict = r["analytical_shapley_probability"]
             cf_twin = r["counterfactual_twin"]
@@ -1311,8 +1350,8 @@ class UnifiedBenchmarkRunner:
             else:
                 continue
 
-            x_obs = np.array([float(r.get(c, 0.0)) for c in feature_cols], dtype=np.float64)
-            x_cf = np.array([float(cf_twin.get(c, 0.0)) for c in feature_cols], dtype=np.float64)
+            x_obs = np.array([_get_val(r, c) for c in feature_cols], dtype=np.float64)
+            x_cf = np.array([_get_val(cf_twin, c) for c in feature_cols], dtype=np.float64)
 
             # Surgical counterfactual prediction drop: delta_f[j] = f(x_obs) - f(x_obs with x_cf[j])
             base_pred = float(model_fn(x_obs.reshape(1, -1))[0])

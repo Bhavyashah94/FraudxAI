@@ -3,7 +3,7 @@
 Implements closed-loop behavioral dynamics:
 1. CardholderProfile: 11 Global (Visa/MC) and 5 Indian (RBI/RuPay) card products,
    7 Fed DCPC cohorts, diurnal Poisson arrivals, and authentic hard negatives.
-2. AdaptiveFraudsterAgent: 10 grounded cybercrime playbooks (Global & India),
+2. AdaptiveFraudsterAgent: 13 grounded cybercrime playbooks (8 Global & 5 India),
    including distributed additive BIN attacks, triangulation fraud, and silent baking.
 3. BankDecisionEngine: Multi-tier authorization switch evaluating ISO 8583 syntax,
    RBI AFA/Card Controls, PSD2 SCA exemptions, STIP floor limits, and Visa VAAI scoring.
@@ -28,6 +28,11 @@ from .intent import (
 )
 from .spec_loader import load_all_specs
 
+# Fallback parity scale for synthetic cardholders instantiated under USD default
+# log-parameters (mu < 5.0) but configured for INR rails, ensuring INR ticket sizes
+# align with empirical RBI baselines (spec/05 & spec/08).
+INR_LEGACY_USD_SCALE_ADJUSTMENT: float = 40.0
+
 
 class ISO8583Response(str, enum.Enum):
     APPROVED_00 = "00"
@@ -41,7 +46,7 @@ class ISO8583Response(str, enum.Enum):
     SUSPECTED_FRAUD_59 = "59"
     SECURITY_VIOLATION_63 = "63"
     ACTIVITY_COUNT_EXCEEDED_65 = "65"
-    ACTIVITY_LIMIT_EXCEEDED_65 = "65"
+    ACTIVITY_LIMIT_EXCEEDED_65 = "65"  # Legacy alias for ACTIVITY_COUNT_EXCEEDED_65 per ISO 8583
     PIN_TRIES_EXCEEDED_75 = "75"
     INVALID_CVV_82 = "82"
     ISSUER_TIMEOUT_STIP_91 = "91"
@@ -191,13 +196,13 @@ class CardholderProfile:
     cohort_id: str = "C4_SUBURBAN_FAMILY"
     region: str = "US"
     currency: str = "USD"
+    annual_income: float = 0.0  # annual, major units; grounds the recurring payroll deposit
     pan_masked: str = "414720******1234"
     domestic_cnp_enabled: bool = True
     international_enabled: bool = False
     contactless_enabled: bool = True
     consecutive_pinless_contactless_count: int = 0
     cumulative_pinless_contactless_amount: float = 0.0
-    last_merchant_id: Optional[str] = None
 
     # Grounded Solvency & Billing Cycle Attributes
     posted_balance: float = 0.0
@@ -239,7 +244,7 @@ class CardholderProfile:
             mean_val = (1.0 - self.gpd_tail_prob) * ln_mean + self.gpd_tail_prob * gpd_mean
 
         if self.currency == "INR" and self.spend_mean_log < 5.0:
-            mean_val *= 40.0
+            mean_val *= INR_LEGACY_USD_SCALE_ADJUSTMENT
         return mean_val
 
     def get_available_balance(self) -> float:
@@ -578,12 +583,12 @@ ENGINE_CHANNEL_NAMES = {"CP_CONTACTLESS_NFC": "CP_POS_CONTACTLESS", "PROVISION_D
 class AdaptiveFraudsterAgent:
     """Stateful adversarial agent executing closed-loop adaptive cybercrime playbooks with per-target memory."""
 
-    def __init__(self, rng: np.random.Generator, adversary_mimicry: float = 0.55):
+    def __init__(self, rng: np.random.Generator, adversary_mimicry: float = 0.55, optimizer_seed: int = 42):
         self.rng = rng
         self.adversary_mimicry = adversary_mimicry
         self.target_states: Dict[str, TargetCardAdversaryState] = {}
         # Slice 11: First-Principles Intent Optimization Engine
-        self.intent_optimizer = InformationDirectedOptimizer(seed=42)
+        self.intent_optimizer = InformationDirectedOptimizer(seed=optimizer_seed)
         self.belief_states: Dict[str, AnalyticalBeliefState] = {}
         self.dossiers: Dict[str, CredentialDossier] = {}
         self.telemetry = load_all_specs().telemetry
@@ -853,7 +858,7 @@ class AdaptiveFraudsterAgent:
 
         # 4. Apple Pay Yellow Path (Global)
         elif scenario_val in (FraudScenario.ADV_APPLE_PAY_YELLOW_PATH.value, "COUNTERFEIT_CLONE"):
-            amount = round(float(self.rng.uniform(45.0, 250.0)), 2) if is_mimicry else round(float(self.rng.uniform(500.0, 2500.0)), 2)
+            amount = round(float(self.rng.uniform(45.0, 250.0) if is_mimicry else self.rng.uniform(500.0, 2500.0)) * target.usd_rate, 2)
             target.current_probe_amount = amount
             target.target_mcc = 5732
             ip_dist = float(self.rng.uniform(3.5, 25.0)) if is_mimicry else float(self.rng.uniform(6.0, 35.0))
@@ -872,7 +877,7 @@ class AdaptiveFraudsterAgent:
 
         # 5. Nocturnal Carding Burst (Global & India)
         elif scenario_val == FraudScenario.ADV_NOCTURNAL_BURST.value:
-            amount = round(float(self.rng.uniform(150.0, 650.0)), 2)
+            amount = round(float(self.rng.uniform(150.0, 650.0)) * target.usd_rate, 2)
             target.current_probe_amount = amount
             target.target_mcc = 5311
             if is_mimicry:
@@ -1070,7 +1075,7 @@ class AdaptiveFraudsterAgent:
                 target.last_response_code = response_code
                 if target.fsm_state == FraudsterState.MICRO_PROBING:
                     target.fsm_state = FraudsterState.ACTIVE_CASHOUT
-                    target.current_probe_amount = float(self.rng.uniform(450.0, 1600.0))
+                    target.current_probe_amount = float(self.rng.uniform(450.0, 1600.0)) * target.usd_rate
                 else:
                     target.fsm_state = FraudsterState.SUCCESS_HARVEST
             if self.state == FraudsterState.MICRO_PROBING:
@@ -1096,7 +1101,7 @@ class AdaptiveFraudsterAgent:
                 target.fsm_state = FraudsterState.GATEWAY_HOP
                 target.last_response_code = response_code
                 target.target_mcc = 5815
-                target.current_probe_amount = min(target.current_probe_amount, 28.0)
+                target.current_probe_amount = min(target.current_probe_amount, 28.0 * target.usd_rate)
             self.state = FraudsterState.GATEWAY_HOP
             self.active_merchant_tier = "TIER_C"
 

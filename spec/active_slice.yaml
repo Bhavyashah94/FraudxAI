@@ -39,7 +39,10 @@ current_slice:
     state. D4 was flagged as 12 MB of dead data and is CLEARED: .gitignore line 61 records
     "preserve canonical data/sample_*.csv", so the samples were restored rather than
     overridden. D5 -- ten dead one-off deliverable generators (~5,600 lines) removed;
-    inspect_generated_data.py kept as the inspector for those canonical samples. Suite 324/324.
+    inspect_generated_data.py kept as the inspector for those canonical samples. D10-D14
+    audited and verified: D10 continuous reference control passes, D11 single-owner event scheduling
+    restores ISO 51 rate, D12 Indian income grounded in PLFS 2025, D13 multi-currency attack parity,
+    and D14 expired holds release propagation to double-entry ledger. Suite 344/344 green.
 
 previous_slices:
   - id: "slice-24-publish-100k-export-to-hf-and-kaggle"
