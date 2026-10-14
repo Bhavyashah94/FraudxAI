@@ -1,33 +1,55 @@
 current_slice:
-  id: "slice-27-prism-causal-explanation-recovery"
-  title: "PRISM Causal Intervention Recovery Benchmark and Two-Tier Evaluation Protocol"
+  id: "slice-28-multi-seed-stability-and-publication-leaderboard"
+  title: "Multi-Seed Stability Matrix and Camera-Ready 500k Publication Leaderboard Release"
   status: "verified"  # [planning, in_progress, testing, verified]
   target_spec_files:
-    - "spec/21_prism_causal_evaluation.yaml"
     - "spec/18_benchmark_reporting.yaml"
     - "fraudx_synthesizer/benchmark_reporter.py"
-    - "fraudx_synthesizer/benchmark.py"
-    - "fraudx_synthesizer/engine.py"
-    - "tests/test_prism_causal_recovery.py"
+    - "fraudx_synthesizer/cli.py"
+    - "staging_us_500k/README.md"
+    - "tests/test_stability_matrix.py"
   acceptance_criteria:
-    - factual_counterfactual_always_populated_for_fraud_in_discrete_event_engine: true
-    - ground_truth_phi_star_defined_by_standardized_physical_intervention_delta: true
-    - track_1_forensic_intervention_recovery_metrics_reported_in_benchmark_reporter: true
-    - track_2_glass_box_explainer_audit_evaluated_against_heuristic_bank_scorer: true
-    - unfitted_normalizing_flow_quarantined_in_experimental_and_excluded_from_pillar_4_grading: true
-    - spec_18_updated_with_ratified_two_tier_protocol_fast_and_protocol_full: true
-    - benchmark_report_badge_distinguishes_protocol_full_from_protocol_fast: true
+    - load_evaluation_protocol_supports_explicit_tier_selection: true
+    - unified_benchmark_runner_resolves_tier_and_attaches_stability_summary: true
+    - cli_benchmark_exposes_protocol_flag_with_tier_default_parameter_injection: true
+    - stability_summary_aggregates_across_stability_seeds_without_exceptions: true
+    - staging_us_500k_has_grounded_open_science_dataset_card_with_sha256_manifest: true
     - zero_regressions_across_full_test_suite: true
   verdict: >-
-    verified: Established Causal PRISM dual-track evaluation grounded in spec/21_prism_causal_evaluation.yaml.
-    Track 1 model-free forensic recovery evaluates against variance-standardized physical intervention footprint
-    Delta x_adversary / sigma_30d across canonical attack levers, while Track 2 evaluates against HeuristicBankScorer.
-    Quarantined random-weight ConditionalRealNVPFlow in experimental/. Formally resolved spec/17 divergence in
-    spec/18_benchmark_reporting.yaml by ratifying two-tier protocols (protocol_fast for CI/CD with 5-8 test windows
-    vs protocol_full with 16-31 test windows). All 6 tests in tests/test_prism_causal_recovery.py pass green,
-    and full test suite passes 381/381 green with zero regressions.
+    verified: Implemented multi-seed stability evaluation and explicit two-tier protocol resolution (protocol_fast vs protocol_full).
+    UnifiedBenchmarkRunner automatically resizes card populations (80 cards for fast vs 1,000 cards for full per spec/18 §5)
+    and attaches StabilitySummary across stability_seeds. CLI exposes --protocol and --days with automatic parameter injection.
+    Generated open-science dataset card in staging_us_500k/README.md with verified SHA256 checksums across all operational feeds.
+    All 6 tests in tests/test_stability_matrix.py pass green, and full test suite passes 387/387 green with zero regressions.
 
 previous_slices:
+  - id: "slice-27-prism-causal-explanation-recovery"
+    title: "PRISM Causal Intervention Recovery Benchmark and Two-Tier Evaluation Protocol"
+    status: "verified"
+    target_spec_files:
+      - "spec/21_prism_causal_evaluation.yaml"
+      - "spec/18_benchmark_reporting.yaml"
+      - "fraudx_synthesizer/benchmark_reporter.py"
+      - "fraudx_synthesizer/benchmark.py"
+      - "fraudx_synthesizer/engine.py"
+      - "tests/test_prism_causal_recovery.py"
+    acceptance_criteria:
+      - factual_counterfactual_always_populated_for_fraud_in_discrete_event_engine: true
+      - ground_truth_phi_star_defined_by_standardized_physical_intervention_delta: true
+      - track_1_forensic_intervention_recovery_metrics_reported_in_benchmark_reporter: true
+      - track_2_glass_box_explainer_audit_evaluated_against_heuristic_bank_scorer: true
+      - unfitted_normalizing_flow_quarantined_in_experimental_and_excluded_from_pillar_4_grading: true
+      - spec_18_updated_with_ratified_two_tier_protocol_fast_and_protocol_full: true
+      - benchmark_report_badge_distinguishes_protocol_full_from_protocol_fast: true
+      - zero_regressions_across_full_test_suite: true
+    verdict: >-
+      verified: Established Causal PRISM dual-track evaluation grounded in spec/21_prism_causal_evaluation.yaml.
+      Track 1 model-free forensic recovery evaluates against variance-standardized physical intervention footprint
+      Delta x_adversary / sigma_30d across canonical attack levers, while Track 2 evaluates against HeuristicBankScorer.
+      Quarantined random-weight ConditionalRealNVPFlow in experimental/. Formally resolved spec/17 divergence in
+      spec/18_benchmark_reporting.yaml by ratifying two-tier protocols (protocol_fast for CI/CD with 5-8 test windows
+      vs protocol_full with 16-31 test windows). All 6 tests in tests/test_prism_causal_recovery.py pass green,
+      and full test suite passes 381/381 green with zero regressions.
   - id: "slice-26-external-backbone-replay-mode"
     title: "External Backbone Replay Mode with Causal Attack Superimposition"
     status: "verified"

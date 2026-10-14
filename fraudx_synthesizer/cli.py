@@ -284,19 +284,49 @@ def cmd_benchmark(args: argparse.Namespace) -> None:
             PublicationPlotter,
             UnifiedBenchmarkRunner,
             load_evaluation_protocol,
-            summarize_stability,
         )
+
+        tier = getattr(args, "protocol", None)
+        norm_tier = ("protocol_full" if "full" in tier.lower() else "protocol_fast") if tier else None
+
+        # Resolve tier defaults if protocol tier is specified
+        samples = args.samples
+        time_span_days = getattr(args, "days", None)
+        w_train = getattr(args, "w_train", 3.0)
+        w_test = getattr(args, "w_test", 1.0)
+        delta_delay = getattr(args, "delta_delay", 1.5)
+        k_daily = getattr(args, "k_daily", 15)
+
+        if norm_tier == "protocol_full":
+            if args.samples == 2000:
+                samples = 100000
+            if time_span_days is None:
+                time_span_days = 75.0
+            if w_train == 3.0:
+                w_train = 30.0
+            if delta_delay == 1.5:
+                delta_delay = 14.0
+            if k_daily == 15:
+                k_daily = 50
+        elif norm_tier == "protocol_fast":
+            if time_span_days is None:
+                time_span_days = 12.0
+        else:
+            if time_span_days is None:
+                time_span_days = 12.0
 
         runner = UnifiedBenchmarkRunner(
             region=args.region,
-            n_transactions=args.samples,
-            k_daily=getattr(args, "k_daily", 15),
-            w_train_days=getattr(args, "w_train", 3.0),
-            w_test_days=getattr(args, "w_test", 1.0),
-            delta_delay_days=getattr(args, "delta_delay", 1.5),
+            n_transactions=samples,
+            time_span_days=time_span_days,
+            k_daily=k_daily,
+            w_train_days=w_train,
+            w_test_days=w_test,
+            delta_delay_days=delta_delay,
             seed=args.seed,
+            protocol_tier=norm_tier,
         )
-        print(f"Executing Unified Four-Pillar Benchmark on {args.samples} transactions ({args.region})...", file=sys.stderr)
+        print(f"Executing Unified Four-Pillar Benchmark on {samples} transactions ({args.region}) under {runner.protocol_tier}...", file=sys.stderr)
         report_data = runner.run_benchmark()
 
         mismatches = report_data.metadata.get("protocol_mismatches") or []
@@ -311,45 +341,18 @@ def cmd_benchmark(args: argparse.Namespace) -> None:
         else:
             # On-protocol: one seed's violation count is not a result. Re-run the pinned
             # seeds and record how many runs each gate actually failed in.
-            protocol, protocol_source = load_evaluation_protocol()
+            protocol, protocol_source = load_evaluation_protocol(tier=runner.protocol_tier)
             seeds = list(protocol["stability_seeds"])
             requested_seeds = getattr(args, "stability_seeds", None)
             if requested_seeds is not None:
                 seeds = seeds[: max(1, int(requested_seeds))]
-            extra_seeds = [s for s in seeds if s != report_data.metadata.get("seed")]
-            if len(seeds) > 1 and extra_seeds:
+            if len(seeds) > 1:
                 print(
                     f"Measuring grade stability across {len(seeds)} pinned seeds "
                     f"({', '.join(str(s) for s in seeds)})...",
                     file=sys.stderr,
                 )
-                runs: List[Dict[str, Any]] = [
-                    {
-                        "seed": report_data.metadata["seed"],
-                        "grade": report_data.certification_grade,
-                        "violations": report_data.violations,
-                    }
-                ]
-                for stability_seed in extra_seeds:
-                    stability_runner = UnifiedBenchmarkRunner(
-                        region=runner.region,
-                        n_transactions=runner.n_transactions,
-                        time_span_days=runner.time_span_days,
-                        k_daily=runner.k_daily,
-                        w_train_days=runner.w_train_days,
-                        w_test_days=runner.w_test_days,
-                        delta_delay_days=runner.delta_delay_days,
-                        seed=stability_seed,
-                    )
-                    stability_report = stability_runner.run_benchmark()
-                    runs.append(
-                        {
-                            "seed": stability_seed,
-                            "grade": stability_report.certification_grade,
-                            "violations": stability_report.violations,
-                        }
-                    )
-                report_data.stability = summarize_stability(runs, protocol_source)
+                report_data.stability = runner.run_stability(seeds=seeds)
 
         out_dir = Path(getattr(args, "output_dir", "reports/benchmark"))
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -767,6 +770,19 @@ def main() -> None:
     p_bench.add_argument("--k-daily", type=int, default=15, help="Daily analyst investigation capacity budget")
     p_bench.add_argument("--output-report", type=str, default=None, help="Path to write Markdown certification report")
     p_bench.add_argument("--json", action="store_true", help="Output benchmark metrics in JSON format")
+    p_bench.add_argument(
+        "--protocol",
+        type=str,
+        choices=["fast", "full"],
+        default=None,
+        help="Evaluation protocol tier: 'fast' (12d stream, CI/CD) or 'full' (75d stream, Dal Pozzolo 2018 camera-ready publications)",
+    )
+    p_bench.add_argument(
+        "--days",
+        type=float,
+        default=None,
+        help="Simulation stream horizon in days (defaults to protocol tier requirement: 12d for fast, 75d for full)",
+    )
     p_bench.add_argument(
         "--stability-seeds",
         type=int,

@@ -131,11 +131,27 @@ _EMBEDDED_EVALUATION_PROTOCOL: Dict[str, Any] = {
     "w_test_days": 1.0,
     "delta_delay_days": 1.5,
     "k_daily": 15,
+    "protocol_tier": "protocol_fast",
+    "badge": "REGRESSION (PROTOCOL_FAST)",
+}
+
+_EMBEDDED_FULL_PROTOCOL: Dict[str, Any] = {
+    "region": "US",
+    "n_transactions": 100000,
+    "seed": 42,
+    "stability_seeds": [42, 0, 1, 2, 3],
+    "time_span_days": 75.0,
+    "w_train_days": 30.0,
+    "w_test_days": 1.0,
+    "delta_delay_days": 14.0,
+    "k_daily": 50,
+    "protocol_tier": "protocol_full",
+    "badge": "CERTIFIED (PROTOCOL_FULL)",
 }
 
 
-@functools.lru_cache(maxsize=1)
-def load_evaluation_protocol() -> Tuple[Dict[str, Any], str]:
+@functools.lru_cache(maxsize=8)
+def load_evaluation_protocol(tier: Optional[str] = None) -> Tuple[Dict[str, Any], str]:
     """The pinned evaluation protocol and where it came from.
 
     Returns `(protocol, source)`. `source` is the resolved spec path, or
@@ -143,10 +159,19 @@ def load_evaluation_protocol() -> Tuple[Dict[str, Any], str]:
     returned mapping as read-only: like the threshold loader, the cached mapping is
     shared between callers.
     """
+    normalized_tier: Optional[str] = None
+    if tier:
+        norm = tier.lower().strip()
+        normalized_tier = "protocol_full" if "full" in norm else "protocol_fast"
+
     try:
         spec_path = _find_spec_dir() / CERTIFICATION_SPEC_FILE
         raw = yaml.safe_load(spec_path.read_text(encoding="utf-8"))
-        body = raw["evaluation_protocol"]
+        protocols_registry = raw.get("evaluation_protocols") or {}
+        if normalized_tier and normalized_tier in protocols_registry:
+            body = protocols_registry[normalized_tier]
+        else:
+            body = raw["evaluation_protocol"]
         protocol: Dict[str, Any] = {"stability_seeds": [int(s) for s in body["stability_seeds"]]}
         if not protocol["stability_seeds"]:
             raise KeyError("spec/18 evaluation_protocol.stability_seeds must not be empty")
@@ -160,10 +185,16 @@ def load_evaluation_protocol() -> Tuple[Dict[str, Any], str]:
                 protocol[key] = int(value)
             else:
                 protocol[key] = float(value)
+        protocol["protocol_tier"] = normalized_tier or body.get("protocol_tier", "protocol_fast")
+        protocol["badge"] = body.get("badge", "REGRESSION (PROTOCOL_FAST)")
         return protocol, str(spec_path)
     except (FileNotFoundError, KeyError, TypeError, ValueError, yaml.YAMLError):
-        fallback = dict(_EMBEDDED_EVALUATION_PROTOCOL)
-        fallback["stability_seeds"] = list(_EMBEDDED_EVALUATION_PROTOCOL["stability_seeds"])
+        if normalized_tier == "protocol_full":
+            fallback = dict(_EMBEDDED_FULL_PROTOCOL)
+            fallback["stability_seeds"] = list(_EMBEDDED_FULL_PROTOCOL["stability_seeds"])
+        else:
+            fallback = dict(_EMBEDDED_EVALUATION_PROTOCOL)
+            fallback["stability_seeds"] = list(_EMBEDDED_EVALUATION_PROTOCOL["stability_seeds"])
         return fallback, "embedded fallback"
 
 
@@ -824,6 +855,7 @@ class UnifiedBenchmarkRunner:
         w_test_days: float = 1.0,
         delta_delay_days: float = 1.5,
         seed: int = 42,
+        protocol_tier: Optional[str] = None,
     ):
         self.region = region.upper()
         self.currency = "INR" if self.region == "IN" else "USD"
@@ -836,14 +868,21 @@ class UnifiedBenchmarkRunner:
         self.seed = seed
         self.rng = np.random.default_rng(seed)
         self.specs = load_all_specs()
+        if protocol_tier is not None:
+            norm = protocol_tier.lower().strip()
+            self.protocol_tier = "protocol_full" if "full" in norm else "protocol_fast"
+        else:
+            self.protocol_tier = "protocol_full" if (self.n_transactions >= 50000 or self.time_span_days >= 50.0) else "protocol_fast"
+        self.stability: Optional[StabilitySummary] = None
 
     def run_benchmark(self) -> UnifiedBenchmarkReportData:
         """Executes full simulation, evaluation, and XAI certification."""
         t_start = time.perf_counter()
 
         # Step 1: Generate Simulation Batch
+        n_cards = 1000 if self.protocol_tier == "protocol_full" else 80
         engine = SimulationEngine(
-            n_cards=80,
+            n_cards=n_cards,
             n_merchants=25,
             region=self.region,
             seed=self.seed,
@@ -939,8 +978,10 @@ class UnifiedBenchmarkRunner:
             "delta_delay_days": self.delta_delay_days,
             "k_daily": self.k_daily,
         }
-        pinned_protocol, protocol_source = load_evaluation_protocol()
+        pinned_protocol, protocol_source = load_evaluation_protocol(tier=self.protocol_tier)
         mismatches = protocol_mismatches(pinned_protocol, run_protocol)
+        tier_badge = pinned_protocol.get("badge", "CERTIFIED (PROTOCOL_FULL)" if self.protocol_tier == "protocol_full" else "REGRESSION (PROTOCOL_FAST)")
+        report_badge = tier_badge if not mismatches else "OFF-PROTOCOL"
 
         return UnifiedBenchmarkReportData(
             schema_version="1.0.0",
@@ -957,6 +998,8 @@ class UnifiedBenchmarkRunner:
                 "pinned_protocol": dict(pinned_protocol),
                 "run_protocol": run_protocol,
                 "protocol_mismatches": mismatches,
+                "protocol_tier": self.protocol_tier,
+                "badge": report_badge,
             },
             system_provenance={
                 "python_version": sys.version.split()[0],
@@ -975,7 +1018,35 @@ class UnifiedBenchmarkRunner:
             feature_attributions=feat_attr,
             ground_truth_phi=gt_phi,
             triage_curves=triage_curves,
+            stability=self.stability,
         )
+
+    def run_stability(self, seeds: Optional[Sequence[int]] = None) -> StabilitySummary:
+        """Runs the benchmark across the pinned stability seeds and summarizes grade stability."""
+        pinned_protocol, protocol_source = load_evaluation_protocol(tier=self.protocol_tier)
+        target_seeds = list(seeds if seeds is not None else pinned_protocol.get("stability_seeds", [42, 0, 1, 2, 3]))
+
+        runs: List[Dict[str, Any]] = []
+        for s in target_seeds:
+            runner = UnifiedBenchmarkRunner(
+                region=self.region,
+                n_transactions=self.n_transactions,
+                time_span_days=self.time_span_days,
+                k_daily=self.k_daily,
+                w_train_days=self.w_train_days,
+                w_test_days=self.w_test_days,
+                delta_delay_days=self.delta_delay_days,
+                seed=s,
+                protocol_tier=self.protocol_tier,
+            )
+            report = runner.run_benchmark()
+            runs.append({
+                "seed": s,
+                "grade": report.certification_grade,
+                "violations": report.violations,
+            })
+        self.stability = summarize_stability(runs, protocol_source)
+        return self.stability
 
     def _evaluate_data_fidelity(self, records: List[Dict[str, Any]]) -> DataFidelityScorecard:
         """Computes continuous Wasserstein distance against grounded spec, categorical JS divergence, and Frobenius correlation error."""
@@ -1547,7 +1618,11 @@ class BenchmarkReportCompiler:
         ])
 
         mismatches = list(report.metadata.get("protocol_mismatches") or [])
-        protocol_badge = "matches `spec/18 evaluation_protocol`" if not mismatches else "**OFF-PROTOCOL** -- see Certification Status"
+        tier_badge = report.metadata.get("badge")
+        if not mismatches:
+            protocol_badge = f"matches `spec/18 evaluation_protocol` (`{tier_badge}`)" if tier_badge else "matches `spec/18 evaluation_protocol`"
+        else:
+            protocol_badge = "**OFF-PROTOCOL** -- see Certification Status"
         stability_section = (
             stability_markdown(
                 report.stability,
@@ -1692,8 +1767,10 @@ Stated so that no score above is read as more than it measures:
                 "so its violation count is <strong>not</strong> comparable to the pinned certification."
             )
         else:
+            tier_badge = report.metadata.get("badge")
+            badge_str = f" (<code>{tier_badge}</code>)" if tier_badge else ""
             html_protocol = (
-                "This run matches <code>spec/18 evaluation_protocol</code>, so its grade is "
+                f"This run matches <code>spec/18 evaluation_protocol</code>{badge_str}, so its grade is "
                 "comparable to the pinned certification."
             )
         html_stability = ""
