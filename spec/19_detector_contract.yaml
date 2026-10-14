@@ -38,7 +38,7 @@ feeds:
       - { name: vaai_score, type: integer, description: "the network's risk score delivered with the request, 0 to 99", minimum: 0 }
       - { name: amount, type: number, description: "the amount in the card's currency, major units", minimum: 0 }
       - { name: amount_minor, type: integer, description: "the amount in minor units (cents or paise)", minimum: 0 }
-      - { name: currency, type: string, description: "ISO 4217 currency of the card", domain: ["INR", "USD"] }
+      - { name: currency, type: string, description: "ISO 4217 currency of the card", domain: ["EUR", "INR", "USD"] }
       - { name: available_balance, type: number, description: "the issuer's open-to-buy on the card at the request" }
       - { name: credit_limit, type: number, description: "the card's credit line, on the issuer's assignment steps", minimum: 0 }
       - { name: mcc, type: integer, description: "ISO 18245 merchant category code", minimum: 0 }
