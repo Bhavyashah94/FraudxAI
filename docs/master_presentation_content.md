@@ -49,7 +49,7 @@
 
 ---
 
-### SECTION 2: REVIEW OF LITERATURE (COMPLETED SLIDES 5–8)
+### SECTION 2: REVIEW OF LITERATURE (COMPLETED SLIDES 5-8)
 *(All 4 papers verified from markdown text on disk: Walauskis 2025, Fazel EN Bank 2026, Duan CaT-GNN 2024, Hedström Quantus JMLR 2023).*
 
 ---
@@ -153,7 +153,7 @@
 * **4 Enterprise Banking Feeds:**
   1. `auth_stream.csv` (ISO 8583 / ISO 20022 real-time switch messages).
   2. `gateway_telemetry.csv` (Device canvas Murmur3 hashes, IP/ASN, AVS codes).
-  3. `clearing_settlement.csv` (Dual-message financial presentment with 24–72h delay).
+  3. `clearing_settlement.csv` (Dual-message financial presentment with 24-72h delay).
   4. `dispute_recovery.csv` (Chargeback reason codes, Visa CE 3.0, RBI 1930 cyber-liens).
 
 ---
@@ -170,7 +170,7 @@
 #### Slide 18: Invariant Certification & Throughput Benchmarks
 * **Headline (Serif):** Formal Invariant Verification & Engine Performance
 * **Key Achievements:**
-  * **324 / 324 Tests Passed:** 100% automated pytest suite passing across unit and integration rails.
+  * **387 / 387 Tests Passed:** 100% automated pytest suite passing across unit and integration rails.
   * **37 / 37 Certified Invariants:** Formal mathematical verification of double-entry bitwise conservation, strict temporal monotonicity, anti-leak tripwires, and Haversine velocity ceilings.
   * **Throughput:** Measured generation velocity of **2,166 events/second** (1,172 transactions/second) over a 100,000-transaction run, sustaining synthesis without memory degradation.
 
@@ -192,7 +192,7 @@
 ---
 
 ### SECTION 9: REFERENCES
-* **Payment Network Standards:** Visa Core Rules (VCR 2024–2026), Mastercard Security Rules, ISO 8583-1:2003, ISO 20022.
+* **Payment Network Standards:** Visa Core Rules (VCR 2024-2026), Mastercard Security Rules, ISO 8583-1:2003, ISO 20022.
 * **Statutory Mandates:** US ECOA (Regulation B, 12 CFR § 1002.9), FCRA (15 U.S.C. § 1681), Federal Reserve SR 11-7 / OCC 2011-12, EU GDPR Art. 22, RBI Master Directions on Customer Liability (`RBI/2017-18/15`).
 * **Empirical Literature:**
   * Walauskis & Khoshgoftaar (IEEE Access, 2025)
