@@ -93,6 +93,7 @@ gui/frontend/node_modules/
 # Archives
 *.zip
 
-# Local staged dataset outputs
-staging_*/
+# Local staged dataset outputs: track cards and checksum manifests, ignore generated data
+staging_*/*.csv
+staging_*/*.csv.gz
 
