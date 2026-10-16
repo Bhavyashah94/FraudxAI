@@ -6,7 +6,7 @@
 > **Institution:** AET's Atharva College of Engineering, Malad (West), Mumbai  
 > **Affiliation:** University of Mumbai  
 > **Project Group ID:** Group 18  
-> **Project Title:** FraudxAI: Explainable AI for Payment Fraud Detection & Causal Simulation  
+> **Project Title:** FraudxAI: Grounded Multi-Agent Payment Fraud Simulation & Causal XAI Benchmark  
 
 ---
 
@@ -80,11 +80,11 @@ If editing or reviewing the Google Doc, strictly adhere to these typography and 
 Chapter 1
 Introduction
 
-Digital payment ecosystems have transformed modern global commerce, facilitating billions of daily transactions through credit and debit card switches, point-of-sale (POS) terminals, and instant mobile interfaces such as the Unified Payments Interface (UPI) [1]. However, this rapid digital expansion has catalyzed increasingly sophisticated, coordinated cybercrime syndicates, causing global payment card fraud losses to exceed $35 billion annually. To prevent catastrophic financial drain, modern banking switches enforce strict authorization deadlines: risk scoring algorithms must evaluate transactions in under 50 milliseconds before Stand-In Processing (STIP) timeout mechanisms trigger.
+Digital payment ecosystems have transformed modern global commerce, facilitating billions of daily transactions through credit and debit card switches, point-of-sale (POS) terminals, and instant mobile interfaces such as the Unified Payments Interface (UPI). However, this rapid digital expansion has catalyzed increasingly sophisticated, coordinated cybercrime syndicates, causing global payment card fraud losses to exceed USD 35 billion annually [13]. To prevent catastrophic financial drain, modern banking switches enforce strict authorization deadlines: risk scoring algorithms must evaluate transactions in under 50 milliseconds before Stand-In Processing (STIP) timeout mechanisms trigger.
 
 1.1 Need and Motivation
 
-Simultaneously, financial institutions face a critical false-alarm dilemma: overly aggressive fraud prevention models trigger erroneous declines that cost merchants an estimated $118 billion annually in lost sales, which is nearly thirteen times the cost of actual fraud [2]. Unlike low-risk recommendation systems, declining a legitimate cardholder’s medical, travel, or grocery transaction directly damages consumer trust and incurs severe legal liabilities.
+Simultaneously, financial institutions face a critical false-alarm dilemma: overly aggressive fraud prevention models trigger erroneous declines that cost merchants an estimated USD 118 billion annually in lost sales in the United States, more than thirteen times the cost of actual card fraud [14]. Unlike low-risk recommendation systems, declining a legitimate cardholder’s medical, travel, or grocery transaction directly damages consumer trust and incurs severe legal liabilities.
 
 Consequently, deploying machine learning in banking is strictly governed by statutory regulatory frameworks. Under adverse action transparency statutes, such as the US Equal Credit Opportunity Act (ECOA, Regulation B, 12 CFR § 1002.9) and the Fair Credit Reporting Act (FCRA), institutions are legally mandated to furnish specific principal reason codes for any adverse or declined financial decision. Furthermore, model risk management directives, including Federal Reserve SR 11-7 and OCC 2011-12 standards, require conceptual soundness and full auditability for automated risk scoring architectures. In parallel, customer protection mandates, such as the Reserve Bank of India Master Directions (RBI/2017-18/15), enforce strict liability frameworks and transparent grievance redressal mechanisms for unauthorized electronic transactions.
 
@@ -139,17 +139,17 @@ Formalized 30+ mathematical metrics (faithfulness, monotonicity, robustness) to 
 ```text
 Table 2.1: Comparative Summary of Literature Survey
 
-[Table with 6 columns: Sr No | Research Paper Title | Author & Year | Publisher / Venue | Advantages | Disadvantages]
+[Table with 5 columns: Sr No | Research Paper Title | Author, Year & Publisher | Advantages | Disadvantages]
 ```
 
 *(Copy Table 2.1 from below into Google Docs)*
 
-| Sr No | Research Paper Title | Author & Year | Publisher / Venue | Advantages | Disadvantages |
-| :---: | :--- | :--- | :--- | :--- | :--- |
-| **1** | SHAP-Based Feature Selection for Enhanced Unsupervised Labeling | Walauskis & Khoshgoftaar (2025) | IEEE Access (Vol. 13) | Integrates TreeSHAP feature selection on imbalanced fraud streams; improves unsupervised labeling quality. | Evaluated solely on masked PCA components; lacks ground-truth causal attributions to verify explanation correctness. |
-| **2** | Improving Credit Card Fraud Detection with an Optimized Explainable Boosting Machine | Fazel, Bakhtiary & Bigdeli (2026) | arXiv / DTU & EN Bank Credit Dept | Glass-box $\text{GA}^2\text{M}$ architecture achieves high detection (ROC-AUC 0.983) with exact additive interpretability. | Evaluated strictly on static tabular credit card data; omits real-time payment rails, streaming latency, and adaptive syndicates. |
-| **3** | CaT-GNN: Enhancing Credit Card Fraud Detection via Causal Temporal Graph Neural Networks | Duan, Zhang, Wang, et al. (2024) | ACM CIKM (33rd Int. Conf.) | Discovers invariant causal nodes and applies causal mix-up to overcome adversarial camouflage in transaction graphs. | GNN inference latency (>200ms) violates sub-50ms switch SLAs; graph embeddings are non-interpretable for regulatory compliance. |
-| **4** | Quantus: An Explainable AI Toolkit for Responsible Evaluation of Neural Network Explanations and Beyond | Hedström, Weber, Bareeva, et al. (2023) | Journal of Machine Learning Research (JMLR) | Formalizes 30+ rigorous mathematical metrics (faithfulness, monotonicity, robustness) to evaluate XAI methods. | General domain focus (vision/synthetic); lacks financial streaming invariants, payment schemas, and counterfactual baseline twins. |
+| Sr No | Research Paper Title | Author, Year & Publisher | Advantages | Disadvantages |
+| :---: | :--- | :--- | :--- | :--- |
+| **1** | SHAP-Based Feature Selection for Enhanced Unsupervised Labeling | Walauskis & Khoshgoftaar (2025), IEEE Access (Vol. 13) | Integrates TreeSHAP feature selection on imbalanced fraud streams; improves unsupervised labeling quality. | Evaluated solely on masked PCA components; lacks ground-truth causal attributions to verify explanation correctness. |
+| **2** | Improving Credit Card Fraud Detection with an Optimized Explainable Boosting Machine | Fazel, Bakhtiary & Bigdeli (2026), arXiv / DTU & EN Bank Credit Dept | Glass-box $\text{GA}^2\text{M}$ architecture achieves high detection (ROC-AUC 0.983) with exact additive interpretability. | Evaluated strictly on static tabular credit card data; omits real-time payment rails, streaming latency, and adaptive syndicates. |
+| **3** | CaT-GNN: Enhancing Credit Card Fraud Detection via Causal Temporal Graph Neural Networks | Duan, Zhang, Wang, et al. (2024), ACM CIKM (33rd Int. Conf.) | Discovers invariant causal nodes and applies causal mix-up to overcome adversarial camouflage in transaction graphs. | GNN inference latency (>200ms) violates sub-50ms switch SLAs; graph embeddings are non-interpretable for regulatory compliance. |
+| **4** | Quantus: An Explainable AI Toolkit for Responsible Evaluation of Neural Network Explanations and Beyond | Hedström, Weber, Bareeva, et al. (2023), Journal of Machine Learning Research (JMLR) | Formalizes 30+ rigorous mathematical metrics (faithfulness, monotonicity, robustness) to evaluate XAI methods. | General domain focus (vision/synthetic); lacks financial streaming invariants, payment schemas, and counterfactual baseline twins. |
 
 ---
 
@@ -228,7 +228,7 @@ The FraudxAI architecture integrates five interconnected subsystems:
 4. Structural Causal Model (SCM) & Counterfactual Core: Evaluates unperturbed counterfactual twins x_baseline for every transaction and computes exact analytical Shapley attributions φ*.
 5. Data Export & Telemetry Layer: Partitions outputs into four enterprise feeds (auth_stream, gateway_telemetry, clearing_settlement, dispute_recovery) and feeds the interactive real-time dashboard.
 
-[INSERT FIGURE 6.1: FraudxAI System Architecture Diagram from docs/fraudxai_architecture_v2.png]
+[INSERT FIGURE 6.1: scripts/generate_synopsis_figures.py --grayscale writes fig_6_1_architecture.png, designed at final print size (insert at full text width); do not reuse docs/fraudxai_architecture_v2.png (stale color draft)]
 Figure 6.1: FraudxAI System Architecture and Processing Pipeline
 ```
 
@@ -285,7 +285,7 @@ Table 7.1: Hardware and Software Specifications
 | | Data Engine & Vectorization | Polars, NumPy, SciPy | Polars (multithreaded streaming) |
 | | Machine Learning & XAI | LightGBM, XGBoost, Scikit-learn, SHAP | LightGBM 4.x, SHAP 0.46+ |
 | | Web Dashboard Frontend | React 18, Vite, Tailwind CSS | React 18, D3.js, Lucide Icons |
-| | Verification & Test Suite | Pytest 8.x+ | Pytest (344 automated tests) |
+| | Verification & Test Suite | Pytest 8.x+ | Pytest (410 automated tests) |
 
 ```text
 7.2 User Interface Requirements
@@ -313,7 +313,7 @@ Feasibility Study
 FraudxAI directly addresses operational pain points faced by financial institutions, compliance auditors, and academic researchers. By providing an open-source, reproducible simulation platform with known causal ground truth, organizations can safely validate XAI algorithms and train fraud analysts without handling sensitive customer data.
 
 8.2 Technical Feasibility
-The platform is developed in Python 3.12 leveraging high-performance vectorized libraries (Polars, NumPy, SciPy) and gradient boosted trees (LightGBM) and scikit-learn Random Forest. Automated test suites (344 unit and invariant tests) accompany the implementation; memory during a 100,000-transaction run peaks at 1.4 GB.
+The platform is developed in Python 3.12 leveraging high-performance vectorized libraries (Polars, NumPy, SciPy) and gradient boosted trees (LightGBM) and scikit-learn Random Forest. Automated test suites (410 unit and invariant tests) accompany the implementation; memory during a 100,000-transaction run peaks at 1.5 GB.
 
 8.3 Economic Feasibility
 FraudxAI is entirely open-source, eliminating costly commercial software licenses and expensive cloud GPU infrastructure. It runs efficiently on commodity multi-core consumer hardware, ensuring zero barrier to adoption for academic and industrial researchers.
@@ -331,7 +331,7 @@ Table 8.1: Feasibility Study Matrix
 | Dimension | Key Evaluation Criteria | FraudxAI Solution & Mitigation | Status |
 | :--- | :--- | :--- | :--- |
 | **Operational Feasibility** | Adoption by banks, regulators, and academic researchers | Eliminates data sharing barriers by generating 100% synthetic, realistic data; equips fraud investigators with actionable XAI waterfall plots. | **Feasible** |
-| **Technical Feasibility** | 50ms authorization SLA, 64-bit microsecond clock, memory stability | Implemented in Python 3.12 + Polars vectorization; measured 2,166 events/sec (1,172 transactions/sec) over a 100,000-transaction run and a 100% pass rate across the 344-test pytest suite. | **Feasible** |
+| **Technical Feasibility** | 50ms authorization SLA, 64-bit microsecond clock, memory stability | Implemented in Python 3.12 + Polars vectorization; measured 2,000-2,600 events/sec (1,400-1,700 transactions/sec) over a 100,000-transaction run and a 100% pass rate across the 410-test pytest suite. | **Feasible** |
 | **Economic Feasibility** | Development budget, licensing, cloud infrastructure costs | Built entirely on open-source libraries (Polars, LightGBM, React); runs locally on commodity multi-core laptops with zero commercial API expenses. | **Feasible** |
 | **Legal & Regulatory Feasibility**| PII, PCI-DSS liability, RBI/ECOA Adverse Action compliance | Fully synthetic identities incur zero PII/PCI-DSS liability; generated causal ground truths directly support RBI and ECOA statutory reason code mandates. | **Feasible** |
 
@@ -443,7 +443,7 @@ Implementation Plan
 • Programming Language: Python 3.12 (managed via UV).
 • Core Libraries: Polars, NumPy, SciPy, LightGBM, XGBoost, Scikit-learn, SHAP.
 • Frontend UI: React 18, Tailwind CSS, Vite.
-• Testing & Build: Pytest (344 automated tests).
+• Testing & Build: Pytest (410 automated tests).
 
 10.3 Experimental Results and Output Screenshots
 
@@ -455,18 +455,22 @@ and every column is emitted by that harness. Run the command to regenerate the r
 
 | Model Architecture | PR-AUC (Detection) | ROC-AUC | Top-3 Precision (P@3) | Intervention P@3 | Kendall's $\tau_b$ (Rank) | Spearman $\rho$ | RAE (Attribution Error, log-odds) |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **LightGBM + TreeSHAP** (`--model lightgbm`) | 0.8470 | 0.9849 | 0.4533 | 0.6400 | 0.3668 | 0.4209 | 17.5234 |
-| **Random Forest + TreeSHAP** (`--model rf`) | 0.7803 | 0.9774 | 0.4000 | 0.5400 | 0.3628 | 0.4280 | 1.1659 |
+| **LightGBM + TreeSHAP** (`--model lightgbm`) | 0.9118 | 0.9861 | 0.3627 | 0.5000 | 0.3106 | 0.3726 | 1.6927 |
+| **Random Forest + TreeSHAP** (`--model rf`) | 0.8766 | 0.9849 | 0.4118 | 0.5294 | 0.3133 | 0.3834 | 0.9952 |
 
 Measurement conditions: 2,000 simulated transactions, seed 42, 70/30 chronological
-train/test split, 25 fraud records scored for the explanation columns; inference
-latency and Recall@1%FPR are not reported because the harness does not measure them.
+train/test split, 34 fraud records scored for the explanation columns; regenerate with
+`fraudx benchmark -n 2000 --model {lightgbm,rf} --seed 42 --json`. Inference latency and
+Recall@1%FPR are not reported because the harness does not measure them. RAE is in
+unbounded log-odds units and is dominated by a few low-prevalence rows, so it is not
+comparable across architectures the way PR-AUC is.
 
 ```text
 Summary of Empirical Findings:
-1. Engine Throughput: Measured simulation throughput of 2,166 events/second (1,172 transactions/second, 1.4 GB peak RSS) across 100,000 transactions; reproduce with `python scripts/measure_throughput.py --transactions 100000 --days 60 --region US --seed 42`.
-2. Invariant Certification: Successfully certified 37 formal mathematical invariants with 100% of 344 automated unit and invariant tests passing.
-3. Explainer Divergence: Auditing post-hoc TreeSHAP against SCM ground truth reveals significant rank degradation (Kendall's tau_b = 0.3668, LightGBM, seed 42, n=2000), demonstrating that feature multicollinearity causes post-hoc explainers to scramble true causal feature importance.
+1. Engine Throughput: Measured simulation throughput of ~2,626 events/second (1,414 transactions/second, 1.5 GB peak RSS) across 100,000 transactions on an AMD Ryzen 7 6800H; throughput is hardware- and workload-dependent (2,015-2,626 events/second observed across configurations), so reproduce with `python scripts/measure_throughput.py --transactions 100000 --days 60 --region US --seed 42`.
+2. Invariant Certification: Successfully certified 37 formal mathematical invariants with 100% of 410 automated unit and invariant tests passing.
+3. Explainer Divergence: Auditing post-hoc TreeSHAP against SCM ground truth reveals modest rank concordance (Kendall's tau_b = 0.3106, LightGBM, seed 42, n=2000; 0.123-0.201 across five seeds at n=3000 on the intervention-vector concordance), demonstrating that feature multicollinearity causes post-hoc explainers to scramble true causal feature importance.
+4. Four-Pillar Certification: A specification-driven certification benchmark (data fidelity, adversarial privacy, streaming operations, causal XAI) is implemented and issues a per-gate verdict across nineteen gates. The current pinned evaluation passes all of them; the five-seed stability sweep that quantifies the verdicts' seed-to-seed spread, and the earlier pilot audits that named four breaches (amount-distribution fidelity, membership-inference AUC, explainer correlation and attribution error), are published with their diagnoses in the repository's `reports/` directory.
 
 [INSERT FIGURE 10.1: Dashboard UI Screenshot showing real-time feeds and SHAP waterfall chart]
 Figure 10.1: FraudxAI Interactive Telemetry and XAI Dashboard
@@ -514,7 +518,7 @@ Chapter 12
 Conclusion and Future Scope
 
 12.1 Conclusion
-FraudxAI establishes an open-source, high-fidelity payment fraud simulation and causal XAI benchmark. By synthesizing transactions with microsecond temporal monotonicity, dual-region payment rails (US and India), and adaptive cybercrime syndicates, the platform resolves data scarcity and 90-day label latency limitations. Most importantly, by generating exact Pearlian counterfactual twins and analytical Shapley attributions, FraudxAI provides the first mathematically verifiable foundation for auditing explainable AI in mission-critical financial systems.
+FraudxAI establishes an open-source, high-fidelity payment fraud simulation and causal XAI benchmark. By synthesizing transactions with microsecond temporal monotonicity, dual-region payment rails (US and India), and adaptive cybercrime syndicates, the platform resolves data scarcity and 90-day label latency limitations. By generating exact Pearlian counterfactual twins and analytical Shapley attributions, FraudxAI provides a mathematically verifiable, auditable foundation for benchmarking explainable AI in financial systems; the pilot audits and their violations are published openly with the implementation.
 
 12.2 Future Scope
 1. Multi-Agent Reinforcement Learning (MARL): Implementing competitive Red-Team vs. Blue-Team co-evolutionary learning for automated adversarial policy discovery.
@@ -531,7 +535,7 @@ FraudxAI establishes an open-source, high-fidelity payment fraud simulation and 
 ```text
 Acknowledgement
 
-We owe sincere thanks to our college, AET's Atharva College of Engineering, for providing us the academic platform and infrastructure to conduct research on the project entitled “FraudxAI: Explainable AI for Payment Fraud Detection & Causal Simulation”.
+We owe sincere thanks to our college, AET's Atharva College of Engineering, for providing us the academic platform and infrastructure to conduct research on the project entitled “FraudxAI: Grounded Multi-Agent Payment Fraud Simulation & Causal XAI Benchmark”.
 
 We express our deepest gratitude to our Principal, Dr. Ramesh Kulkarni, for his vision, academic encouragement, and institutional support. We are immensely grateful to Dr. Bhavna Arora, Head of the Department of Information Technology, and Dr. Nileema Pathak, Project Coordinator, for their continuous guidance, administrative coordination, and vital feedback throughout the semester.
 
@@ -559,4 +563,6 @@ References
 10. J. S. Allen, "CardSim: A payment card transaction simulator," Finance Econ. Discuss. Ser. (FEDS) 2025-010, Board Governors Fed. Reserve Syst., 2025.
 11. International Organization for Standardization, Financial Transaction Card Originated Messages: Interchange Message Specifications (ISO 8583-1:2003), Geneva, Switzerland: ISO, 2003.
 12. Reserve Bank of India, "Master directions on customer protection - Limiting liability of customers in unauthorised electronic banking transactions," RBI Circular RBI/2017-18/15, DBR.No.Leg.BC.78/09.07.005/2017-18, Mumbai, India, Jul. 2017.
+13. The Nilson Report, "Global card fraud losses," Nilson Report, 2024. (Industry estimate: card fraud losses exceed USD 35 billion annually.)
+14. Javelin Strategy & Research, "False declines," industry study, as reported by Mastercard and industry press. (Industry estimate: USD 118 billion in US false-decline losses, more than thirteen times card fraud losses.)
 ```
