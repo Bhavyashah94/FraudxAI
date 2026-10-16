@@ -1,13 +1,8 @@
 """Tests verifying persistent cybercrime syndicate graph topologies and cross-account linkage."""
 
-import pytest
 from fraudx_synthesizer import (
-    DiscreteEventEngine,
     SimulationEngine,
     SyndicateRegistry,
-    BotnetCluster,
-    MuleRing,
-    SyndicateEntity,
 )
 
 

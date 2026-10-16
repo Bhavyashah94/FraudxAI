@@ -25,18 +25,14 @@ import numpy as np
 
 from .agents import (
     AdaptiveFraudsterAgent,
-    BankDecisionEngine,
     CardholderProfile,
     CardholderState,
-    ChannelType,
     FraudScenario,
-    FraudsterAgent,
     FraudsterState,
     ISO8583Response,
 )
-from .causal_scm import CausalGroundTruth, StructuralCausalEngine
+from .causal_scm import StructuralCausalEngine
 from .hawkes import (
-    ADVERSARY_HAWKES_PROFILES,
     HawkesParameters,
     INDIAN_PERSONA_HAWKES_PROFILES,
     PERSONA_HAWKES_PROFILES,
@@ -45,10 +41,9 @@ from .hawkes import (
 from .invariants import verify_transaction_invariants
 from .ledger import InterbankClearingLedger, StreamingLedger
 from .syndicates import SyndicateRegistry
-from .world import MCC_TAXONOMY, MerchantProfile, WorldEnvironment
+from .world import MCC_TAXONOMY, WorldEnvironment
 from .rails import (
     CandidateTransactionIntent,
-    RailVerificationResult,
     RailVerifierSwitch,
 )
 from .spec_loader import load_all_specs
@@ -130,10 +125,12 @@ def payroll_period_days(currency: str) -> float:
 # spec/16_operational_supervision.yaml both assume a monthly statement).
 BILLING_CYCLE_DAYS = 30.0
 
-# Deposit amounts, in major units, per credit. TODO(grounding): these are the
-# next values to ground -- a flat per-card credit ignores cohort income entirely
-# (spec/02_human_personas.yaml annual_income_usd is loaded but never read).
-# Held here rather than inline so the fix is one line once income is wired in.
+# Legacy flat payroll credit, in major units, used only as the fallback for
+# cards that carry no income (annual_income == 0): bootstrap/test fixtures and
+# backbone-replay cards. Live cards are grounded in cohort income -- see
+# _initialize_cardholders (spec/02 annual_income_usd / annual_income_inr, with
+# the FY2024-25 new-regime tax applied to Indian gross) and its consumption in
+# the EVT_PAYROLL_DEPOSIT handler. Kept so that fallback stays one line.
 PAYROLL_DEPOSIT_USD = 1500.0
 PAYROLL_DEPOSIT_INR = 25000.0
 
@@ -430,6 +427,7 @@ class DiscreteEventEngine:
             beta=beta,
             beta_0_floor=beta_0,
             phi_max=3.85,
+            phase_offset_sec=float(getattr(card, "phase_offset_sec", 0.0)),
         )
 
     def _compute_circular_diurnal_distribution(self) -> np.ndarray:
@@ -498,6 +496,19 @@ class DiscreteEventEngine:
         Models salary direct deposit liquidity surges and retail megasale compression.
         """
         return self.topology_dynamics.evaluate_p2p_probability(t_sec, is_holiday_sale=is_holiday_sale)
+
+    def _us_timezone_offset_hours(self, card_index: int) -> float:
+        """US local-clock offset for a cardholder, in hours relative to the Eastern zone.
+
+        The portfolio's arrival stream is the sum of individual local clocks, so a card
+        whose zone runs behind the reference zone transacts later in absolute time.
+        Population shares by zone are approximately ET 47%, CT 29%, MT 7%, PT 17%
+        (Census state populations mapped to zones; AK/HI folded into PT so the four
+        weights sum to 1.0). The draw uses a card-derived stream so the engine's main
+        sampling stream is not shifted by this addition (2026-10-16, arrival-shape fix).
+        """
+        rng = np.random.default_rng([int(self.seed), 1977, int(card_index)])
+        return float(rng.choice([0.0, -1.0, -2.0, -3.0], p=[0.47, 0.29, 0.07, 0.17]))
 
     def _initialize_cardholders(self, n_cards: int) -> None:
 
@@ -678,7 +689,18 @@ class DiscreteEventEngine:
                 spend_mean_log=spend_mu_log,
                 spend_sigma_log=spend_sigma_log,
                 preferred_channels=list(ch_probs.keys()),
-                circadian_peak_hour=float(self.rng.uniform(11.5, 15.5)),
+                circadian_peak_hour=(_peak_hour := float(self.rng.uniform(11.5, 15.5))),
+                phase_offset_sec=(
+                    # spec/02 population_phase_dispersion is scoped to applies_to_regions:
+                    # ["US"] (chronotype range + US time-zone shares). A non-US card still
+                    # draws its chronotype peak (the draw order must not change) but carries
+                    # no arrival phase; a leaked non-US phase pushed the IN leakage sweep's
+                    # eci to 0.9501 over the 0.95 ceiling at playbook/7d, and restoring the
+                    # declared scope puts the sweep's top back at eci 0.9419 (playbook/21d).
+                    (_peak_hour - 13.5 + self._us_timezone_offset_hours(i)) * 3600.0
+                    if self.region == "US"
+                    else 0.0
+                ),
                 last_physical_lat=float(home_lats[i]),
                 last_physical_lon=float(home_lons[i]),
                 last_physical_time=-1.0,
@@ -1641,28 +1663,18 @@ class DiscreteEventEngine:
             record["layering_hop_latency_seconds"] = layering_hop_latency_seconds
 
 
-            # Real-Time Risk Scoring & Causal Evaluation (Pre-Authorization)
-            causal_gt = self.causal_engine.evaluate(
-                record=record,
-                scenario_tag=scenario_tag,
-                factual_counterfactual=factual_tx,
-            )
-            ml_risk_score = causal_gt.risk_score
-            record["risk_score"] = ml_risk_score
-            record["base_risk"] = causal_gt.base_risk
-            record["dominant_causal_driver"] = causal_gt.dominant_causal_driver
-            record["analytical_shapley_probability"] = causal_gt.analytical_shapley_probability
-            record["analytical_shapley_log_odds"] = causal_gt.analytical_shapley_log_odds
-            record["counterfactual_input_deltas"] = _plain(causal_gt.counterfactual_input_deltas)
-            record["counterfactual_mode"] = causal_gt.counterfactual_mode
-            record["counterfactual_twin"] = _plain(causal_gt.counterfactual_twin)
-            record["normative_baseline"] = _plain(causal_gt.normative_baseline)
-            record["explanation_narrative"] = causal_gt.explanation_narrative
-
             # Boundary Layer 1: Decoupled Payment Rail Verifier Switch
             velocity_kph = float(record.get("haversine_velocity_kph", 0.0))
             count_1h = int(record.get("tx_count_1h", 0))
             cvv_match = (int(record.get("cvv_match_flag", 1)) == 1)
+
+            # 1a. Pre-Authentication Risk Assessment.
+            # The terminal/ACS authenticates before the issuer authorizes, so the 3DS/EMV
+            # outcome is decided from the risk assessment that exists *before* authentication:
+            # the same structural model, evaluated with the five authentication deviations
+            # held at zero. Feeding the published score here instead would make the
+            # authentication outcome a function of the causal ground truth that consumes it.
+            pre_auth_score = self.causal_engine.pre_authentication_score(record, scenario_tag=scenario_tag)
 
             intent = CandidateTransactionIntent(
                 tx_id=tx_id,
@@ -1686,7 +1698,7 @@ class DiscreteEventEngine:
                 emv_chip_present=(channel == "CP_POS_CHIP"),
                 emv_cryptogram_valid=True,
                 three_ds_requested=channel.startswith("CNP"),
-                risk_score=ml_risk_score,
+                risk_score=pre_auth_score,
                 vaai_score=vaai_score,
                 haversine_velocity_kph=velocity_kph,
                 tx_count_1h=count_1h,
@@ -1698,6 +1710,39 @@ class DiscreteEventEngine:
                 asn_type=asn_type,
             )
 
+            # 1b. Authentication outcome, decided once and carried on both sides:
+            # the record (spec/21's explained_feature_contract reads these five fields) and
+            # the intent (the authorization rules must not re-derive them).
+            authentication = self.rail_switch.authenticate(intent, card)
+            intent.authentication = authentication
+            record["emv_arqc_verified"] = bool(authentication.arqc_verified)
+            record["emv_pin_verified"] = bool(authentication.pin_verified)
+            record["emv_tvr_clean"] = bool(authentication.tvr_clean)
+            record["three_ds_authenticated"] = bool(authentication.three_ds_authenticated)
+            record["three_ds_attempted"] = bool(authentication.three_ds_attempted)
+
+            # 2. Real-Time Risk Scoring & Causal Evaluation (Pre-Authorization),
+            # now including the authentication evidence the rails established above.
+            causal_gt = self.causal_engine.evaluate(
+                record=record,
+                scenario_tag=scenario_tag,
+                factual_counterfactual=factual_tx,
+            )
+            ml_risk_score = causal_gt.risk_score
+            record["risk_score"] = ml_risk_score
+            record["base_risk"] = causal_gt.base_risk
+            record["dominant_causal_driver"] = causal_gt.dominant_causal_driver
+            record["analytical_shapley_probability"] = causal_gt.analytical_shapley_probability
+            record["analytical_shapley_log_odds"] = causal_gt.analytical_shapley_log_odds
+            record["counterfactual_input_deltas"] = _plain(causal_gt.counterfactual_input_deltas)
+            record["counterfactual_mode"] = causal_gt.counterfactual_mode
+            record["counterfactual_twin"] = _plain(causal_gt.counterfactual_twin)
+            record["normative_baseline"] = _plain(causal_gt.normative_baseline)
+            record["explanation_narrative"] = causal_gt.explanation_narrative
+
+            # 3. Authorization: the post-authentication risk score drives the issuer's
+            # decision gate, and the rail reuses the authentication outcome decided above.
+            intent.risk_score = ml_risk_score
             rail_result = self.rail_switch.verify_intent(intent, card)
 
             # Record authorization outcome in streaming ledger

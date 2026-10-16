@@ -151,7 +151,6 @@ def audit_dataset():
         pl.len().alias("tx_count")
     ]).sort("day_of_week")
     
-    mon_tx = dow_df.filter(pl.col("day_of_week") == 0)["tx_count"].item()
     tue_tx = dow_df.filter(pl.col("day_of_week") == 1)["tx_count"].item()
     sat_tx = dow_df.filter(pl.col("day_of_week") == 5)["tx_count"].item()
     sun_tx = dow_df.filter(pl.col("day_of_week") == 6)["tx_count"].item()
@@ -188,7 +187,6 @@ def audit_dataset():
     ]).sort("daily_tx", descending=True)
     
     daily_dict = {row["date_str"]: row["daily_tx"] for row in daily_vol.iter_rows(named=True)}
-    median_daily = daily_vol["daily_tx"].median()
     
     bf_date = "2024-11-29"
     cm_date = "2024-12-02"

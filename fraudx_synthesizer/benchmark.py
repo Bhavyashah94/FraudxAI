@@ -11,51 +11,30 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 import sys
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 import scipy.stats
 
+from .causal_contract import (
+    feature_names,
+    feature_vector,
+    ground_truth_attributions,
+    intervention_support,
+)
 from .engine import DiscreteEventEngine
-from .evaluation import GroundTruthXAIEvaluator, XAIBenchmarkResult
+from .evaluation import GroundTruthXAIEvaluator
 
 
-FEATURE_SPECS = [
-    ("amount", "amount_to_mean_ratio_30d"),
-    ("tx_count_1h", "tx_count_1h"),
-    ("tx_count_24h", "tx_count_24h"),
-    ("haversine_velocity_kph", "haversine_velocity_kph"),
-    ("ip_distance_from_home_km", "ip_distance_from_home_km"),
-    ("is_cross_border", "is_cross_border_tx"),
-    ("avs_mismatch", "avs_mismatch_flag"),
-    ("billing_shipping_mismatch", "billing_shipping_mismatch"),
-    ("cvv_match_flag", "cvv_mismatch_flag"),
-    ("emv_arqc_verified", "emv_arqc_verified"),
-    ("three_ds_authenticated", "three_ds_authenticated"),
-]
-
-FEATURE_NAMES: List[str] = [spec[0] for spec in FEATURE_SPECS]
-
-CANONICAL_ATTACK_INTERVENTIONS: Dict[str, set[str]] = {
-    "ADV_MICRO_AUTH_PROBE": {"amount", "tx_count_1h", "avs_mismatch", "cvv_match_flag"},
-    "ADV_CARDING_MICRO_PROBE": {"amount", "tx_count_1h", "avs_mismatch", "cvv_match_flag"},
-    "ADV_ATO_SILENT_BAKING": {"amount", "ip_distance_from_home_km"},
-    "ADV_NOCTURNAL_BURST": {"amount", "ip_distance_from_home_km", "is_cross_border", "tx_count_1h"},
-    "ADV_DISTRIBUTED_BIN_ENUMERATION": {"amount", "tx_count_1h", "avs_mismatch", "cvv_match_flag"},
-    "ADV_TRIANGULATION_FRAUD": {"amount", "billing_shipping_mismatch", "ip_distance_from_home_km"},
-    "ADV_SLEEPER_BUST_OUT": {"amount", "tx_count_24h"},
-    "ADV_APPLE_PAY_YELLOW_PATH": {"amount", "ip_distance_from_home_km"},
-    "IN_ADV_REVERSE_PROXY_VISHING": {"amount", "ip_distance_from_home_km", "tx_count_1h"},
-    "IN_ADV_APK_SMS_STEALER": {"amount", "ip_distance_from_home_km", "tx_count_1h"},
-    "IN_ADV_INTL_NON_3DS_BYPASS": {"amount", "is_cross_border", "ip_distance_from_home_km"},
-    "IN_ADV_RENT_PORTAL_CASHOUT": {"amount", "ip_distance_from_home_km"},
-    "COUNTERFEIT_CLONE": {"haversine_velocity_kph", "amount"},
-    "IMPOSSIBLE_TRAVEL": {"haversine_velocity_kph", "amount"},
-}
+# The eleven explained columns and the per-playbook intervention supports live in
+# spec/21 and are read through fraudx_synthesizer/causal_contract.py; benchmark.py and
+# benchmark_reporter.py used to declare them independently and had drifted apart.
+#
+# The contract is read lazily (never at import time), so importing this module does not
+# require spec/ to be locatable; `causal_contract.feature_names()` returns the columns.
 
 
 # =====================================================================
@@ -665,49 +644,30 @@ class XAIBenchmarkHarness:
         GT: List[List[float]] = []
 
         for r in records:
-            row = [
-                float(r["amount"]),
-                float(r.get("tx_count_1h", 0)),
-                float(r.get("tx_count_24h", 0)),
-                float(r.get("haversine_velocity_kph", 0.0)),
-                float(r.get("ip_distance_from_home_km", 0.0)),
-                1.0 if r.get("is_cross_border") else 0.0,
-                1.0 if str(r.get("avs_match_code", "Y")) in ("N", "U") else 0.0,
-                1.0 if int(r.get("billing_shipping_match", 1)) == 0 else 0.0,
-                0.0 if int(r.get("cvv_match_flag", 1)) == 0 else 1.0,
-                float(r.get("emv_arqc_verified", 0)),
-                float(r.get("three_ds_authenticated", 0)),
-            ]
-            X.append(row)
+            X.append(feature_vector(r))
             y.append(int(r["is_fraud"]))
-
-            gt_dict = r.get("analytical_shapley_log_odds", r.get("analytical_shapley_probability", {}))
-            gt_vec = [float(gt_dict.get(gt_key, 0.0)) for _, gt_key in FEATURE_SPECS]
-            GT.append(gt_vec)
+            GT.append(ground_truth_attributions(r, scale="auto"))
 
         return np.array(X, dtype=np.float64), np.array(y, dtype=np.int32), np.array(GT, dtype=np.float64), records
 
     def _build_interventional_ground_truth(self, record: Dict[str, Any]) -> np.ndarray:
         """Builds normalized L1 interventional ground truth vector for a transaction.
 
-        Maps the record's scenario_tag to the active intervened features in CANONICAL_ATTACK_INTERVENTIONS.
-        Returns a vector of length len(FEATURE_NAMES) where sum(v) == 1.0 (or all 0 if legitimate/no target).
+        Maps the record's scenario_tag to the modelled physical levers spec/21 declares
+        for that playbook. A playbook spec/21 does not declare contributes nothing.
+        Returns a vector of length len(feature_names()) where sum(v) == 1.0 (or all 0 if
+        legitimate or undeclared).
         """
-        vec = np.zeros(len(FEATURE_NAMES), dtype=np.float64)
+        columns = feature_names()
+        vec = np.zeros(len(columns), dtype=np.float64)
         if int(float(record.get("is_fraud", 0))) == 0:
             return vec
 
-        tag = str(record.get("scenario_tag", ""))
-        target_set = CANONICAL_ATTACK_INTERVENTIONS.get(tag)
-        if not target_set:
-            for canonical_tag, feats in CANONICAL_ATTACK_INTERVENTIONS.items():
-                if canonical_tag in tag or tag in canonical_tag:
-                    target_set = feats
-                    break
+        target_set = intervention_support(str(record.get("scenario_tag", "")))
         if not target_set:
             return vec
 
-        for j, feat_name in enumerate(FEATURE_NAMES):
+        for j, feat_name in enumerate(columns):
             if feat_name in target_set:
                 vec[j] = 1.0
 
@@ -729,20 +689,16 @@ class XAIBenchmarkHarness:
 
         for idx in fraud_indices:
             rec = test_records[idx]
-            tag = str(rec.get("scenario_tag", ""))
-            target_set = CANONICAL_ATTACK_INTERVENTIONS.get(tag)
+            target_set = intervention_support(str(rec.get("scenario_tag", "")))
             if not target_set:
-                for canonical_tag, feats in CANONICAL_ATTACK_INTERVENTIONS.items():
-                    if canonical_tag in tag or tag in canonical_tag:
-                        target_set = feats
-                        break
-
-            if not target_set:
+                # spec/21 declares no intervention for this playbook, so the record is
+                # not scored. tests/test_causal_contract.py pins which playbooks those
+                # are, so a new playbook cannot enter the generator unscored and silent.
                 continue
 
             phi_hat = shap_values[idx]
             ranked_indices = np.argsort(-np.abs(phi_hat))
-            top_k_feats = {FEATURE_NAMES[j] for j in ranked_indices[:k]}
+            top_k_feats = {feature_names()[j] for j in ranked_indices[:k]}
             overlap = len(top_k_feats & target_set)
             k_eff = min(k, len(target_set))
             precisions.append(overlap / float(k_eff) if k_eff > 0 else 0.0)
@@ -953,24 +909,11 @@ class TripartiteBenchmarkHarness:
         )
 
     def extract_features(self, records: List[Dict[str, Any]]) -> Tuple[np.ndarray, np.ndarray]:
-        """Extracts standard 11-dimensional point-in-time features and target labels."""
+        """Extracts the eleven modelled columns and the target labels (spec/21 contract)."""
         X: List[List[float]] = []
         y: List[int] = []
         for r in records:
-            row = [
-                float(r.get("amount", 0.0)),
-                float(r.get("tx_count_1h", 0)),
-                float(r.get("tx_count_24h", 0)),
-                float(r.get("haversine_velocity_kph", 0.0)),
-                float(r.get("ip_distance_from_home_km", 0.0)),
-                1.0 if r.get("is_cross_border") else 0.0,
-                1.0 if str(r.get("avs_match_code", "Y")) in ("N", "U") else 0.0,
-                1.0 if int(r.get("billing_shipping_match", 1)) == 0 else 0.0,
-                0.0 if int(r.get("cvv_match_flag", 1)) == 0 else 1.0,
-                float(r.get("emv_arqc_verified", 0)),
-                float(r.get("three_ds_authenticated", 0)),
-            ]
-            X.append(row)
+            X.append(feature_vector(r))
             y.append(int(r.get("is_fraud", 0)))
         return np.array(X, dtype=np.float64), np.array(y, dtype=np.int32)
 

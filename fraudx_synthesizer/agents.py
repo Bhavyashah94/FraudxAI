@@ -20,7 +20,6 @@ import numpy as np
 
 from .intent import (
     AnalyticalBeliefState,
-    CandidateAction,
     CredentialDossier,
     CredentialTier,
     InformationDirectedOptimizer,
@@ -164,6 +163,9 @@ class CardholderProfile:
     spend_sigma_log: float = 0.65
     preferred_channels: List[str] = field(default_factory=lambda: ["CP_POS_CHIP", "CP_POS_CONTACTLESS", "CNP_WEB"])
     circadian_peak_hour: float = 14.0
+    phase_offset_sec: float = 0.0
+    """Local-clock offset into the diurnal cycle: time zone (US population spread) plus
+    the chronotype peak drawn at initialization (2026-10-16; see engine._initialize_cardholders)."""
 
     # Kinematics & Physical anchor tracking
     last_physical_lat: float = 0.0

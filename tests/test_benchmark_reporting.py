@@ -6,9 +6,7 @@ import argparse
 import json
 import math
 from pathlib import Path
-import tempfile
 import pytest
-import numpy as np
 
 from fraudx_synthesizer.cli import cmd_generate
 from fraudx_synthesizer.benchmark_reporter import (
@@ -436,7 +434,6 @@ def test_density_report_is_printed_and_states_both_sides(tmp_path: Path, monkeyp
     is what made the divergence look like a defect. The report names both sides so the
     coupling is visible in the output itself.
     """
-    import argparse as _argparse
     from fraudx_synthesizer.engine import SimulationEngine
 
     # 60 days of timestamps for a 30-day request: a 2x divergence the report must surface.

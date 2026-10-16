@@ -9,7 +9,6 @@ Run:  python publish/check_card_figures.py
 from __future__ import annotations
 
 import re
-import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -59,10 +58,6 @@ def main() -> int:
             continue
         print(f"\n{label}  ({card.relative_to(ROOT)})")
         for row_label, ref_cell, meas_cell, ratio_cell in rows:
-            kind = next(
-                (k for k in UNITS if k.split()[0] in row_label and row_label.startswith(k[:20])),
-                None,
-            )
             ref = parse_number(ref_cell, "")
             meas = parse_number(meas_cell, "")
             stated = parse_number(ratio_cell, "")

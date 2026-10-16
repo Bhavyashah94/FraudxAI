@@ -13,7 +13,6 @@ verified across thousands of simulated transactions:
 from collections import defaultdict
 from datetime import datetime, timezone
 import pytest
-import numpy as np
 from scipy import stats as sp_stats
 
 from fraudx_synthesizer import CandidateTransactionIntent, SimulationEngine, haversine_distance_km
@@ -79,7 +78,7 @@ def test_velocity_hard_invariant(region):
                         f"{card_id}: {v:.1f} km/h over {dist:.1f} km in {dt_hours * 3600:.0f}s"
                     )
 
-    assert len(violations) == 0, f"Kinematic velocity violations detected:\n" + "\n".join(violations[:10])
+    assert len(violations) == 0, "Kinematic velocity violations detected:\n" + "\n".join(violations[:10])
 
 
 # ── Property 3: Temporal Monotonicity ─────────────────────────────────────────
@@ -124,7 +123,7 @@ def test_shapley_efficiency_axiom():
                     )
 
     assert evaluated_count > 0, "No records carried analytical Shapley attributions"
-    assert len(violations) == 0, f"Shapley efficiency violations:\n" + "\n".join(violations[:10])
+    assert len(violations) == 0, "Shapley efficiency violations:\n" + "\n".join(violations[:10])
 
 
 # ── Property 5: Solvency Balance Non-Mutation on Declines ─────────────────────

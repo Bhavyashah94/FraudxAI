@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 import math
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Set, Tuple
 
 
 class ForensicGraphTransformer:
@@ -438,7 +438,6 @@ class ForensicGraphTransformer:
             })
 
         # Register Mule Nodes (Tiered Layering)
-        mule_angle_step = 2.0 * math.pi / max(1, len(mule_meta))
         for u_idx, (mule_id, meta) in enumerate(mule_meta.items()):
             sid = meta.get("syndicate_id") or (unique_syndicates[0] if unique_syndicates else "")
             sax, say = syndicate_anchors.get(sid, (cx, cy))

@@ -6,7 +6,6 @@ import csv
 import ipaddress
 import subprocess
 import sys
-from pathlib import Path
 
 import pytest
 from fraudx_synthesizer import SimulationEngine

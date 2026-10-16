@@ -50,6 +50,7 @@ def test_seasonality_spec_loading():
     assert "IN" in specs.seasonality.calendar_macro_shocks, "India macro shocks missing"
 
 
+@pytest.mark.slow
 def test_entity_partitioned_parallel_simulation(temp_output_dir):
     """Executes a multi-worker entity-partitioned simulation and validates core invariants."""
     # Run a test simulation with 4 workers, 100 cards across 365 days

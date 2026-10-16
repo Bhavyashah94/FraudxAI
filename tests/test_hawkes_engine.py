@@ -11,7 +11,6 @@ Verifies:
 
 import math
 import time
-from typing import List
 
 import numpy as np
 import pytest
@@ -77,7 +76,6 @@ def test_circadian_nocturnal_floor_and_peak():
     # Midnight to 04:00 (overnight)
     night_phis = [engine.evaluate_circadian_phi(h * 3600.0) for h in np.linspace(2.0, 4.5, 30)]
     # Commute and lunch peaks (08:15 and 12:30)
-    commute_phi = engine.evaluate_circadian_phi(8.25 * 3600.0)
     lunch_phi = engine.evaluate_circadian_phi(12.60 * 3600.0)
     evening_phi = engine.evaluate_circadian_phi(18.50 * 3600.0)
 

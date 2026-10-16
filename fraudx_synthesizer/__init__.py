@@ -107,7 +107,7 @@ from .hawkes import (
     HawkesParameters,
     RecursiveCircadianHawkesEngine,
 )
-from .invertible_flow import (
+from .experimental.invertible_flow import (
     AffineCouplingLayer,
     ConditionalRealNVPFlow,
     LatentAumannShapleyAttributor,

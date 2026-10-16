@@ -87,7 +87,6 @@ def test_correlation_frobenius_error():
 
 def test_tstr_ml_utility_on_synthetic_signal():
     """TSTR evaluator must compute PR-AUC retention and distinguish strong vs collapsed utility."""
-    rng = np.random.default_rng(42)
     n_samples = 600
 
     # Create synthetic and reference datasets with real predictive signal

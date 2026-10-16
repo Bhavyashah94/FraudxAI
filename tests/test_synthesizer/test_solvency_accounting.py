@@ -4,7 +4,7 @@ dual-message settlement, per-target adversary adaptation, and cohort parameteriz
 
 import numpy as np
 import pytest
-from fraudx_synthesizer import CardholderProfile, SimulationEngine
+from fraudx_synthesizer import CardholderProfile
 from fraudx_synthesizer.agents import (
     AdaptiveFraudsterAgent,
     BankDecisionEngine,
@@ -12,7 +12,6 @@ from fraudx_synthesizer.agents import (
     ISO8583Response,
     decay_after_insufficient_funds,
 )
-from fraudx_synthesizer.spec_loader import load_all_specs
 
 
 def test_swipe_over_fifty_percent_credit_line_approves():
@@ -162,7 +161,7 @@ def test_per_target_adversary_memory_and_adaptation():
     assert target_a.current_probe_amount == decay_after_insufficient_funds(amt_a1)
 
     # Attack Card B: Should NOT be throttled or decayed by Card A's decline
-    params_b1 = fraudster.select_attack_playbook(card_b, 1704067200.0, 34.0522, -118.2437)
+    fraudster.select_attack_playbook(card_b, 1704067200.0, 34.0522, -118.2437)
     target_b = fraudster.target_states[card_b.card_id]
     assert target_b.consecutive_declines == 0
 

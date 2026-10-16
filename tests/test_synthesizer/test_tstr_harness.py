@@ -7,8 +7,6 @@ Verifies:
 4. Delegation from TripartiteBenchmarkHarness.evaluate_temporal_self_tstr.
 """
 
-import numpy as np
-import pytest
 
 from fraudx_synthesizer import DiscreteEventEngine, TripartiteBenchmarkHarness
 from fraudx_synthesizer.benchmark import TSTRHarness, MLUtilitySummary

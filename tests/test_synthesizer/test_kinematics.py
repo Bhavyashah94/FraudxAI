@@ -27,7 +27,7 @@ def test_foreign_attack_does_not_poison_cardholder_spatial_state():
     card = engine.cards[0]
 
     # Initial legitimate swipe at home
-    r1 = engine.ledger.enrich_transaction(
+    engine.ledger.enrich_transaction(
         tx_id="TX_LEGIT_1",
         card=card,
         merchant_id="M_HOME",

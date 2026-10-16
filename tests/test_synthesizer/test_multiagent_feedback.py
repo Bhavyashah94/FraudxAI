@@ -5,12 +5,10 @@ import numpy as np
 
 from fraudx_synthesizer import (
     DiscreteEventEngine,
-    SimulationEngine,
     AdaptiveFraudsterAgent,
     BankDecisionEngine,
     CardholderProfile,
     ISO8583Response,
-    FraudScenario,
 )
 
 
@@ -88,7 +86,6 @@ def test_cardholder_unauthorized_alert_and_card_freeze():
 def test_bank_decision_engine_pipeline():
     """BankDecisionEngine must enforce limits, kinematics, and security."""
     bank = BankDecisionEngine(max_speed_kmh=900.0)
-    rng = np.random.default_rng(999)
     card = CardholderProfile(
         card_id="TEST_CARD",
         home_lat=40.75,

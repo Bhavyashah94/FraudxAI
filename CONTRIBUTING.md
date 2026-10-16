@@ -35,7 +35,9 @@ pip install -e ".[dev]"
 ```bash
 python -m pytest tests/ -v
 ```
-All 54 unit tests must pass before submitting a pull request.
+All tests must pass before submitting a pull request. The current suite is 410 tests
+across 60 files (`python -m pytest tests/ -q`); read the count this repository reports
+when it changes, rather than trusting a number written here.
 
 ### Run Operational Invariant Verification
 ```bash

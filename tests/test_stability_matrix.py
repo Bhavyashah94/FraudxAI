@@ -11,15 +11,12 @@ Validates:
 from pathlib import Path
 import subprocess
 import sys
-import pytest
 
 from fraudx_synthesizer.benchmark_reporter import (
     BenchmarkReportCompiler,
     StabilitySummary,
     UnifiedBenchmarkRunner,
     load_evaluation_protocol,
-    protocol_mismatches,
-    summarize_stability,
 )
 
 

@@ -45,10 +45,32 @@ profiles:
 
       - id: "mean_credit_card_ticket_usd"
         statistic: "mean amount of legitimate rows on credit card products"
-        target: 98.0
+        target: 191.72
         tolerance_relative: 0.40
         gate: true
-        source: "Federal Reserve DCPC 2023 & FRPS: mean credit card purchase ticket $98.00"
+        source: >
+          IEEE-CIS Fraud Detection corpus (Vesta, 590,540 real card-not-present transactions over
+          182 days, USD-native; sha256 recorded in spec/18 section 3b): the mean legitimate ticket
+          on card6=credit rows is USD 191.72 (median 100.00). The corpus is the certification's
+          active amount reference (spec/18 section 3b), so the gate follows it.
+        superseded_source: >
+          Was target 98.00 citing "Federal Reserve DCPC 2023 & FRPS". Re-read of the primary DCPC
+          2023 report on 2026-10-16: consumers made large-value purchases with credit cards
+          "averaging about $95 per transaction"; neither 98.00 nor a reproducible combination with
+          FRPS could be recovered from the primaries, so the composite is superseded.
+        source_conflict: >
+          The two sources measure different populations and cannot both be satisfied by one
+          generator: DCPC is a consumer diary blending in-person and online purchases (~USD 95 per
+          credit purchase), while the corpus is a card-not-present-heavy issuer portfolio with a
+          higher ticket level (credit-subset mean 191.72, all-legit mean 134.51). The simulator's
+          ticket parameters are scaled to the corpus (recalibration provenance in spec/02), so this
+          gate is corpus-anchored; per-channel (CP vs CNP) ticket calibration is the open work item
+          that would reconcile the two, tracked as future work.
+        measured_2026_10_16: >
+          Post-recalibration legitimate credit-subset means: 169.27 (150 cards, seed 44, n=1,500),
+          176.65 (400 cards, seed 42, n=20,000), 166.64 (400 cards, seed 44, n=20,000); spread
+          145.06-203.13 across seeds 42/43/44/99 at 150 cards. New band [115.03, 268.41]; every
+          measured configuration sits inside.
 
       - id: "mean_debit_card_ticket_usd"
         statistic: "mean amount of legitimate rows on debit card products"

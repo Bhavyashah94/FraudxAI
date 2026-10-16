@@ -15,14 +15,12 @@ from __future__ import annotations
 
 import math
 import pytest
-import numpy as np
 
-from fraudx_synthesizer.agents import CardholderProfile, CardholderState, ISO8583Response
+from fraudx_synthesizer.agents import CardholderProfile, ISO8583Response
 from fraudx_synthesizer.engine import DiscreteEventEngine
-from fraudx_synthesizer.ledger import DoubleEntryWorldLedger, StreamingLedger
+from fraudx_synthesizer.ledger import DoubleEntryWorldLedger
 from fraudx_synthesizer.rails import (
     CandidateTransactionIntent,
-    RailVerificationResult,
     RailVerifierSwitch,
 )
 

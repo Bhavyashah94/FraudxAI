@@ -4,11 +4,9 @@ Respects arXiv rate limits (1 request per 3 seconds) and sets a polite User-Agen
 Validates PDF headers and updates docs/papers/manifest.json.
 """
 
-import os
 import sys
 import time
 import json
-import ssl
 import urllib.request
 import urllib.error
 from pathlib import Path

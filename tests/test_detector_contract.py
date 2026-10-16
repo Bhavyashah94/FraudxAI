@@ -7,7 +7,6 @@ column cannot change without the contract changing, and an export conforms to it
 
 from __future__ import annotations
 
-from pathlib import Path
 
 import yaml
 

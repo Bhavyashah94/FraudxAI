@@ -108,7 +108,7 @@ fail the amount gate harder than our synthetic output, and a sampler of the refe
 passes trivially. Closing pillar 1 by tuning the generator to the reference would move
 the generator *away* from this real corpus.
 
-**Does not:** that the reference itself is wrong. ULB is one European bank's 2-day,
+**Does not:** that the reference itself is wrong
 fraud-flagged, EUR-denominated extract and BankSim is calibrated on a Spanish bank;
 neither is the Federal Reserve's US card population, so "real data fails" is
 directional, not conclusive. It also says nothing about pillars 2–4: the pillar 4
@@ -127,3 +127,90 @@ keep a size-corrected statistic, and record the reference corpus and its hash in
 `spec/18` the way thresholds are already recorded there. Until then, pillar 1's FAIL
 should be read as "differs from the Fed lognormal", not "less realistic than real
 data".
+
+---
+
+## Update 2026-10-15: the proposed next step was taken
+
+The owner approved the re-derivation, with the additional constraint that the
+reference should not rest on ULB's age. The corpus retrieval was therefore
+re-attempted with credentials: `kagglehub`'s anonymous path still fails for
+competition data (re-measured: `UnauthenticatedError`), but the Kaggle competition
+API with the project owner's joined account fetches IEEE-CIS directly. Pillar 1's
+reference is now the **IEEE-CIS / Vesta charity of real card-not-present traffic**:
+
+| | old reference (until 2026-10-14) | active reference (2026-10-15) |
+|---|---|---|
+| corpus | hardcoded Fed lognormal(3.75, 0.85) USD | IEEE-CIS/Vesta `train_transaction.csv`, sha256 `3a5c83ab6b3cc13dcabe5ffa9f522307fd5f7f7b6e6f6a60c32284ca6283d642` |
+| what it is | a parametric draw | 590,540 real CNP transactions, 182 days, 3.4990% fraud, median dt 14 s, USD |
+| limit | static 0.150 | size-corrected: 99th percentile of bootstrap REAL-to-real W1 at the graded n, from contiguous corpus windows |
+| real data passes? | never measured, and when measured: FAILED (ULB 0.3745) | by construction: contiguous real windows pass 8/9 (amount) and 9/9 (arrival) at n=2,000 |
+
+Method notes fixed along the way, each found by measurement, not by preference:
+
+- **Random-row subsets cannot grade arrivals.** An iid 2,000-row slice of
+  IEEE-CIS has an inter-arrival shape dominated by the sampling gap, not by the
+  stream (it failed its own gate at 0.0365 > 0.0207). The calibration therefore
+  draws both graded and reference windows as *contiguous* ordered slices.
+- **iid pairs alone underestimate a real stream's own spread.** With iid-only
+  calibration, one of three real n=2,000 windows failed its amount bar; the
+  amount limit was switched to contiguous-window calibration for the same
+  reason as the arrival limit. The one marginal real-window fail (0.0925 vs
+  0.0916) is a genuinely heterogeneous segment and is recorded, not tuned away.
+- **The statistic is rate-invariant.** Both sides are normalised by their own
+  median delta before the log transform, so a 0.038 tx/s real window and a
+  0.002 tx/s protocol stream are compared on arrival shape, not rate.
+
+### Measured 2026-10-15 (limit column is the calibrated value at each graded size)
+
+| corpus | amount W1 | limit | arrival W1 | limit | verdict |
+|---|---|---|---|---|---|
+| FraudxAI synthetic, n=2,000 (protocol seed 42) | 0.3732 | 0.0916 FAIL | 0.0457 | 0.0446 FLIP | FAIL |
+| reference-sampler control, n=2,000 | 0.2810 | 0.0916 FAIL | 0.0267 | 0.0446 PASS | FAIL |
+| IEEE-CIS real window #0 (n=2,000) | 0.0111 | 0.0916 PASS | 0.0159 | 0.0412 PASS | PASS |
+| IEEE-CIS real window #3 (n=2,000) | 0.0509 | 0.0916 PASS | 0.0305 | 0.0433 PASS | PASS |
+| IEEE-CIS real window #6 (n=2,000) | 0.0925 | 0.0916 FAIL | 0.0403 | 0.0467 PASS | FAIL |
+| IEEE-CIS real window (n=50,000) | 0.0090 | 0.0342 PASS | 0.0061 | 0.0165 PASS | PASS |
+| ULB legit (2013, EUR, n=284,000) — comparative only | 0.5353 | 0.0069 FAIL | 0.1472 | 0.0159 FAIL | FAIL |
+
+The inversion the 2026-10-10 table wanted is now the gate's actual behaviour:
+real 2019 traffic passes its own bars, the sampler of the fictional reference
+fails the amount bar, and the generator is graded on its true distance to real
+card traffic. The 2019 reference also answers the owner's objection to ULB: no
+currency conversion (USD native), 182 days rather than 2, 1-second timestamps
+with a 14 s median delta instead of an all-second grid, and 2019 rather than
+2013 data. ULB stays recorded in spec/18 for reproducing the tables above, not
+for gating.
+
+### Consequences for the certification grade
+
+The grade at the pinned protocol remains `NON_CERTIFIED_FAIL` (as it was before,
+measured `fraudx benchmark -n 2000 --unified --seed 42`): the two continuous
+failures are now *realism* failures against real traffic, with the violation
+line naming the calibrated limit it was graded against:
+
+- log-amount W1 0.3732 exceeds the 0.0916 maximum (5/5 seeds, solid)
+- inter-arrival W1 0.0457 vs 0.0446 limit (3/5 seeds, flips with seed — marginal)
+
+The engine was tuned, historically, to the Fed lognormal; closing this gap now
+means tuning toward a measured distribution, and the amount distance is the
+largest single fidelity defect the project has. That is a generative-modeling
+slice, not a gate-tuning slice: the bar is set by data, so the only direction
+is the generator's.
+
+### Update 2026-10-16: the amount gap was closed, both continuous gates pass
+
+The generative-modeling work landed: the spec/02 ticket recalibration (mu_log +0.90, every
+ticket quantile x e^0.90 ~ 2.46) moved the synthetic amounts onto the real corpus's scale,
+and the card-roster density revision recorded in `spec/18` §4 changed the arrival sample.
+Re-measured at the pinned protocol (`fraudx benchmark -n 2000 --unified --seed 42`):
+
+| corpus | amount W1 | limit | arrival W1 | limit | verdict |
+|---|---|---|---|---|---|
+| FraudxAI synthetic, n=2,000 (protocol seed 42) | 0.0650 | 0.0916 PASS | 0.0345 | 0.0446 PASS | PASS |
+| across the five stability seeds | 0.0421 – 0.0650 | PASS 5/5 | 0.0296 – 0.0397 | PASS 5/5 | PASS |
+
+The 2026-10-15 row above (0.3732 FAIL / 0.0457 FLIP) is historical. Both continuous gates
+now pass on every pinned seed, and the pinned run grades `TIER-1_GOLD` with 0 violations;
+the only Pillar-1 mover left is MCC JS (2/5 seeds), which is a merchant-mix statistic, not
+an amount or arrival one.

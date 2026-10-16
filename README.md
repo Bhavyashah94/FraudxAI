@@ -100,7 +100,7 @@ To prevent machine learning models from exploiting synthetic artifact shortcuts:
                          ▼                                                         ▼
   ┌──────────────────────────────────────────────┐          ┌──────────────────────────────────────────────┐
   │              CARDHOLDER AGENTS               │          │             ADAPTIVE RED TEAM                │
-  │  • 7 Demographic cohorts (Fed DCPC / RBI)    │          │  • 10 Grounded cybercrime playbooks          │
+  │  • 7 Demographic cohorts (Fed DCPC / RBI)    │          │  • 13 Grounded cybercrime playbooks          │
   │  • Shared Zipf /24 residential IP prefixes   │          │  • Closed-loop adaptation to ISO declines    │
   │  • Household and secondary device bindings   │          │  • Victim-device malware / vishing execution │
   └──────────────────────┬───────────────────────┘          └──────────────────────┬───────────────────────┘
@@ -251,18 +251,25 @@ Sample Benchmark Output (`fraudx benchmark -n 2000 --model lightgbm --seed 42`, 
 =================================================================
   Model Architecture:           LIGHTGBM
   Explainer Method:             TreeSHAP (Interventional)
-  Evaluated Fraud Samples:      29
-  Classifier ROC-AUC:           0.9587
-  Classifier PR-AUC:            0.6544
+  Evaluated Fraud Samples:      41
+  Classifier ROC-AUC:           0.9757
+  Classifier PR-AUC:            0.8255
 -----------------------------------------------------------------
-  Ranking Concordance (Kendall Tau):      0.3801
-  Rank Correlation (Spearman Rho):        0.4293
-  Top-3 Support Recovery (Precision@3):   0.4483
-  Intervention Precision (P@3):           0.6092
-  Intervention Recall (R@3):              0.5431
-  Relative Attribution Error (RAE):       26.1183
+  Ranking Concordance (Kendall Tau):      0.1996
+  Rank Correlation (Spearman Rho):        0.2447
+  Top-3 Support Recovery (Precision@3):   0.3008
+  Intervention Precision (P@3):           0.3761
+  Intervention Recall (R@3):              0.3162
+  Relative Attribution Error (RAE):       10.1651
 =================================================================
 ```
+
+The continuous-error rows here (RAE, cosine, correlations) compare a margin-scale
+TreeSHAP learner against a probability-scale closed-form target, so their absolute
+values are operator-limited; the floor-gated row in this harness is P@3 (the continuous
+rows carry collapse tripwires only), and the same-object graded attribution rows are the
+certification's Pillar 4 below (`docs/PROJECT_CONTEXT.md` 7.1 records the floor
+re-derivations).
 
 ---
 
@@ -280,26 +287,27 @@ fraudx benchmark -n 2000 --unified --seed 42 --output-dir reports/benchmark
 list of seeds to repeat the run over. A run that deviates is reported as **OFF-PROTOCOL**
 with each deviation named, so its violation count cannot be mistaken for the pinned one.
 
-Because several gates rest on small denominators (2-8 streaming test days; a handful of
-attack simulations), **one seed's violation count is not a result.** On-protocol runs
-therefore re-execute every pinned seed and print a per-gate table instead. Verbatim from
-the run above (the `#` is where the observed value and the limit are stripped, so the same
-gate groups across seeds; 9 gates failed, 5 shown):
+Because several gates rest on small denominators (5-7 streaming test days at the pinned
+shape; ~160 fraud records behind the evasion share), **one seed's violation count is not a
+result.** On-protocol runs therefore re-execute every pinned seed and print a per-gate
+table instead. Verbatim from the run above (the `#` is where the observed value and the
+limit are stripped, so the same gate groups across seeds; 3 gates failed at least once,
+all shown):
 
 ```
 | gate                                                                       | failed in | reading          |
 |---                                                                         |---        |---               |
-| Pillar 1 (Data Fidelity): MCC Jensen-Shannon divergence # exceeds the maximum | 5/5     | solid failure    |
-| Pillar 1 (Data Fidelity): inter-arrival Wasserstein # exceeds the maximum   | 5/5      | solid failure    |
-| Pillar 4 (Causal XAI Fidelity): relative attribution error # exceeds the maximum | 5/5 | solid failure    |
-| Pillar 3 (Operational Streaming): prequential PR-AUC # falls below the minimum | 4/5   | FLIPS WITH SEED  |
-| Pillar 1 (Data Fidelity): log-amount Wasserstein # exceeds the maximum      | 3/5      | FLIPS WITH SEED  |
+| Pillar 3 (Operational Streaming): prequential PR-AUC # falls below the minimum | 3/5 | FLIPS WITH SEED |
+| Pillar 1 (Data Fidelity): MCC Jensen-Shannon divergence # exceeds the maximum | 2/5 | FLIPS WITH SEED |
+| Pillar 2 (Privacy & Robustness): evasion rate (approved share of fraud records) # exceeds the maximum | 1/5 | FLIPS WITH SEED |
 ```
 
-Measured 2026-10-10, that is what the three gates that were believed to "always fail" look
-like under the pinned protocol: three **solid** failures in 5/5 seeds, and 6 of the 9
-failing gates flip with the seed. Current verdict: **`NON_CERTIFIED_FAIL` in 5/5 seeds**,
-stable across seeds. The full measurement and its reproducing command are in
+Measured 2026-10-16, the **pinned run itself grades `TIER-1_GOLD` with 0 violations** —
+all 19 gates pass; across the five pinned seeds the grades are `TIER-1_GOLD` x1,
+`TIER-2_SILVER` x2 and `NON_CERTIFIED_FAIL` x2 (violation counts 0-2). No gate fails in
+every seed, and the three that still flip are the small-denominator movers: prequential
+PR-AUC over 5-7 test days, an MCC mix drawn from 25 merchants, and the evasion share
+over ~160 fraud records. The full measurement and its reproducing command are in
 [`reports/certification_grade_stability.md`](reports/certification_grade_stability.md).
 
 ---
@@ -340,7 +348,7 @@ print(f"Intervention Precision@3:  {benchmark_summary.mean_intervention_precisio
 
 ## Living Specification Registry (`spec/`)
 
-The simulation is governed by 13 formal living specification files serving as the single source of truth (the active slice is tracked in `spec/active_slice.yaml`):
+The simulation is governed by 17 numbered specification files serving as the single source of truth (the active slice is tracked in `spec/active_slice.yaml`):
 
 | Specification File | Scope & Technical Mandate |
 | :--- | :--- |
@@ -353,10 +361,14 @@ The simulation is governed by 13 formal living specification files serving as th
 | **`spec/07_export_leakage_gate.yaml`** | Anti-separability gates, shared /24 prefix pools, victim-device rules, and prevalence pacing. |
 | **`spec/08_india_calibration_targets.yaml`**| RBI Central Payments Fraud Information Registry (CPFIR) empirical targets. |
 | **`spec/09_us_calibration_targets.yaml`** | Federal Reserve Payments Study, Visa Q3 FY25 approval rate, and DCPC 2023 ticket distributions. |
+| **`spec/13_annual_seasonality_and_drift.yaml`** | Annual macro regime calendar and seasonal drift schedules. |
+| **`spec/14_interbank_switch_and_clearing.yaml`** | Multi-bank routing mesh, switch topology, and clearing/settlement rules. |
 | **`spec/16_operational_supervision.yaml`**| Operational triage queues, Weibull analyst latencies, and LogNormal chargeback lags. |
 | **`spec/17_prequential_evaluation.yaml`** | Prequential time-ordered evaluation, rolling retraining, and streaming drift auditing under delayed supervision. |
 | **`spec/18_benchmark_reporting.yaml`** | Camera-ready figure typography and the four-pillar certification thresholds read by the benchmark grader. |
 | **`spec/19_detector_contract.yaml`** | **The Detector Contract (v1):** Strict 3-feed schema definitions guaranteeing zero leakage. |
+| **`spec/20_backbone_replay.yaml`** | External corpus replay schema: injection over a real traffic backbone with exact pacing and zero label leakage. |
+| **`spec/21_prism_causal_evaluation.yaml`** | PRISM two-track causal-XAI evaluation and the normalising-flow quarantine (`ground_truth_authority: physical_intervention_delta`). |
 
 ---
 
@@ -364,7 +376,7 @@ The simulation is governed by 13 formal living specification files serving as th
 
 FraudxAI enforces strict, deterministic verification across the entire stack:
 
-### 1. PyTest Test Suite (**344 / 344 Passed, 100% Green**)
+### 1. PyTest Test Suite (**410 / 410 Passed, 100% Green**)
 ```bash
 pytest tests/ -v
 ```

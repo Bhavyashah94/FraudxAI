@@ -1,28 +1,61 @@
 current_slice:
-  id: "slice-28-multi-seed-stability-and-publication-leaderboard"
-  title: "Multi-Seed Stability Matrix and Camera-Ready 500k Publication Leaderboard Release"
+  id: "slice-29-arrival-phase-region-scope-and-family-wise-floors"
+  title: "Restore the Arrival-Phase Region Scope, Re-Derive the Explanation-Concordance Floors, and Control the Cohort KS Family"
   status: "verified"  # [planning, in_progress, testing, verified]
   target_spec_files:
-    - "spec/18_benchmark_reporting.yaml"
-    - "fraudx_synthesizer/benchmark_reporter.py"
-    - "fraudx_synthesizer/cli.py"
-    - "staging_us_500k/README.md"
-    - "tests/test_stability_matrix.py"
+    - "spec/02_human_personas.yaml"
+    - "fraudx_synthesizer/engine.py"
+    - "tests/test_synthesizer/test_intervention_ground_truth.py"
+    - "tests/test_us_empirical_calibration.py"
+    - "docs/PROJECT_CONTEXT.md"
+    - "README.md"
   acceptance_criteria:
-    - load_evaluation_protocol_supports_explicit_tier_selection: true
-    - unified_benchmark_runner_resolves_tier_and_attaches_stability_summary: true
-    - cli_benchmark_exposes_protocol_flag_with_tier_default_parameter_injection: true
-    - stability_summary_aggregates_across_stability_seeds_without_exceptions: true
-    - staging_us_500k_has_grounded_open_science_dataset_card_with_sha256_manifest: true
+    - arrival_phase_dispersion_respects_its_declared_us_only_region_scope: true
+    - in_timeline_leakage_sweep_holds_the_single_column_ceiling_at_every_horizon_and_mode: true
+    - spec_07_recorded_measurements_reproduce_on_the_fixed_engine: true
+    - us_pipeline_outputs_value_identical_so_the_gold_artifacts_stay_valid: true
+    - explanation_concordance_floors_rederived_from_the_fresh_five_seed_sweep: true
+    - cohort_ks_loop_uses_family_wise_error_control: true
     - zero_regressions_across_full_test_suite: true
   verdict: >-
-    verified: Implemented multi-seed stability evaluation and explicit two-tier protocol resolution (protocol_fast vs protocol_full).
-    UnifiedBenchmarkRunner automatically resizes card populations (80 cards for fast vs 1,000 cards for full per spec/18 §5)
-    and attaches StabilitySummary across stability_seeds. CLI exposes --protocol and --days with automatic parameter injection.
-    Generated open-science dataset card in staging_us_500k/README.md with verified SHA256 checksums across all operational feeds.
-    All 6 tests in tests/test_stability_matrix.py pass green, and full test suite passes 387/387 green with zero regressions.
+    verified: The IN/playbook/7d eci crossing (0.9501, over spec/07's 0.95 single-column ceiling) was the
+    spec/02 arrival-phase dispersion leaking outside its declared applies_to_regions: ["US"] scope: the engine
+    drew every card's chronotype peak but applied the phase to non-US cards too. The peak draw is kept for
+    every region (streams unshifted) and the phase now applies only to US cards, restoring the sweep's top to
+    eci 0.9419 at playbook/21d. spec/07's recorded measurements reproduce on the fixed engine: response_code
+    0.966 at playbook/45d and every input column at or below 0.942. The US pipeline is value-identical
+    (seed-303 harness: cosine 0.02660711111111112, P@3 0.3560606060606061), so the GOLD certification
+    artifacts stay valid. The explanation-concordance floors were re-derived from the fresh five-seed sweep
+    (cosine 0.0266-0.097, mean tau 0.0791-0.262, interventional tau 0.1369-0.183, scorer tau 0.0976-0.198,
+    P@3 0.3561-0.500; floors 0.02/0.05/0.08/0.06/0.35, with the shuffled-band tripwire semantics documented),
+    and the cohort KS loop now uses Bonferroni's alpha/k to restore the 5% family-wise level it intended
+    (C4's 0.0496 was an ordinary draw: -2.2 SE median shift, quantiles wobbling in both directions). Full
+    test suite passes 410/410 green with zero regressions.
 
 previous_slices:
+  - id: "slice-28-multi-seed-stability-and-publication-leaderboard"
+    title: "Multi-Seed Stability Matrix and Camera-Ready 500k Publication Leaderboard Release"
+    status: "verified"
+    target_spec_files:
+      - "spec/18_benchmark_reporting.yaml"
+      - "fraudx_synthesizer/benchmark_reporter.py"
+      - "fraudx_synthesizer/cli.py"
+      - "staging_us_500k/README.md"
+      - "tests/test_stability_matrix.py"
+    acceptance_criteria:
+      - load_evaluation_protocol_supports_explicit_tier_selection: true
+      - unified_benchmark_runner_resolves_tier_and_attaches_stability_summary: true
+      - cli_benchmark_exposes_protocol_flag_with_tier_default_parameter_injection: true
+      - stability_summary_aggregates_across_stability_seeds_without_exceptions: true
+      - staging_us_500k_has_grounded_open_science_dataset_card_with_sha256_manifest: true
+      - zero_regressions_across_full_test_suite: true
+    verdict: >-
+      verified: Implemented multi-seed stability evaluation and explicit two-tier protocol resolution (protocol_fast vs protocol_full).
+      UnifiedBenchmarkRunner automatically resizes card populations (protocol_fast sizes from spec/02's Fed marginal -- 162 cards at the
+      pinned n=2000/12d run, revised 2026-10-16 from a hard-coded 80 per spec/18 §4; protocol_full keeps 1,000 per spec/18 §5)
+      and attaches StabilitySummary across stability_seeds. CLI exposes --protocol and --days with automatic parameter injection.
+      Generated open-science dataset card in staging_us_500k/README.md with verified SHA256 checksums across all operational feeds.
+      All 6 tests in tests/test_stability_matrix.py pass green, and full test suite passes 410/410 green with zero regressions.
   - id: "slice-27-prism-causal-explanation-recovery"
     title: "PRISM Causal Intervention Recovery Benchmark and Two-Tier Evaluation Protocol"
     status: "verified"

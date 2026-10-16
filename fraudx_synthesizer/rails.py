@@ -15,10 +15,8 @@ Implements:
 from __future__ import annotations
 
 import bisect
-import math
 from dataclasses import dataclass, field
-from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 import zlib
 
 import numpy as np
@@ -62,6 +60,11 @@ class CandidateTransactionIntent:
     subminute_attempts_60s: int = 0
     ip_distance_km: float = 5.0
     asn_type: str = "residential"
+    # Set by the caller when `authenticate()` has already run for this intent (the engine
+    # does: the causal ground truth consumes the outcome, so both subsystems must read
+    # one authentication decision). A caller that leaves it None gets the outcome computed
+    # inside `verify_intent`, which is what unit tests and direct callers have always done.
+    authentication: AuthenticationOutcome | None = None
 
 
 @dataclass(frozen=True)
@@ -106,6 +109,34 @@ class RailVerificationResult:
     mti_response: str = "0110"
     hop_sequence: List[str] = field(default_factory=list)
     is_timeout_reversal: bool = False
+
+
+@dataclass(frozen=True)
+class AuthenticationOutcome:
+    """What the terminal/ACS established before the issuer's authorization decision.
+
+    This is the authentication half of a payment authorization, split out of the
+    authorization rules so that a single label-free decision feeds both the risk model
+    (spec/21's explained columns) and the rail result. Every field is either a terminal
+    capability (POS entry mode, EMV cryptogram outcome) or an ACS 3DS 2.x status from the
+    exemption/challenge engine; none of them may read the transaction's fraud label
+    (spec/07's no-synthetic-oracle-leak rule).
+
+    `failed_reason` non-empty means authentication itself failed or was abandoned, which
+    ISO 8583 answers with response code 63 before any authorization consideration.
+    """
+
+    pos_entry_mode: str
+    pos_condition_code: str
+    trans_status_3ds: str   # 3DS 2.x transStatus: "Y" authenticated, "C" challenge, "A" attempted, "N" not authenticated
+    eci: str                # Electronic Commerce Indicator ("05" authenticated, "07" not)
+    arqc_verified: bool     # EMV Bit 55 cryptogram validated by the issuer HSM
+    pin_verified: bool      # offline/online PIN verified (intent.pin_entered)
+    tvr_clean: bool         # Terminal Verification Results clean (no exception condition)
+    three_ds_authenticated: bool  # transStatus in ("Y", "C")
+    three_ds_attempted: bool      # transStatus in ("A", "C")
+    failed_reason: str = ""
+    regulatory_rule_triggered: str = ""
 
 
 class BankRoutingMesh:
@@ -281,8 +312,123 @@ class RailVerifierSwitch:
         self.tau_challenge_low = tau_challenge_low
         self.tau_challenge_high = tau_challenge_high
         self.rng = np.random.default_rng(seed)
+        # Authentication has its own stream: the ACS is a different party from the switch,
+        # and drawing challenge randomness from `self.rng` would couple the authentication
+        # decision to the routing/latency draw order (which the engine would then perturb
+        # by authenticating before routing). 7919 is an arbitrary but fixed offset so the
+        # stream is reproducible from the rail's seed like every other stream here.
+        self.auth_rng = np.random.default_rng(seed + 7919)
         self.telemetry = load_all_specs().telemetry
         self.routing_mesh = BankRoutingMesh(region=self.region, seed=seed)
+
+    @staticmethod
+    def _pos_credentials(channel_type: str) -> Tuple[str, str]:
+        """ISO 8583 field 22/25 POS entry-mode and condition codes for a channel.
+
+        A terminal capability, not an outcome: it is a pure function of the channel.
+        """
+        if channel_type in ("CP_POS_CHIP", "ATM_CASH"):
+            pos_entry = "051"
+        elif channel_type in ("CP_POS_CONTACTLESS", "CP_CONTACTLESS_NFC"):
+            pos_entry = "071"
+        elif channel_type == "CP_POS_MAGSTRIPE":
+            pos_entry = "901"
+        elif channel_type == "CNP_WEB":
+            pos_entry = "012"
+        elif channel_type == "CNP_MOBILE":
+            pos_entry = "102"
+        elif channel_type == "UPI_QR_CREDIT":
+            pos_entry = "031"
+        else:
+            pos_entry = "812"
+        return pos_entry, ("00" if channel_type.startswith("CP") else "59")
+
+    @staticmethod
+    def _hardware_crypto_verified(intent: CandidateTransactionIntent, channel_type: str) -> bool:
+        """EMV Bit 55 cryptogram validation (Tag 9F26 checked by the issuer HSM).
+
+        Visa Core Rules / Mastercard Chapter 17: a non-replayable ARQC is only produced by
+        chip-capable terminals, so this is a function of the terminal and channel security
+        level, never of the transaction's legitimacy.
+        """
+        return bool(
+            (intent.emv_chip_present or channel_type == "CP_POS_CHIP")
+            and intent.emv_cryptogram_valid
+            and (channel_type in ("CP_POS_CHIP", "CP_POS_CONTACTLESS"))
+        )
+
+    def authenticate(
+        self,
+        intent: CandidateTransactionIntent,
+        card: CardholderProfile,
+    ) -> AuthenticationOutcome:
+        """Runs the pre-authorization authentication step for one intent.
+
+        Reads only pre-authentication signals: the channel's cryptographic capability and
+        `intent.risk_score`, which the engine sets to the risk assessment made *before* any
+        authentication result exists. That ordering is what keeps the causal ground truth
+        (which consumes these outcomes as mitigating evidence) from depending on its own
+        output, and it removes the old circular fallback that read the fraud label.
+        """
+        ch = intent.channel_type
+        pos_entry, pos_condition = self._pos_credentials(ch)
+        arqc_verified = self._hardware_crypto_verified(intent, ch)
+
+        trans_status_3ds = ""
+        eci = ""
+        failed_reason = ""
+        regulatory_rule_triggered = ""
+        if ch.startswith("CNP"):
+            # Strict RBI Statutory Rule (India Domestic): 100% Mandatory AFA (OTP)
+            if (self.region == "IN" or card.currency == "INR") and not intent.is_cross_border:
+                if intent.otp_submitted:
+                    trans_status_3ds = "Y"
+                    eci = "05"
+                else:
+                    trans_status_3ds = "N"
+                    eci = "07"
+                    failed_reason = "RBI_MANDATORY_AFA_OTP_REQUIRED"
+                    regulatory_rule_triggered = "RBI_MANDATORY_AFA_2FA"
+            else:
+                # Global / US PSD2 & EMVCo 3DS 2.x Exemption Engine
+                challenge = False
+                if intent.amount < 30.0:
+                    trans_status_3ds = "Y"
+                    eci = "05"  # Low-Value Exemption (LVE)
+                elif intent.risk_score < self.tau_challenge_low and intent.amount < 100.0:
+                    trans_status_3ds = "Y"
+                    eci = "05"  # TRA Exemption
+                elif self.auth_rng.random() < self.telemetry.legit_challenge_share.get(self.region, 0.0):
+                    # spec/07 section 4: the ACS challenges a share of frictionless-eligible traffic
+                    challenge = True
+                elif intent.risk_score < self.tau_challenge_high:
+                    trans_status_3ds = "Y"
+                    eci = "05"  # Frictionless
+                else:
+                    # Step-Up Challenge (risk_score >= tau_challenge_high)
+                    challenge = True
+                if challenge:
+                    if intent.otp_submitted:
+                        trans_status_3ds = "C"
+                        eci = "05"
+                    else:
+                        trans_status_3ds = "N"
+                        eci = "07"
+                        failed_reason = "3DS_CHALLENGE_FAILED_OR_BYPASSED"
+
+        return AuthenticationOutcome(
+            pos_entry_mode=pos_entry,
+            pos_condition_code=pos_condition,
+            trans_status_3ds=trans_status_3ds,
+            eci=eci,
+            arqc_verified=arqc_verified,
+            pin_verified=bool(arqc_verified and intent.pin_entered),
+            tvr_clean=bool(arqc_verified),
+            three_ds_authenticated=trans_status_3ds in ("Y", "C"),
+            three_ds_attempted=trans_status_3ds in ("A", "C"),
+            failed_reason=failed_reason,
+            regulatory_rule_triggered=regulatory_rule_triggered,
+        )
 
     def _enrich_result(
         self,
@@ -343,22 +489,15 @@ class RailVerifierSwitch:
         """Evaluates candidate intent against banking rails, solvency, and regulatory limits."""
         # 1. Terminal POS Entry Mode & Condition Codes
         ch = intent.channel_type
-        if ch in ("CP_POS_CHIP", "ATM_CASH"):
-            pos_entry = "051"
-        elif ch in ("CP_POS_CONTACTLESS", "CP_CONTACTLESS_NFC"):
-            pos_entry = "071"
-        elif ch == "CP_POS_MAGSTRIPE":
-            pos_entry = "901"
-        elif ch == "CNP_WEB":
-            pos_entry = "012"
-        elif ch == "CNP_MOBILE":
-            pos_entry = "102"
-        elif ch == "UPI_QR_CREDIT":
-            pos_entry = "031"
-        else:
-            pos_entry = "812"
+        pos_entry, pos_condition = self._pos_credentials(ch)
 
-        pos_condition = "00" if ch.startswith("CP") else "59"
+        # 1b. Authentication outcome. The terminal/ACS authenticates before the issuer's
+        # authorization decision. The engine passes the outcome in on the intent (it needs
+        # it for the causal ground truth too); a direct caller without one gets it computed
+        # here, from the same pre-authentication signals.
+        auth = intent.authentication
+        if auth is None:
+            auth = self.authenticate(intent, card)
 
         # 2. Card Status / Freeze Checks (Cardholder app lock returns ISO 57)
         if card.is_frozen or card.check_freeze_status(intent.sim_time_sec):
@@ -366,8 +505,8 @@ class RailVerifierSwitch:
                 approved=False,
                 iso_response_code=ISO8583Response.NOT_PERMITTED_57.value if hasattr(ISO8583Response, 'NOT_PERMITTED_57') else "57",
                 approved_amount=0.0,
-                trans_status_3ds="N",
-                eci="07" if ch.startswith("CNP") else "",
+                trans_status_3ds=auth.trans_status_3ds,
+                eci=auth.eci,
                 auth_code="",
                 decline_reason="CARD_FROZEN_OR_BLOCKED_BY_CARDHOLDER",
                 pos_entry_mode=pos_entry,
@@ -378,11 +517,7 @@ class RailVerifierSwitch:
         # 3. Hardware Cryptographic Primacy (Visa Core Rules / Mastercard Chapter 17)
         # Authentic EMV Contact Chip + PIN or Biometric CDCVM Wallet:
         # ARQC cryptogram (Tag 9F26) is non-replayable and validated by issuer cryptographic security module (HSM).
-        is_verified_hardware_crypto = (
-            (intent.emv_chip_present or ch == "CP_POS_CHIP")
-            and intent.emv_cryptogram_valid
-            and (ch in ("CP_POS_CHIP", "CP_POS_CONTACTLESS"))
-        )
+        is_verified_hardware_crypto = auth.arqc_verified
 
         # 4. Channel Controls (E-Commerce / International enabled)
         if ch.startswith("CNP") and not card.domestic_cnp_enabled:
@@ -390,8 +525,8 @@ class RailVerifierSwitch:
                 approved=False,
                 iso_response_code=ISO8583Response.NOT_PERMITTED_57.value if hasattr(ISO8583Response, 'NOT_PERMITTED_57') else "57",
                 approved_amount=0.0,
-                trans_status_3ds="N",
-                eci="07",
+                trans_status_3ds=auth.trans_status_3ds,
+                eci=auth.eci,
                 auth_code="",
                 decline_reason="DOMESTIC_CNP_DISABLED_BY_CARDHOLDER",
                 pos_entry_mode=pos_entry,
@@ -404,8 +539,8 @@ class RailVerifierSwitch:
                 approved=False,
                 iso_response_code=ISO8583Response.NOT_PERMITTED_57.value if hasattr(ISO8583Response, 'NOT_PERMITTED_57') else "57",
                 approved_amount=0.0,
-                trans_status_3ds="N" if ch.startswith("CNP") else "",
-                eci="07" if ch.startswith("CNP") else "",
+                trans_status_3ds=auth.trans_status_3ds,
+                eci=auth.eci,
                 auth_code="",
                 decline_reason="INTERNATIONAL_TRANSACTIONS_DISABLED",
                 pos_entry_mode=pos_entry,
@@ -420,8 +555,8 @@ class RailVerifierSwitch:
                 approved=False,
                 iso_response_code=ISO8583Response.SUSPECTED_FRAUD_59.value,
                 approved_amount=0.0,
-                trans_status_3ds="N",
-                eci="",
+                trans_status_3ds=auth.trans_status_3ds,
+                eci=auth.eci,
                 auth_code="",
                 decline_reason="SUPERSONIC_PHYSICAL_VELOCITY",
                 pos_entry_mode=pos_entry,
@@ -436,8 +571,8 @@ class RailVerifierSwitch:
                 approved=False,
                 iso_response_code=ISO8583Response.ACTIVITY_COUNT_EXCEEDED_65.value,
                 approved_amount=0.0,
-                trans_status_3ds="N",
-                eci="07" if ch.startswith("CNP") else "",
+                trans_status_3ds=auth.trans_status_3ds,
+                eci=auth.eci,
                 auth_code="",
                 decline_reason="DAILY_TRANSACTION_COUNT_LIMIT_EXCEEDED",
                 pos_entry_mode=pos_entry,
@@ -467,8 +602,8 @@ class RailVerifierSwitch:
                     approved=False,
                     iso_response_code=ISO8583Response.ACTIVITY_COUNT_EXCEEDED_65.value,
                     approved_amount=0.0,
-                    trans_status_3ds="N",
-                    eci="07",
+                    trans_status_3ds=auth.trans_status_3ds,
+                    eci=auth.eci,
                     auth_code="",
                     decline_reason="CNP_MERCHANT_ENUMERATION_DETECTED",
                     pos_entry_mode=pos_entry,
@@ -481,8 +616,8 @@ class RailVerifierSwitch:
                     approved=False,
                     iso_response_code=ISO8583Response.ACTIVITY_COUNT_EXCEEDED_65.value,
                     approved_amount=0.0,
-                    trans_status_3ds="N",
-                    eci="07",
+                    trans_status_3ds=auth.trans_status_3ds,
+                    eci=auth.eci,
                     auth_code="",
                     decline_reason="HIGH_FREQUENCY_AUTOMATED_PROBE",
                     pos_entry_mode=pos_entry,
@@ -495,8 +630,8 @@ class RailVerifierSwitch:
                     approved=False,
                     iso_response_code=ISO8583Response.ACTIVITY_COUNT_EXCEEDED_65.value,
                     approved_amount=0.0,
-                    trans_status_3ds="N",
-                    eci="07",
+                    trans_status_3ds=auth.trans_status_3ds,
+                    eci=auth.eci,
                     auth_code="",
                     decline_reason="CNP_HOURLY_FREQUENCY_LIMIT_EXCEEDED",
                     pos_entry_mode=pos_entry,
@@ -511,8 +646,8 @@ class RailVerifierSwitch:
                     approved=False,
                     iso_response_code=ISO8583Response.ACTIVITY_COUNT_EXCEEDED_65.value,
                     approved_amount=0.0,
-                    trans_status_3ds="",
-                    eci="",
+                    trans_status_3ds=auth.trans_status_3ds,
+                    eci=auth.eci,
                     auth_code="",
                     decline_reason="CP_HOURLY_FREQUENCY_LIMIT_EXCEEDED",
                     pos_entry_mode=pos_entry,
@@ -529,8 +664,8 @@ class RailVerifierSwitch:
                         approved=False,
                         iso_response_code=ISO8583Response.ACTIVITY_LIMIT_EXCEEDED_65.value,
                         approved_amount=0.0,
-                        trans_status_3ds="",
-                        eci="",
+                        trans_status_3ds=auth.trans_status_3ds,
+                        eci=auth.eci,
                         auth_code="",
                         decline_reason="RBI_NFC_PIN_REQUIRED_OVER_5000_INR",
                         regulatory_rule_triggered="RBI_NFC_PIN_MANDATE",
@@ -544,8 +679,8 @@ class RailVerifierSwitch:
                         approved=False,
                         iso_response_code=ISO8583Response.ACTIVITY_LIMIT_EXCEEDED_65.value,
                         approved_amount=0.0,
-                        trans_status_3ds="",
-                        eci="",
+                        trans_status_3ds=auth.trans_status_3ds,
+                        eci=auth.eci,
                         auth_code="",
                         decline_reason="RBI_NFC_CONSECUTIVE_LIMIT_REACHED",
                         regulatory_rule_triggered="RBI_NFC_VELOCITY_CAP",
@@ -559,8 +694,8 @@ class RailVerifierSwitch:
                         approved=False,
                         iso_response_code=ISO8583Response.ACTIVITY_LIMIT_EXCEEDED_65.value,
                         approved_amount=0.0,
-                        trans_status_3ds="",
-                        eci="",
+                        trans_status_3ds=auth.trans_status_3ds,
+                        eci=auth.eci,
                         auth_code="",
                         decline_reason="RBI_NFC_CUMULATIVE_LIMIT_EXCEEDED_15000_INR",
                         regulatory_rule_triggered="RBI_NFC_CUMULATIVE_CAP",
@@ -576,8 +711,8 @@ class RailVerifierSwitch:
                 approved=False,
                 iso_response_code=ISO8583Response.DO_NOT_HONOR_05.value,
                 approved_amount=0.0,
-                trans_status_3ds="N",
-                eci="07" if ch.startswith("CNP") else "",
+                trans_status_3ds=auth.trans_status_3ds,
+                eci=auth.eci,
                 auth_code="",
                 decline_reason="INVALID_AMOUNT_BOUNDS",
                 pos_entry_mode=pos_entry,
@@ -592,8 +727,8 @@ class RailVerifierSwitch:
                 approved=False,
                 iso_response_code=ISO8583Response.SUSPECTED_FRAUD_59.value,
                 approved_amount=0.0,
-                trans_status_3ds="N",
-                eci="07" if ch.startswith("CNP") else "",
+                trans_status_3ds=auth.trans_status_3ds,
+                eci=auth.eci,
                 auth_code="",
                 decline_reason="VAAI_NETWORK_FRAUD_SCORE_EXCEEDED",
                 pos_entry_mode=pos_entry,
@@ -601,73 +736,26 @@ class RailVerifierSwitch:
                 hop_origin="NETWORK_SWITCH_VAAI",
             )
 
-        # 10. 3DS 2.x Authentication & Exemption Engine (CNP Channels)
-        trans_status_3ds = ""
-        eci = ""
-        if ch.startswith("CNP"):
-            # Strict RBI Statutory Rule (India Domestic): 100% Mandatory AFA (OTP)
-            if (self.region == "IN" or card.currency == "INR") and not intent.is_cross_border:
-                if not intent.otp_submitted:
-                    return RailVerificationResult(
-                        approved=False,
-                        iso_response_code=ISO8583Response.SECURITY_VIOLATION_63.value,
-                        approved_amount=0.0,
-                        trans_status_3ds="N",
-                        eci="07",
-                        auth_code="",
-                        decline_reason="RBI_MANDATORY_AFA_OTP_REQUIRED",
-                        regulatory_rule_triggered="RBI_MANDATORY_AFA_2FA",
-                        pos_entry_mode=pos_entry,
-                        pos_condition_code=pos_condition,
-                        hop_origin="ACS_3DS",
-                    )
-                trans_status_3ds = "Y"
-                eci = "05"
-            else:
-                # Global / US PSD2 & EMVCo 3DS 2.x Exemption Engine
-                if intent.amount < 30.0:
-                    trans_status_3ds = "Y"
-                    eci = "05"  # Low-Value Exemption (LVE)
-                elif intent.risk_score < self.tau_challenge_low and intent.amount < 100.0:
-                    trans_status_3ds = "Y"
-                    eci = "05"  # TRA Exemption
-                elif self.rng.random() < self.telemetry.legit_challenge_share.get(self.region, 0.0):
-                    # spec/07 section 4: the ACS challenges a share of frictionless-eligible traffic
-                    if not intent.otp_submitted:
-                        return RailVerificationResult(
-                            approved=False,
-                            iso_response_code=ISO8583Response.SECURITY_VIOLATION_63.value,
-                            approved_amount=0.0,
-                            trans_status_3ds="N",
-                            eci="07",
-                            auth_code="",
-                            decline_reason="3DS_CHALLENGE_FAILED_OR_BYPASSED",
-                            pos_entry_mode=pos_entry,
-                            pos_condition_code=pos_condition,
-                            hop_origin="ACS_3DS",
-                        )
-                    trans_status_3ds = "C"
-                    eci = "05"
-                elif intent.risk_score < self.tau_challenge_high:
-                    trans_status_3ds = "Y"
-                    eci = "05"  # Frictionless
-                else:
-                    # Step-Up Challenge (risk_score >= tau_challenge_high)
-                    if not intent.otp_submitted:
-                        return RailVerificationResult(
-                            approved=False,
-                            iso_response_code=ISO8583Response.SECURITY_VIOLATION_63.value,
-                            approved_amount=0.0,
-                            trans_status_3ds="N",
-                            eci="07",
-                            auth_code="",
-                            decline_reason="3DS_CHALLENGE_FAILED_OR_BYPASSED",
-                            pos_entry_mode=pos_entry,
-                            pos_condition_code=pos_condition,
-                            hop_origin="ACS_3DS",
-                        )
-                    trans_status_3ds = "C"
-                    eci = "05"
+        # 10. 3DS 2.x Authentication Outcome (decided once, in `authenticate()`)
+        # The ACS decision is already made: it must not be re-decided here from the
+        # post-authentication risk score, or the ground truth that consumed it and the
+        # authorization that re-derived it could disagree on the same transaction.
+        trans_status_3ds = auth.trans_status_3ds
+        eci = auth.eci
+        if auth.failed_reason:
+            return RailVerificationResult(
+                approved=False,
+                iso_response_code=ISO8583Response.SECURITY_VIOLATION_63.value,
+                approved_amount=0.0,
+                trans_status_3ds=trans_status_3ds,
+                eci=eci,
+                auth_code="",
+                decline_reason=auth.failed_reason,
+                regulatory_rule_triggered=auth.regulatory_rule_triggered,
+                pos_entry_mode=pos_entry,
+                pos_condition_code=pos_condition,
+                hop_origin="ACS_3DS",
+            )
 
         # 11. Cryptographic & Security Credentials Verification
         if ch.startswith("CNP") and not intent.cvv_provided:

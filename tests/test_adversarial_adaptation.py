@@ -18,17 +18,15 @@ from __future__ import annotations
 import tempfile
 from pathlib import Path
 import numpy as np
-import pytest
 
 from fraudx_synthesizer.agents import (
     AdaptiveFraudsterAgent,
     CardholderProfile,
-    FraudScenario,
     FraudsterState,
     ISO8583Response,
 )
 from fraudx_synthesizer.engine import DiscreteEventEngine
-from fraudx_synthesizer.stream import INFERENCE_ALLOWLIST, ZeroLeakageDataPartitioner
+from fraudx_synthesizer.stream import ZeroLeakageDataPartitioner
 
 
 def create_mock_card(card_id: str = "CARD_ADV_001", credit_limit: float = 5000.0) -> CardholderProfile:

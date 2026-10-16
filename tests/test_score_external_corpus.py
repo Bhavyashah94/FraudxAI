@@ -74,19 +74,54 @@ def test_scorer_reproduces_the_graders_own_number(scorer):
     assert result["threshold_source"].endswith("spec/18_benchmark_reporting.yaml")
 
 
-def test_reference_sampler_control_passes_the_continuous_gates(scorer):
-    """A stream drawn from the reference itself must pass it -- that is the point.
+def test_reference_control_fails_the_realism_gates(scorer):
+    """A stream drawn from the hardcoded reference must now FAIL the amount gate.
 
-    This documents what the two continuous gates measure: distance to the
-    hardcoded reference. If this control ever *fails*, the control or the
-    reference has drifted and the external scorecard should not be trusted.
+    Up to 2026-10-15 this test asserted the opposite -- the control passed both
+    continuous gates -- and that assertion *was* the bug the 2026-10-10 external
+    scorecard documented: passing a reference-sampler while real traffic failed
+    the same gates harder than the generator under test meant the gates ranked
+    realism backwards. Since spec/18 `pillar_1_real_reference`, the continuous
+    gates grade distance to measured real card traffic (IEEE-CIS, sha256-pinned)
+    against a size-corrected limit. A sampler of the old hardcoded lognormal is
+    there fore not real traffic and fails the amount bar, while real corpus
+    windows pass it (see tests/test_real_reference_gate.py for the corpus
+    self-consistency side of that claim).
     """
+    from fraudx_synthesizer.real_reference import load_real_reference
+
+    if load_real_reference() is None:
+        pytest.skip(
+            "real-corpus reference unavailable; fallback reference passes control by construction"
+        )
+
     records, summary = scorer.reference_control(4_000, "US", 42)
     result = scorer.score("control", records, summary, "US", 42)
 
     by_metric = {row["metric"]: row for row in result["metrics"]}
-    assert by_metric["wasserstein_amount_log"]["pass"] is True
-    assert by_metric["wasserstein_amount_log"]["value"] < 0.05
-    assert by_metric["wasserstein_arrival_log"]["pass"] is True
-    assert by_metric["wasserstein_arrival_log"]["value"] < 0.05
-    assert result["verdict"] == "PASS"
+    # The inversion that makes the gate meaningful: the control is far from real
+    # traffic, and the gate knows it.
+    assert by_metric["wasserstein_amount_log"]["pass"] is False
+    assert result["comparable_failures"] >= 1
+    assert result["verdict"] == "FAIL"
+    # The limits named in the result are the calibrated ones the grader used, not
+    # the static 0.150 spec values.
+    assert by_metric["wasserstein_amount_log"]["threshold"] != 0.150
+
+
+def test_embedded_fallback_is_flagged_in_the_caveats(scorer, monkeypatch):
+    """Regression (2026-10-15): a corpora-free environment must SAY so.
+
+    The fallback's limit is the non-zero static spec value (0.15), so a
+    `amount_limit == 0.0` test never detected it and the "reference did not load"
+    caveat was dead code -- the exact silent degradation the design forbids. The
+    verdict now branches on the explicit `reference_kind`.
+    """
+    import fraudx_synthesizer.benchmark_reporter as reporter
+
+    monkeypatch.setattr(reporter, "load_real_reference", lambda: None)
+    records, summary = scorer.reference_control(2_000, "US", 42)
+    result = scorer.score("control-fallback", records, summary, "US", 42)
+
+    assert result["caveats"], "fallback must be disclosed in the caveats"
+    assert any("did not load" in c for c in result["caveats"])

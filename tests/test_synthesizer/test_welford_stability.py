@@ -1,7 +1,6 @@
 """Tests verifying numerical stability and lognormal priors in Welford accumulator."""
 
-import pytest
-from fraudx_synthesizer import SimulationEngine, WelfordAccumulator
+from fraudx_synthesizer import SimulationEngine
 
 
 def test_welford_cold_start_prior_variance():

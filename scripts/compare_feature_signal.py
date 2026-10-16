@@ -13,9 +13,7 @@ Rewritten after two errors in the first attempt:
 The question this answers is unchanged: for features both corpora can express, does the
 association with fraud point the same way in both?
 """
-import sys
 
-import numpy as np
 import pandas as pd
 from sklearn.metrics import roc_auc_score
 

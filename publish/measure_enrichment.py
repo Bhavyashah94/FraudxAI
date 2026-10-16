@@ -67,7 +67,7 @@ def main():
     print(f"file     : {path}")
     print(f"region   : {region}   currency: {m['currency']}")
     print(f"rows     : {m['rows']:,}   fraud rows: {m['fraud_rows']:,}")
-    print(f"repeats  : 3/3 identical")
+    print("repeats  : 3/3 identical")
     print()
     print(f"{'metric':26s} {'measured':>14s} {'spec ref':>12s} {'ratio':>9s}")
     for label, got, ref in (

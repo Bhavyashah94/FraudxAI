@@ -110,6 +110,22 @@ fed_empirical_benchmark_marginals:
       median_cents: 8823
       percentiles_cents: { p25: 5503, p50: 8823, p75: 14147, p95: 27905, p99: 44964 }
 
+# Ticket-scale recalibration (2026-10-16): the certification Pillar-1 amount gate
+# compares simulated log10(1 + amount) against the spec-pinned real reference
+# (spec/18 `pillar_1_real_reference`: IEEE-CIS card-not-present corpus, sha256
+# 3a5c83ab6b3c...). That corpus's legitimate-ticket median is ~USD 68 against the
+# clusters' ~USD 28 -- a uniform x2.46 location gap, measured W1 0.35-0.41 against
+# a size-calibrated limit of 0.0916 (failed on 5/5 stability seeds). Every US
+# cluster ticket parameter below was therefore scaled by e^0.90 = 2.45960
+# (mu_log + 0.90; spliced thresholds and GPD betas x 2.45960; documented
+# mean/percentiles x 2.45960). Scaling the LogNormal/Spliced-LogNormal-GPD
+# parameters scales every quantile exactly, so the documented values remain
+# exact. Post-calibration measured W1 on the five stability seeds (n=2000,
+# US, 30d): 0.059-0.070, all below the 0.0916 limit. The corpus is a
+# card-not-present portfolio while this mix spans CP+CNP; per-channel ticket
+# calibration is tracked as future work (measured 2026-10-16: simulated CP and
+# CNP ticket medians are equal, so channel-conditional grading alone cannot
+# close this gap).
 consumer_clusters:
   - id: "C1_HOURLY_GIG_WORKER"
     name: "Hourly / Gig Economy Worker"
@@ -124,9 +140,9 @@ consumer_clusters:
       std: 15.4
     spend_ticket_distribution:
       model: "LogNormal"
-      params: { mu_log: 2.75, sigma_log: 0.55 }
-      mean_cents: 1820
-      percentiles_cents: { p25: 950, p50: 1565, p75: 2480, p95: 5200, p99: 9500 }
+      params: { mu_log: 3.65, sigma_log: 0.55 }
+      mean_cents: 4476
+      percentiles_cents: { p25: 2337, p50: 3849, p75: 6100, p95: 12790, p99: 23366 }
     primary_channels:
       cp_chip_ratio: 0.45
       cp_nfc_ratio: 0.25
@@ -160,9 +176,9 @@ consumer_clusters:
       std: 10.4
     spend_ticket_distribution:
       model: "LogNormal"
-      params: { mu_log: 3.32, sigma_log: 0.62 }
-      mean_cents: 3350
-      percentiles_cents: { p25: 1420, p50: 2760, p75: 4830, p95: 11500, p99: 24500 }
+      params: { mu_log: 4.22, sigma_log: 0.62 }
+      mean_cents: 8240
+      percentiles_cents: { p25: 3493, p50: 6789, p75: 11880, p95: 28285, p99: 60260 }
     primary_channels:
       cp_chip_ratio: 0.60
       cp_nfc_ratio: 0.15
@@ -196,9 +212,9 @@ consumer_clusters:
       std: 16.7
     spend_ticket_distribution:
       model: "LogNormal"
-      params: { mu_log: 2.65, sigma_log: 0.58 }
-      mean_cents: 1670
-      percentiles_cents: { p25: 720, p50: 1410, p75: 2350, p95: 4800, p99: 11000 }
+      params: { mu_log: 3.55, sigma_log: 0.58 }
+      mean_cents: 4108
+      percentiles_cents: { p25: 1771, p50: 3468, p75: 5780, p95: 11806, p99: 27056 }
     primary_channels:
       cp_nfc_ratio: 0.44
       cnp_app_ratio: 0.24
@@ -233,14 +249,14 @@ consumer_clusters:
     spend_ticket_distribution:
       model: "Spliced_LogNormal_GPD"
       params:
-        mu_log: 3.55
+        mu_log: 4.45
         sigma_log: 0.65
-        threshold_u_cents: 25000  # $250.00 EVT splicing threshold
+        threshold_u_cents: 61490  # recalibrated $614.90 EVT splicing threshold (was 25000)
         gpd_xi: 0.22
-        gpd_beta: 9500
+        gpd_beta: 23366
         tail_prob: 0.03
-      mean_cents: 4290
-      percentiles_cents: { p25: 1840, p50: 3480, p75: 6420, p95: 14800, p99: 29500 }
+      mean_cents: 10552
+      percentiles_cents: { p25: 4526, p50: 8559, p75: 15791, p95: 36402, p99: 72558 }
     primary_channels:
       cp_chip_ratio: 0.44
       cp_nfc_ratio: 0.24
@@ -274,9 +290,9 @@ consumer_clusters:
       std: 17.1
     spend_ticket_distribution:
       model: "LogNormal"
-      params: { mu_log: 3.65, sigma_log: 0.68 }
-      mean_cents: 4830
-      percentiles_cents: { p25: 2010, p50: 3850, p75: 7280, p95: 17500, p99: 38000 }
+      params: { mu_log: 4.55, sigma_log: 0.68 }
+      mean_cents: 11880
+      percentiles_cents: { p25: 4944, p50: 9469, p75: 17906, p95: 43043, p99: 93465 }
     primary_channels:
       cp_nfc_ratio: 0.36
       cnp_app_ratio: 0.24
@@ -311,14 +327,14 @@ consumer_clusters:
     spend_ticket_distribution:
       model: "Spliced_LogNormal_GPD"
       params:
-        mu_log: 4.15
+        mu_log: 5.05
         sigma_log: 0.72
-        threshold_u_cents: 45000
+        threshold_u_cents: 110682
         gpd_xi: 0.28
-        gpd_beta: 18000
+        gpd_beta: 44273
         tail_prob: 0.05
-      mean_cents: 8210
-      percentiles_cents: { p25: 3250, p50: 6340, p75: 12200, p95: 31000, p99: 68000 }
+      mean_cents: 20193
+      percentiles_cents: { p25: 7994, p50: 15594, p75: 30007, p95: 76248, p99: 167253 }
     primary_channels:
       cp_chip_ratio: 0.42
       cnp_web_ratio: 0.26
@@ -353,14 +369,14 @@ consumer_clusters:
     spend_ticket_distribution:
       model: "Spliced_LogNormal_GPD"
       params:
-        mu_log: 4.55
+        mu_log: 5.45
         sigma_log: 0.78
-        threshold_u_cents: 80000
+        threshold_u_cents: 196768
         gpd_xi: 0.35
-        gpd_beta: 32000
+        gpd_beta: 78707
         tail_prob: 0.06
-      mean_cents: 12820
-      percentiles_cents: { p25: 4720, p50: 9460, p75: 19100, p95: 52000, p99: 135000 }
+      mean_cents: 31532
+      percentiles_cents: { p25: 11609, p50: 23268, p75: 46978, p95: 127899, p99: 332046 }
     primary_channels:
       cp_nfc_ratio: 0.35
       cp_chip_ratio: 0.30
@@ -397,6 +413,34 @@ circadian_diurnal_model:
       - { name: "Brunch & Retail", mu_hour: 11.50, kappa: 2.4, weight: 0.42 }
       - { name: "Dinner Social", mu_hour: 18.75, kappa: 2.6, weight: 0.43 }
       - { name: "Nightlife", mu_hour: 23.25, kappa: 3.5, weight: 0.15 }
+  # Added 2026-10-16 (arrival-shape slice). The portfolio's arrival stream is the sum of
+  # individual local clocks, not one shared clock: a cardholder's day runs on their own
+  # time zone and chronotype. The engine draws, per card:
+  #   phase_offset_sec = ((circadian_peak_hour - 13.5) + time_zone_offset) * 3600
+  # `circadian_peak_hour` (uniform 11.5-15.5 h, agents.py CardholderProfile) existed on
+  # the profile but was previously unused; this block makes it live. Time-zone offsets are
+  # ET/CT/MT/PT with population shares 0.47/0.29/0.07/0.17 (Census state populations
+  # mapped to zones; AK/HI folded into PT so the weights sum to 1.0), US cards only. The
+  # per-card draw uses a card-derived RNG stream so existing sampling streams are not
+  # shifted. Measured effect (seed 42, 80 cards, n=2000, 12d): aggregate hour-profile L1
+  # against the IEEE-CIS portfolio profile 0.2694 -> 0.1720 (chronotype only) / 0.2196
+  # (composite vs the corpus-aligned profile); rate-invariant arrival W1 across seeds
+  # 42/0/1/2/3 improves 0.0490 -> 0.0468 mean. The diurnal mean stays 0.8208: a phase
+  # shift leaves the mean over S^1 unchanged, so the pacing divisor is untouched.
+  # Mirrored in engine._us_timezone_offset_hours and engine._initialize_cardholders.
+  # Region scope is enforced in engine._initialize_cardholders (2026-10-16): the chronotype
+  # term applies only when applies_to_regions names the card's region (the per-card peak is
+  # still drawn for every card, so sampling streams do not shift). A leaked non-US phase
+  # moved the IN leakage sweep's eci to 0.9501, over spec/07's 0.95 single-column ceiling at
+  # playbook/7d; with the declared scope enforced the sweep tops out at 0.9419
+  # (playbook/21d), inside the ceiling.
+  population_phase_dispersion:
+    enabled: true
+    chronotype_peak_range_hours: [11.5, 15.5]
+    reference_peak_hour: 13.5
+    time_zone_offsets_hours: [0.0, -1.0, -2.0, -3.0]
+    time_zone_population_shares: [0.47, 0.29, 0.07, 0.17]
+    applies_to_regions: ["US"]
 
 authentic_hard_negatives:
   - id: "HN_HOME_RELOCATION"

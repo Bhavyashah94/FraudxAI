@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-import json
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
-import pytest
 
 from fraudx_synthesizer.engine import SimulationEngine
 from fraudx_synthesizer.visualizer import (

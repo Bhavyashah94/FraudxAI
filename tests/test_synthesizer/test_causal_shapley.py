@@ -149,7 +149,6 @@ def test_batched_path_integration_matches_the_scalar_one():
     batched scorer otherwise; `evaluate` supplies the batched one, so both paths must
     return the same attribution for the same observation. The same holds for passing
     the already-computed abduction `u_obs` instead of recomputing it."""
-    import numpy as np
     from fraudx_synthesizer import StructuralCausalEngine
     from fraudx_synthesizer.experimental.invertible_flow import (
         LatentAumannShapleyAttributor,

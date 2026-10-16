@@ -9,11 +9,9 @@ Tests:
 6. Empirical Monte Carlo Distribution: 5,000-tx run achieves ~89%-92.5% approvals with ISO 51 leading declines.
 """
 
-import pytest
-import numpy as np
 from fraudx_synthesizer.agents import CardholderProfile, ISO8583Response
 from fraudx_synthesizer.rails import CandidateTransactionIntent, RailVerifierSwitch
-from fraudx_synthesizer.ledger import StreamingLedger, DoubleEntryWorldLedger
+from fraudx_synthesizer.ledger import StreamingLedger
 from fraudx_synthesizer.engine import DiscreteEventEngine
 
 

@@ -9,11 +9,9 @@ import polars as pl
 
 from fraudx_synthesizer.storage import (
     ParallelSimulationCoordinator,
-    SimulationAggregates,
     StreamingDatasetWriter,
 )
 from fraudx_synthesizer.visualizer import (
-    compile_bundle_from_metadata,
     generate_visualization_from_dir,
 )
 

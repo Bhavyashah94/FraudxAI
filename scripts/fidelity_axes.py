@@ -137,7 +137,7 @@ def main() -> int:
         print()
 
     def amt_row(df, ref):
-        return (f"p10/p50/p90 amt/entity  "
+        return ("p10/p50/p90 amt/entity  "
                 + "/".join(f"{np.quantile(df['log_amt_over_ent'], q):.2f}" for q in QS)
                 + f"   KS vs real {ks(df['log_amt_over_ent'].to_numpy(), ref['log_amt_over_ent'].to_numpy()):.3f}")
 
@@ -145,7 +145,7 @@ def main() -> int:
           "scale-free, so it compares generator behaviour and not currency units", amt_row, False)
 
     def raw_row(df, ref):
-        return (f"p10/p50/p90 log10 amount  "
+        return ("p10/p50/p90 log10 amount  "
                 + "/".join(f"{np.quantile(df['log_amount'], q):.2f}" for q in QS)
                 + f"   KS vs real {ks(df['log_amount'].to_numpy(), ref['log_amount'].to_numpy()):.3f}")
 

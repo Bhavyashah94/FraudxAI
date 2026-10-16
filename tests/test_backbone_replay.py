@@ -247,7 +247,7 @@ from functools import lru_cache as _lru_cache
 import yaml as _yaml
 from scipy import stats as _stats
 
-from fraudx_synthesizer.cli import AUTH_STREAM_COLUMNS, GATEWAY_TELEMETRY_COLUMNS, _export_csv_view
+from fraudx_synthesizer.cli import AUTH_STREAM_COLUMNS, GATEWAY_TELEMETRY_COLUMNS
 from fraudx_synthesizer.spec_loader import _find_spec_dir
 from fraudx_synthesizer.stream import REQUEST_FIELDS
 
@@ -983,7 +983,6 @@ def test_the_real_ulb_backbone_is_replayed_amount_for_amount(tmp_path_factory):
     engine, records = _replay(_ULB_ARFF_PATH, 0.05, n_legit)
 
     backbone = _backbone_rows(records)
-    attacks = _attack_rows(records)
     assert len(backbone) == n_legit == len(corpus)
     assert len(records) == n_legit + _injection_count(n_legit, 0.05)
     _assert_amounts_preserved_exactly([r.amount for r in corpus], [r["amount"] for r in backbone])

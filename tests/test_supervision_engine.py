@@ -11,9 +11,8 @@ Verifies:
 """
 
 import math
-from typing import Any, Dict, List
+from typing import Any, Dict
 import numpy as np
-import pytest
 
 from fraudx_synthesizer.stream import (
     INFERENCE_ALLOWLIST,
@@ -21,7 +20,6 @@ from fraudx_synthesizer.stream import (
     LabelSource,
     PriorityStrategy,
     SupervisionEngine,
-    SupervisionRecord,
     ZeroLeakageDataPartitioner,
 )
 

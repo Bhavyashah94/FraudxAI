@@ -188,7 +188,7 @@ def main() -> int:
     c_roc = roc_auc_score(ry_te, c_scores)
     c_ap = average_precision_score(ry_te, c_scores)
 
-    print(f"\nCEILING  train on real -> test on real")
+    print("\nCEILING  train on real -> test on real")
     print(f"  ROC-AUC {c_roc:.4f}   PR-AUC {c_ap:.4f}")
 
     if args.synthetic is None:
@@ -204,7 +204,7 @@ def main() -> int:
     t_ap = average_precision_score(ry_te, t_scores)
     t_ap_adj = pr_at_real_prevalence(ry_te, t_scores, float(syn_y.mean()), real_prev)
 
-    print(f"TRANSFER  train on synthetic -> test on real")
+    print("TRANSFER  train on synthetic -> test on real")
     print(f"  ROC-AUC {t_roc:.4f}   PR-AUC {t_ap:.4f}   PR-AUC@real-prevalence {t_ap_adj:.4f}")
 
     retention = t_roc / c_roc if c_roc else float("nan")

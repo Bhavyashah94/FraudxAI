@@ -5,7 +5,6 @@
 import math
 import numpy as np
 import pytest
-from typing import Dict, Any, List
 
 from fraudx_synthesizer.intent import (
     CredentialDossier,
@@ -16,7 +15,6 @@ from fraudx_synthesizer.intent import (
     InformationDirectedOptimizer,
     MacroOptionType,
     MultiHopSwitchEngine,
-    SwitchHopResult,
 )
 from fraudx_synthesizer.rails import ISO8583Response
 

@@ -16,7 +16,7 @@ from __future__ import annotations
 import math
 from pathlib import Path
 import sys
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict
 import yaml
 
 if sys.stdout.encoding != "utf-8":

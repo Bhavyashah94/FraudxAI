@@ -7,7 +7,6 @@ import csv
 import time
 import asyncio
 from typing import Any, Dict, List, Optional
-import numpy as np
 
 from fraudx_synthesizer.engine import SimulationEngine
 from fraudx_synthesizer.benchmark import XAIBenchmarkHarness

@@ -19,7 +19,6 @@ import numpy as np
 
 from .engine import SimulationEngine
 from .graph_transformer import ForensicGraphTransformer
-from .syndicates import SyndicateRegistry
 
 
 def compile_simulation_data_bundle(
@@ -53,9 +52,6 @@ def compile_simulation_data_bundle(
         })
 
     # 2. 4-Hop Banking Switch Funnel
-    hop_origins = Counter(r.get("hop_origin", "ISSUER_HOST") for r in records)
-    fraud_hop_origins = Counter(r.get("hop_origin", "ISSUER_HOST") for r in fraud_records)
-
     iso_codes = Counter(r.get("response_code", "00") for r in records)
     fraud_iso_codes = Counter(r.get("response_code", "00") for r in fraud_records)
 

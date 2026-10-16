@@ -7,7 +7,6 @@ Verifies:
 """
 
 import numpy as np
-import pytest
 import scipy.stats
 
 from fraudx_synthesizer import DiscreteEventEngine, QualityReport, QualitySummary

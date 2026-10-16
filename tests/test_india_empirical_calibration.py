@@ -18,10 +18,7 @@ Verifies:
 
 from __future__ import annotations
 
-import math
-from typing import Dict, List
 import numpy as np
-import pytest
 from scipy import stats
 
 from fraudx_synthesizer import (
@@ -31,8 +28,7 @@ from fraudx_synthesizer import (
 )
 from fraudx_synthesizer.agents import CardholderProfile, ISO8583Response
 from fraudx_synthesizer.engine import INDIAN_PRODUCT_SPEND_MARGINALS
-from fraudx_synthesizer.hawkes import INDIAN_PERSONA_HAWKES_PROFILES, HawkesParameters
-from fraudx_synthesizer.spec_loader import load_all_specs
+from fraudx_synthesizer.hawkes import INDIAN_PERSONA_HAWKES_PROFILES
 
 
 def create_indian_test_card(

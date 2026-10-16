@@ -109,7 +109,7 @@
 * **Top Tag:** FEASIBILITY & SCOPE • OPERATIONAL BOUNDARIES
 * **Headline (Serif):** Engineering Feasibility & Precise Project Scope
 * **Left Column (Feasibility Analysis):**
-  * **Technical Feasibility:** Built on Python 3.12, utilizing Polars and NumPy for memory-efficient streaming operations. Driven by a 64-bit microsecond monotonic discrete-event priority queue measured at **2,166 events/second** (1,172 transactions/second, 1.4 GB peak RSS over 100,000 transactions) with `scripts/measure_throughput.py`.
+  * **Technical Feasibility:** Built on Python 3.12, utilizing Polars and NumPy for memory-efficient streaming operations. Driven by a 64-bit microsecond discrete-event priority queue measured at **2,000-2,600 events/second** (1,400-1,700 transactions/second, ~1.5 GB peak RSS over 100,000 transactions) with `scripts/measure_throughput.py`.
   * **Economic Feasibility:** 100% open-source, zero proprietary data licensing costs, running locally without expensive commercial cloud API dependencies.
   * **Legal & Regulatory Feasibility:** Fully synthetic data eliminates all PCI-DSS and PII data privacy liabilities while strictly observing payment scheme invariants (Visa Core Rules, RBI Master Directions).
 * **Right Column (Project Scope):**
@@ -170,9 +170,9 @@
 #### Slide 18: Invariant Certification & Throughput Benchmarks
 * **Headline (Serif):** Formal Invariant Verification & Engine Performance
 * **Key Achievements:**
-  * **387 / 387 Tests Passed:** 100% automated pytest suite passing across unit and integration rails.
+  * **407 / 407 Tests Passed:** 100% automated pytest suite passing across unit and integration rails.
   * **37 / 37 Certified Invariants:** Formal mathematical verification of double-entry bitwise conservation, strict temporal monotonicity, anti-leak tripwires, and Haversine velocity ceilings.
-  * **Throughput:** Measured generation velocity of **2,166 events/second** (1,172 transactions/second) over a 100,000-transaction run, sustaining synthesis without memory degradation.
+  * **Throughput:** Measured generation velocity of **2,000-2,600 events/second** (1,400-1,700 transactions/second) over a 100,000-transaction run, sustaining synthesis without memory growth.
 
 ---
 

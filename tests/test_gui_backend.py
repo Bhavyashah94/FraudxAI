@@ -9,7 +9,6 @@ pytest.importorskip("fastapi", reason="GUI backend needs the 'gui' extra: pip in
 from fastapi.testclient import TestClient  # noqa: E402
 
 from gui.backend.app import app  # noqa: E402
-from gui.backend.services import sim_state  # noqa: E402
 
 
 @pytest.fixture

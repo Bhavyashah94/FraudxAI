@@ -21,7 +21,7 @@ import zlib
 
 import numpy as np
 
-from .agents import CardholderProfile, ChannelType
+from .agents import CardholderProfile
 from .invariants import haversine_distance_km
 from .network import ClientAddressSpace
 from .spec_loader import load_all_specs
@@ -133,7 +133,6 @@ class StreamingLedger:
                 beta = card.gpd_beta
                 p = card.gpd_tail_prob
                 ln_mean = math.exp(card.spend_mean_log + 0.5 * sig2)
-                e_gpd = u + beta / (1.0 - xi)
                 e_gpd2 = (u ** 2) + 2.0 * u * beta / (1.0 - xi) + (2.0 * (beta ** 2)) / ((1.0 - xi) * (1.0 - 2.0 * xi))
                 e_ln2 = ln_var + (ln_mean ** 2)
                 total_e2 = (1.0 - p) * e_ln2 + p * e_gpd2

@@ -52,6 +52,16 @@ export_leakage_gate:
     - "pos_condition_code"
     - "eci"
     - "trans_status_3ds"
+  decision_columns_outside_single_column_audit:
+    # The authorisation response codes are the decision system's own output. A detector cannot
+    # consume its own decision as an input, so the single-column ceiling - which asks whether an
+    # observable *input* separates the classes - does not audit them. They stay in the export (a
+    # feed carries them), stay in the learner's feature matrix (the learner ceiling still covers
+    # them) and stay in the fraud-only-value check. Measured 2026-10-16: IN/playbook/45d reaches
+    # 0.966 on response_code because domestic card testers fail mandatory AFA exactly as section 3
+    # says they do; every input column stays at or below 0.942.
+    - "response_code"
+    - "auth_response_code"
   derived_features:
     hour_of_day: "floor((tx_time_seconds mod 86400) / 3600); a detector always has the clock"
   generation:
@@ -90,6 +100,14 @@ export_leakage_gate:
       The gate runs at seed 42, where the four configurations sit between 0.88 and 0.96. What remains is the
       attack signature itself (card-not-present, network score, ticket size, category concentration); the
       legitimate e-commerce mix planned for the Federal Reserve calibration slice is what would bring it down.
+    measured_2026_10_16: >
+      Re-measured after rails.py moved the authentication step ahead of the authorisation decision
+      (docs/PROJECT_CONTEXT.md 7.1): a fraud attempt that cannot satisfy AFA now declines with ISO 63 before
+      any solvency rule can answer it, so the response codes concentrate the attack signature further. The
+      tests' timeline sweep (IN, seed 101, 1800 rows, four horizons, both adversary modes) now tops out at
+      0.942 on eci among the input columns and 0.966 on response_code among the decision codes; the learner
+      on the same export sits at 0.870. The single-column ceiling therefore audits inputs only, and the
+      decision codes are covered by the learner ceiling and the fraud-only-value check above.
 
 # ----------------------------------------------------------------------------------------------
 # 2. Network risk score (the Visa Advanced Authorization style score spec/04 calls FIELD_44_VAAI)

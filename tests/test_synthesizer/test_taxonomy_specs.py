@@ -18,7 +18,6 @@ import math
 from pathlib import Path
 from typing import Any, Dict
 
-import pytest
 import yaml
 
 SPEC_DIR = Path(__file__).resolve().parent.parent.parent / "spec"

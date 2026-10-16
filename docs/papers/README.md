@@ -3,10 +3,30 @@
 This directory stores the complete, open-access full-text PDF documents retrieved for **FraudxAI** literature evaluations.
 
 ## Summary Statistics
-* **Total Downloaded Research Papers**: 96 PDFs
-* **Total Corpus Size**: ~266.3 MB
+* **Total PDF files on disk**: 94 (**85 unique documents**; 9 are byte-identical
+  duplicates stored under two naming schemes — see "Known duplicates" below)
+* **Total Markdown transcriptions**: 94 (one per PDF file, including the duplicates)
+* **Total Corpus Size**: ~263 MB
 * **Manifest Registry**: [`manifest.json`](manifest.json)
 * **Status**: 100% verified magic bytes (`%PDF-`), validated, and indexed.
+
+### Known duplicates (pending dedup)
+Nine papers exist twice under two filenames (`md5`-identical `.pdf` and `.md`), so
+any count that reads this directory as "number of papers" over-reports by 9. Both
+copies of every pair appear in `INDEX.md`; the pairs differ only in whether the file
+is also listed in the machine-readable `papers_registry.json`:
+
+| In `papers_registry.json` | In `INDEX.md` only |
+| :--- | :--- |
+| `2026_yan_temporal_heterogeneous_graph_transf` | `2026_yan_temporal_heterogeneous_graph_transformer_fraud_detection` |
+| `2024_networks_catgnn_enhancing_credit_card_fraud` | `2024_duan_cat_gnn_causal_temporal_graph_fraud_detection` |
+| `2022_hedstrm_quantus_an_explainable_ai_toolkit_f` | `2023_hedstrom_quantus_responsible_evaluation_xai` |
+| `2017_unknown_a_unified_approach_to_interpreting` | `2017_lundberg_unified_approach_interpreting_model_predictions_shap` |
+| `2020_zhao_xfraud_explainable_fraud_transactio` | `2020_rao_xfraud_explainable_fraud_transaction_detection` |
+| `2018_instead_stop_explaining_black_box_machine_l` | `2019_rudin_stop_explaining_black_box_high_stakes` |
+| `2019_yoon_timeseries_generative_adversarial_n` | `2020_timegan_yoon2019` |
+| `2020_measures_problems_with_shapleyvaluebased_exp` | `2020_kumar_problems_with_shapley_value_feature_importance` |
+| `2022_evaluation_turning_the_tables_biased_imbalance` | `2022_jesus_turning_tables_biased_imbalanced_tabular` |
 
 ## Corpus Organization by Battleground
 

@@ -28,6 +28,9 @@ EVAL = GATE["evaluation"]
 LIMITS = GATE["thresholds"]
 EXCLUDED = set(GATE["identifier_columns_excluded"])
 CODE_COLUMNS = set(GATE["code_columns_treated_as_categorical"])
+# The issuer's own decision codes: excluded from the single-column ceiling, still present in
+# the export, still in the learner's feature matrix and the fraud-only-value check (spec/07).
+DECISION_COLUMNS = set(GATE["decision_columns_outside_single_column_audit"])
 
 
 def _read_view(path: Path) -> List[Dict[str, str]]:
@@ -109,6 +112,17 @@ def single_column_scores(X: np.ndarray, is_categorical: np.ndarray, names: List[
     return sorted(scores, reverse=True)
 
 
+def audited_single_column_scores(ranked: List[Tuple[float, str]]) -> List[Tuple[float, str]]:
+    """`ranked` restricted to the columns the single-column ceiling audits (spec/07).
+
+    The authorisation response codes are the decision system's own output. A detector cannot
+    consume its own decision as an input, so the ceiling - which asks whether an observable
+    *input* separates the classes - does not audit them. They remain in the export and in the
+    learner's feature matrix, where the learner ceiling still covers them.
+    """
+    return [(auc, name) for auc, name in ranked if name not in DECISION_COLUMNS]
+
+
 def fraud_only_values(rows: List[Dict[str, str]], labels: np.ndarray) -> List[Tuple[str, str, int]]:
     """Categorical values with enough support that are never legitimate."""
     found = []
@@ -158,9 +172,12 @@ def test_exported_views_carry_no_label_shortcut(tmp_path: Path, region: str, adv
     assert y[cut:].sum() >= 10, "too few fraud rows in the test window"
 
     ranked = single_column_scores(X, is_categorical, names, y, cut)
-    top = [(name, round(auc, 3)) for auc, name in ranked[:6]]
-    assert ranked[0][0] <= LIMITS["max_single_column_roc_auc"], (
-        f"{region}/{adversary_mode}: a single exported column separates the classes: {top}"
+    audited = audited_single_column_scores(ranked)
+    top = [(name, round(auc, 3)) for auc, name in audited[:6]]
+    decision = {name: round(auc, 3) for auc, name in ranked if name in DECISION_COLUMNS}
+    assert audited[0][0] <= LIMITS["max_single_column_roc_auc"], (
+        f"{region}/{adversary_mode}: a single exported input separates the classes: {top}; "
+        f"decision codes (learner-covered, outside this ceiling): {decision}"
     )
 
     clf = HistGradientBoostingClassifier(categorical_features=is_categorical, **EVAL["learner_params"])

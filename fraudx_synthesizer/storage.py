@@ -6,15 +6,13 @@ import json
 import math
 import multiprocessing
 import os
-import sys
 import time
-from collections import Counter, defaultdict
+from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, Generator, Iterable, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
-import numpy as np
 import polars as pl
 
 from .contract import load_contract
@@ -325,7 +323,6 @@ def _worker_simulation_task(
         chunk_size=chunk_size,
     )
 
-    import gc
 
     # Scale population proportionally with safe per-process memory caps (<150MB RSS per worker)
     # 5,000 cards per worker * 4 workers = 20,000 cards total (1M tx / 20k cards = 50 tx/month = 1.67 tx/day DCPC benchmark)
@@ -418,7 +415,7 @@ class ParallelSimulationCoordinator:
 
         total_elapsed = time.perf_counter() - t0
         overall_throughput = completed / max(0.001, total_elapsed)
-        print(f"\n[+] Simulation Complete!")
+        print("\n[+] Simulation Complete!")
         print(f"   Total Transactions: {completed:,}")
         print(f"   Total Wall Time: {total_elapsed:.2f}s ({total_elapsed/60:.2f} minutes)")
         print(f"   Overall Throughput: {overall_throughput:,.1f} tx/sec")
@@ -697,7 +694,7 @@ class EntityPartitionedParallelCoordinator:
 
         sim_elapsed = time.perf_counter() - t0
         print(f"\n[*] All {self.num_workers} workers finished in {sim_elapsed:.2f}s ({sim_elapsed/60:.2f} min).")
-        print(f"[*] Merging worker shards into master table and 5 institutional views...")
+        print("[*] Merging worker shards into master table and 5 institutional views...")
 
         # Sequential Polars LazyFrame external merge
         t_merge_start = time.perf_counter()
@@ -775,7 +772,7 @@ class EntityPartitionedParallelCoordinator:
             if w_dir.exists():
                 shutil.rmtree(w_dir, ignore_errors=True)
 
-        print(f"[+] Cleaned up intermediate worker directories.")
+        print("[+] Cleaned up intermediate worker directories.")
         print(f"[+] Dataset generated successfully at: {self.output_dir}")
         print(f"   Total Transactions: {completed_tx:,}")
         print(f"   Total Time: {total_wall_time:.2f}s ({total_wall_time/60:.2f} min)")

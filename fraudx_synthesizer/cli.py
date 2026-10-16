@@ -707,10 +707,10 @@ def cmd_gui(args: argparse.Namespace) -> None:
     import webbrowser
 
     url = f"http://{args.host}:{args.port}"
-    print(f"\n=======================================================")
+    print("\n=======================================================")
     print(f"  Starting FraudxAI Studio GUI at {url}")
     print(f"  API Docs available at {url}/docs")
-    print(f"=======================================================\n")
+    print("=======================================================\n")
 
     if args.open:
         threading.Timer(1.2, lambda: webbrowser.open(url)).start()

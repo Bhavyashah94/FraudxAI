@@ -8,17 +8,14 @@ Verifies:
 """
 
 import pytest
-import numpy as np
 
 from fraudx_synthesizer.rails import (
     CandidateTransactionIntent,
     RailVerifierSwitch,
-    RailVerificationResult,
 )
 from fraudx_synthesizer.agents import BankDecisionEngine, CardholderProfile
 from fraudx_synthesizer.engine import DiscreteEventEngine, INDIAN_PRODUCT_SPEND_MARGINALS
 from fraudx_synthesizer.spec_loader import load_all_specs
-from fraudx_synthesizer.causal_scm import HeuristicBankScorer, StructuralCausalEngine
 
 
 def _make_dummy_card(region: str = "US") -> CardholderProfile:

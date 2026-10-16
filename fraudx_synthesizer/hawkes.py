@@ -14,8 +14,8 @@ Implements:
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from dataclasses import dataclass
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -28,6 +28,7 @@ class HawkesParameters:
     beta: float = 2.78e-3          # Exponential memory decay rate in Hz (1/sec), t_half ~ 250s
     beta_0_floor: float = 0.025    # Nocturnal floor ratio (2.5% baseline overnight)
     phi_max: float = 3.85          # Maximum relative density of 24-hour diurnal profile
+    phase_offset_sec: float = 0.0  # Cardholder's local-clock offset into the diurnal cycle (2026-10-16)
 
     def __post_init__(self) -> None:
         branching_ratio = self.alpha / self.beta if self.beta > 0 else 0.0
@@ -314,16 +315,25 @@ class RecursiveCircadianHawkesEngine:
         self._buf_idx = 0
 
     @staticmethod
-    def evaluate_circadian_phi(t_sec: float, beta_0: float = 0.025, phi_max: float = 3.85) -> float:
+    def evaluate_circadian_phi(
+        t_sec: float,
+        beta_0: float = 0.025,
+        phi_max: float = 3.85,
+        phase_offset_sec: float = 0.0,
+    ) -> float:
         """Evaluates 4-component periodic von Mises mixture density at local hour of day.
-        
+
+        `phase_offset_sec` is the cardholder's own local-clock offset (time zone plus
+        chronotype): each person's day runs on their own clock, and the portfolio stream
+        the corpus reference measures is the sum of those clocks, not one shared clock.
+
         Centers:
         - Commute: 08:15 (8.25h), kappa=4.2, weight=0.22
         - Lunch: 12:36 (12.60h), kappa=4.8, weight=0.32
         - Evening Errands: 18:30 (18.50h), kappa=3.6, weight=0.34
         - Night: 21:15 (21.25h), kappa=3.0, weight=0.12
         """
-        hour = (t_sec / 3600.0) % 24.0
+        hour = ((t_sec + phase_offset_sec) / 3600.0) % 24.0
         two_pi_24 = 2.0 * math.pi / 24.0
 
         # Periodic cos terms centered at each diurnal peak
@@ -354,7 +364,7 @@ class RecursiveCircadianHawkesEngine:
         lambda*(t) = mu(t) + alpha * R_k * exp(-beta * (t - t_last))
         """
         p = params or self.params
-        phi = self.evaluate_circadian_phi(t_sec, p.beta_0_floor, p.phi_max)
+        phi = self.evaluate_circadian_phi(t_sec, p.beta_0_floor, p.phi_max, p.phase_offset_sec)
         mu_t = p.mu_0 * phi
 
         if R_current <= 0.0 or last_tx_time_sec < 0.0:
@@ -410,7 +420,7 @@ class RecursiveCircadianHawkesEngine:
             dt_cand_last = max(0.0, t_cand - t_last)
             decay_cand = math.exp(-p.beta * dt_cand_last) if dt_cand_last > 0.0 else 1.0
             lambda_hawkes_cand = p.alpha * R * decay_cand
-            phi_cand = self.evaluate_circadian_phi(t_cand, p.beta_0_floor, p.phi_max)
+            phi_cand = self.evaluate_circadian_phi(t_cand, p.beta_0_floor, p.phi_max, p.phase_offset_sec)
             lambda_exact_cand = (p.mu_0 * phi_cand) + lambda_hawkes_cand
 
             # 5. Thinning acceptance test

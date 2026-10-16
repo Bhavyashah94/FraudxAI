@@ -13,14 +13,12 @@ Adheres strictly to:
 from __future__ import annotations
 
 import collections
-import csv
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 import hashlib
-import json
 import math
 from pathlib import Path
-from typing import Any, Callable, Dict, Generator, Iterator, List, Optional, Sequence, Set, Tuple, Union
+from typing import Any, Dict, Generator, List, Optional, Union
 
 import numpy as np
 
@@ -30,12 +28,12 @@ from .agents import (
     FraudScenario,
     ISO8583Response,
 )
-from .world import MerchantProfile, WorldEnvironment
+from .world import WorldEnvironment
 from .contract import load_contract
 from .ledger import DoubleEntryWorldLedger, StreamingLedger
 from .spec_loader import load_all_specs
 from .storage import StreamingDatasetWriter
-from .stream import LabelFeed, SupervisionRecord, request_payload, label_payload
+from .stream import LabelFeed
 
 
 @dataclass
@@ -146,7 +144,9 @@ class BackboneCardProjector:
         for i in range(self.n_cards):
             card_id = f"card_bb_{i:06d}"
             cohort_id = str(self.rng.choice(cohort_keys, p=cohort_weights))
-            cohort_spec = self.specs.cohorts[cohort_id]
+            # Backbone-replay cards carry flat spend/geo attributes (see the
+            # CardholderProfile below) rather than cohort-grounded ones; the
+            # cohort is recorded on the card for downstream joins only.
             limit = float(self.rng.choice(issuer_steps))
             init_balance = float(self.rng.uniform(0.05, 0.25) * limit)
 

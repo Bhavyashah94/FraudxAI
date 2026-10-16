@@ -1,6 +1,5 @@
 """Tests verifying deterministic bit-for-bit reproducibility of simulation runs."""
 
-import pytest
 from fraudx_synthesizer import SimulationEngine
 
 

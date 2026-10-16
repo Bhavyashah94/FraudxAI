@@ -211,13 +211,53 @@ class HeuristicBankScorer(BankModel):
         out = 1.0 / (1.0 + np.exp(-np.clip(z, -35.0, 35.0)))
         return np.where(z <= -35.0, 0.0, out)
 
-    def evaluate(
+    def _authentication_deltas(self, record: Dict[str, Any]) -> Dict[str, float]:
+        """The five EMV/3DS authentication deviations for a record.
+
+        Engine-produced records carry all five: rails authenticate *before* the issuer's
+        authorization decision, so the causal evaluation consumes the same outcome the
+        authorization used. A record without them (hand-built fixtures, external callers)
+        falls back to the terminal's cryptographic capability as read from the channel or
+        POS entry mode. The fallback is deliberately not `is_fraud`: reading the label here
+        made all five attributes a perfect oracle, which spec/07 forbids and which made the
+        pre-authentication risk score depend on the authentication result it decides.
+        """
+        channel = str(record.get("channel_type", ""))
+        chip_capable = channel in ("CP_POS_CHIP", "CP_POS_CONTACTLESS", "CP_CONTACTLESS_NFC")
+        pos_entry = str(record.get("pos_entry_mode", ""))
+        if pos_entry:
+            chip_capable = pos_entry in ("051", "071")
+        status_3ds = str(record.get("trans_status_3ds", ""))
+
+        def flag(name: str, default: bool) -> float:
+            if name in record:
+                return 1.0 if bool(record[name]) else 0.0
+            return 1.0 if default else 0.0
+
+        arqc_verified = flag("emv_arqc_verified", chip_capable)
+        return {
+            "emv_arqc_verified": arqc_verified,
+            # The rail signals PIN entry through intent.pin_entered, which the engine never
+            # sets, so PIN-verified is 1.0 only when a record states it (see docs/PROJECT_CONTEXT.md 7.1).
+            "emv_pin_verified": flag("emv_pin_verified", False),
+            "emv_tvr_clean": flag("emv_tvr_clean", arqc_verified == 1.0),
+            "three_ds_authenticated": flag("three_ds_authenticated", status_3ds in ("Y", "C")),
+            "three_ds_attempted": flag("three_ds_attempted", status_3ds in ("A", "C")),
+        }
+
+    def _structural_state(
         self,
         record: Dict[str, Any],
-        scenario_tag: str = "ORGANIC_NORMAL",
-        factual_counterfactual: Optional[Dict[str, Any]] = None,
-    ) -> CausalGroundTruth:
-        """Evaluates causal risk and constructs exact counterfactual twin and attributions."""
+        scenario_tag: str,
+        authentication: Dict[str, float],
+    ) -> Tuple[Dict[str, float], Dict[str, float]]:
+        """Builds the structural deviation vector and the scalars `evaluate` reuses later.
+
+        Returns `(deltas, state)`. `deltas` is the flow's x-vector equivalent in the SCM's
+        feature space; `state` carries the handful of raw quantities (amount, velocity,
+        distance, credential mismatches) that the counterfactual baseline construction needs,
+        so they are derived exactly once.
+        """
         amount = float(record.get("amount", 25.0))
         mean_30d = float(record.get("user_avg_tx_amount_30d", 25.0))
         ratio_30d = amount / max(mean_30d, 1.0)
@@ -254,42 +294,13 @@ class HeuristicBankScorer(BankModel):
         hour = int(record.get("hour_of_day", 14))
         is_night = 1.0 if (1 <= hour <= 5) else 0.0
 
-        # Cryptographic & Authentication Mitigators
-        is_fraud = int(record.get("is_fraud", 0))
-
-        # EMV Bit 55 Fields
-        if "emv_arqc_verified" in record:
-            arqc_verified = 1.0 if bool(record["emv_arqc_verified"]) else 0.0
-        else:
-            arqc_verified = 1.0 if (channel.startswith("CP") and channel != "CP_POS_MAGSTRIPE" and is_fraud == 0) else 0.0
-
-        if "emv_pin_verified" in record:
-            pin_verified = 1.0 if bool(record["emv_pin_verified"]) else 0.0
-        else:
-            pin_verified = 1.0 if (channel == "CP_POS_CHIP" and is_fraud == 0 and amount >= 50.0) else 0.0
-
-        if "emv_tvr_clean" in record:
-            tvr_clean = 1.0 if bool(record["emv_tvr_clean"]) else 0.0
-        else:
-            tvr_clean = 1.0 if (arqc_verified == 1.0 and is_fraud == 0) else 0.0
-
-        # 3DS 2.x Fields
-        eci = str(record.get("eci", ""))
-        trans_status_3ds = str(record.get("trans_status_3ds", ""))
-        if "three_ds_authenticated" in record:
-            three_ds_auth = 1.0 if bool(record["three_ds_authenticated"]) else 0.0
-        else:
-            three_ds_auth = 1.0 if (channel.startswith("CNP") and is_fraud == 0 and eci in ("05", "") and trans_status_3ds in ("Y", "")) else 0.0
-
-        if "three_ds_attempted" in record:
-            three_ds_att = 1.0 if bool(record["three_ds_attempted"]) else 0.0
-        else:
-            three_ds_att = 1.0 if (eci == "06" or trans_status_3ds == "A") else 0.0
+        # Cryptographic & Authentication Mitigators (from the rail's recorded outcome)
+        arqc_verified = authentication["emv_arqc_verified"]
+        three_ds_auth = authentication["three_ds_authenticated"]
 
         # Carding Probe Pattern
         is_carding = 1.0 if (channel.startswith("CNP") and amount <= 3.00 and count_1h >= 2 and three_ds_auth == 0.0) else 0.0
 
-        # 1. Compute Logit-Space Feature Attributions via Owen Multilinear Formula
         # Logarithmic saturation prevents massive high-ticket legitimate spikes (e.g. Dhanteras gold, weddings)
         # from linearly blowing up log-odds beyond cryptographic mitigating evidence.
         saturated_amount_ratio = math.log(1.0 + max(0.0, ratio_30d - 1.0))
@@ -308,13 +319,31 @@ class HeuristicBankScorer(BankModel):
             "is_high_risk_mcc": is_high_risk,
             "is_night_tx": is_night,
             "emv_arqc_verified": arqc_verified,
-            "emv_pin_verified": pin_verified,
-            "emv_tvr_clean": tvr_clean,
+            "emv_pin_verified": authentication["emv_pin_verified"],
+            "emv_tvr_clean": authentication["emv_tvr_clean"],
             "three_ds_authenticated": three_ds_auth,
-            "three_ds_attempted": three_ds_att,
+            "three_ds_attempted": authentication["three_ds_attempted"],
             "is_carding_probe": is_carding,
         }
+        state = {
+            "amount": amount,
+            "mean_30d": mean_30d,
+            "effective_velocity": effective_velocity,
+            "ip_dist": ip_dist,
+            "avs_mismatch": avs_mismatch,
+            "bill_mismatch": bill_mismatch,
+            "cvv_mismatch": cvv_mismatch,
+        }
+        return deltas, state
 
+    def _attribution_components(
+        self, deltas: Dict[str, float]
+    ) -> Tuple[Dict[str, float], Dict[str, float], Dict[str, float], float, float, float]:
+        """Linear, pairwise and three-way structural components plus their sums.
+
+        Returns `(A_0, A_1, A_2, c1, c2, c3)`. Shared by the full evaluation and by the
+        pre-authentication score so the interaction kernels exist once.
+        """
         # Linear component A_{i,0}
         A_0 = {
             feat_name: self.structural_weights[feat_name] * deltas[feat_name]
@@ -328,7 +357,7 @@ class HeuristicBankScorer(BankModel):
         for f1, f2, weight in self.pairwise_synergies:
             # When in-person EMV Chip cryptogram is physically authenticated, POS network velocity
             # and IP distance synergy is physically suppressed (card is present at physical terminal).
-            if (f1, f2) == ("haversine_velocity_kph", "ip_distance_from_home_km") and arqc_verified == 1.0:
+            if (f1, f2) == ("haversine_velocity_kph", "ip_distance_from_home_km") and deltas["emv_arqc_verified"] == 1.0:
                 continue
             term = weight * deltas[f1] * deltas[f2]
             if abs(term) > 1e-12:
@@ -346,6 +375,145 @@ class HeuristicBankScorer(BankModel):
                 A_2[f2] += term
                 A_2[f3] += term
                 c3 += term
+
+        return A_0, A_1, A_2, c1, c2, c3
+
+    def probability_on_columns(
+        self,
+        record: Dict[str, Any],
+        scenario_tag: str,
+        column_values: Dict[str, Any],
+    ) -> np.ndarray:
+        """Approval probability as a function of the spec/21 explained columns.
+
+        `column_values` maps explained-column names (the vocabulary of
+        `causal_contract.feature_names()`) to scalars or equal-length arrays. Every
+        field the columns do not name -- channel, MCC, hour of day, the card's 30-day
+        mean ticket, credit limit, the non-mapped authentication flags -- is held at
+        the record's own value, read exactly as `evaluate` reads it. Returns the
+        approval probability per column vector, elementwise.
+
+        Why this exists: the Pillar-4 protocol grades a practical black-box explainer
+        against the exact attribution of the SAME function, so both sides must be able
+        to evaluate the scorer at arbitrary points of the explained-column space (the
+        exact side enumerates all 2^11 coalition points per record). This method is a
+        vectorised transcription of `_structural_state` + `_attribution_components`;
+        the benchmark runner asserts the observed point against the record's stored
+        `risk_score`, so the transcription cannot drift from `evaluate` unnoticed.
+        """
+        authentication = self._authentication_deltas(record)
+        deltas, state = self._structural_state(record, scenario_tag, authentication)
+
+        arrays = [np.atleast_1d(np.asarray(v, dtype=np.float64)) for v in column_values.values()]
+        size = max((a.size for a in arrays), default=1)
+
+        def _column(name: str, default: float) -> np.ndarray:
+            value = column_values.get(name)
+            if value is None:
+                return np.full(size, float(default))
+            return np.broadcast_to(np.atleast_1d(np.asarray(value, dtype=np.float64)), (size,)).astype(np.float64)
+
+        channel = str(record.get("channel_type", ""))
+        raw_amount = _column("amount", state["amount"])
+        mean_30d = max(state["mean_30d"], 1.0)
+
+        # The scorer's feature space, with the eleven columns overridden. Derivations
+        # mirror `_structural_state` line for line (same saturations, same gates).
+        features: Dict[str, np.ndarray] = {}
+        features["amount_to_mean_ratio_30d"] = np.log1p(
+            np.maximum(0.0, raw_amount / mean_30d - 1.0)
+        )
+        if channel.startswith("CP") or scenario_tag in ("COUNTERFEIT_CLONE", "IMPOSSIBLE_TRAVEL"):
+            features["haversine_velocity_kph"] = _column("haversine_velocity_kph", state["effective_velocity"])
+        else:
+            features["haversine_velocity_kph"] = np.zeros(size)
+        features["ip_distance_from_home_km"] = _column("ip_distance_from_home_km", state["ip_dist"])
+        features["tx_count_1h"] = _column("tx_count_1h", deltas["tx_count_1h"])
+        features["tx_count_24h"] = _column("tx_count_24h", deltas["tx_count_24h"])
+        features["tx_amount_sum_24h_ratio"] = np.full(size, deltas["tx_amount_sum_24h_ratio"])
+        features["is_cross_border_tx"] = _column("is_cross_border", deltas["is_cross_border_tx"])
+        features["avs_mismatch_flag"] = _column("avs_mismatch_flag", state["avs_mismatch"])
+        features["billing_shipping_mismatch"] = _column("billing_shipping_mismatch", state["bill_mismatch"])
+        features["cvv_mismatch_flag"] = _column("cvv_mismatch_flag", state["cvv_mismatch"])
+        features["is_high_risk_mcc"] = np.full(size, deltas["is_high_risk_mcc"])
+        features["is_night_tx"] = np.full(size, deltas["is_night_tx"])
+        features["emv_arqc_verified"] = _column("emv_arqc_verified", deltas["emv_arqc_verified"])
+        features["emv_pin_verified"] = np.full(size, deltas["emv_pin_verified"])
+        features["emv_tvr_clean"] = np.full(size, deltas["emv_tvr_clean"])
+        features["three_ds_authenticated"] = _column("three_ds_authenticated", deltas["three_ds_authenticated"])
+        features["three_ds_attempted"] = np.full(size, deltas["three_ds_attempted"])
+        # The carding-probe pattern is a function of explained columns (amount,
+        # count_1h, 3DS) plus the record's channel, so it must follow the overrides.
+        features["is_carding_probe"] = np.where(
+            (raw_amount <= 3.00) & (features["tx_count_1h"] >= 2)
+            & (features["three_ds_authenticated"] == 0.0) & channel.startswith("CNP"),
+            1.0,
+            0.0,
+        )
+
+        z = np.full(size, self.base_logit)
+        for feat_name, weight in self.structural_weights.items():
+            z = z + weight * features[feat_name]
+        for f1, f2, weight in self.pairwise_synergies:
+            term = weight * features[f1] * features[f2]
+            if (f1, f2) == ("haversine_velocity_kph", "ip_distance_from_home_km"):
+                # Same physical suppression as `_attribution_components`: a present,
+                # chip-authenticated card has no network-velocity/IP synergy.
+                term = np.where(features["emv_arqc_verified"] == 1.0, 0.0, term)
+            z = z + term
+        for f1, f2, f3, weight in self.three_way_synergies:
+            z = z + weight * features[f1] * features[f2] * features[f3]
+
+        # Elementwise twin of `_logistic`, including its saturation bounds.
+        saturated = 1.0 / (1.0 + np.exp(-np.clip(z, -35.0, 35.0)))
+        return np.where(z >= 35.0, 1.0, np.where(z <= -35.0, 0.0, saturated))
+
+    def pre_authentication_score(
+        self,
+        record: Dict[str, Any],
+        scenario_tag: str = "ORGANIC_NORMAL",
+    ) -> float:
+        """Risk score from the signals that exist before authentication is attempted.
+
+        This is the score the ACS/issuer uses to decide the 3DS exemption/challenge and the
+        EMV outcome, which is why it must not include those outcomes: the engine computes it
+        first, feeds it to `rails.RailSwitch.authenticate()`, attaches the result to the
+        record and only then calls `evaluate()` for the published score and attributions.
+        Structurally it is `evaluate`'s logit with the five authentication deviations held
+        at their unauthenticated value (0), i.e. the same model, not a second one.
+        """
+        authentication = {name: 0.0 for name in (
+            "emv_arqc_verified",
+            "emv_pin_verified",
+            "emv_tvr_clean",
+            "three_ds_authenticated",
+            "three_ds_attempted",
+        )}
+        deltas, _state = self._structural_state(record, scenario_tag, authentication)
+        _A_0, _A_1, _A_2, c1, c2, c3 = self._attribution_components(deltas)
+        return self._logistic(self.base_logit + c1 + c2 + c3)
+
+    def evaluate(
+        self,
+        record: Dict[str, Any],
+        scenario_tag: str = "ORGANIC_NORMAL",
+        factual_counterfactual: Optional[Dict[str, Any]] = None,
+    ) -> CausalGroundTruth:
+        """Evaluates causal risk and constructs exact counterfactual twin and attributions."""
+        authentication = self._authentication_deltas(record)
+        deltas, state = self._structural_state(record, scenario_tag, authentication)
+        amount = state["amount"]
+        mean_30d = state["mean_30d"]
+        effective_velocity = state["effective_velocity"]
+        ip_dist = state["ip_dist"]
+        avs_mismatch = state["avs_mismatch"]
+        bill_mismatch = state["bill_mismatch"]
+        cvv_mismatch = state["cvv_mismatch"]
+        channel = str(record.get("channel_type", ""))
+        is_fraud = int(record.get("is_fraud", 0))
+
+        # 1. Compute Logit-Space Feature Attributions via Owen Multilinear Formula
+        A_0, A_1, A_2, c1, c2, c3 = self._attribution_components(deltas)
 
         # Feature attributions in logit space: phi_i^logit = A_{i,0} + 1/2 A_{i,1} + 1/3 A_{i,2}
         raw_phi_logit = {

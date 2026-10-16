@@ -9,14 +9,12 @@ Verifies:
 
 import collections
 from datetime import datetime, timezone
-from typing import Any, Dict, List
+from typing import List
 
 import numpy as np
-import pytest
 
 from fraudx_synthesizer import DiscreteEventEngine
-from fraudx_synthesizer.agents import CardholderState, FraudScenario
-from fraudx_synthesizer.spec_loader import load_all_specs
+from fraudx_synthesizer.agents import FraudScenario
 
 
 def test_circadian_night_spend_trough():

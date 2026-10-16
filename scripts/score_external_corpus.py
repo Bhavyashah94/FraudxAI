@@ -308,9 +308,13 @@ def score(
         "js_divergence_channel": float(card.js_divergence_channel),
         "spearman_frobenius_error": float(card.spearman_frobenius_error),
     }
+    # The two continuous gates are graded against the limit the grader itself used
+    # for THIS record set -- since 2026-10-15 (spec/18 `pillar_1_real_reference`)
+    # that is the size-corrected real-to-real bootstrap quantile, not the static
+    # spec value. The three remaining gates keep their static spec limits.
     limits = {
-        "wasserstein_amount_log": ("max", float(th["wasserstein_amount_log_max"])),
-        "wasserstein_arrival_log": ("max", float(th["wasserstein_arrival_log_max"])),
+        "wasserstein_amount_log": ("max", float(card.amount_limit)),
+        "wasserstein_arrival_log": ("max", float(card.arrival_limit)),
         "js_divergence_mcc": ("max", float(th["js_divergence_mcc_max"])),
         "js_divergence_channel": ("max", float(th["js_divergence_channel_max"])),
         "spearman_frobenius_error": ("max", float(th["spearman_frobenius_error_max"])),
@@ -338,20 +342,25 @@ def score(
             }
         )
 
-    # Where the bar comes from, spelled out: thresholds are read from spec/18, but the
-    # reference distributions they are compared against are literals in the reporter
-    # (see _evaluate_data_fidelity), not spec entries.
-    reference_note = (
-        "US: lognormal(mu=3.75, sigma=0.85) USD for amounts, exponential for inter-arrivals"
-        if region == "US"
-        else "IN: 45% lognormal(7.74, 0.85) + 55% lognormal(6.45, 0.95) INR for amounts, exponential for inter-arrivals"
-    ) + ", both hardcoded in benchmark_reporter.py"
+    # Where the bar comes from, spelled out: the grader resolves the reference
+    # from spec/18 (`pillar_1_real_reference`) and hands back the exact note, so
+    # a reported number always names its corpus, sample size and calibration.
+    reference_note = card.reference_note
 
     caveats: List[str] = []
-    if region == "US" and summary.get("amount_unit") not in (None, "USD"):
+    # Branch on the explicit provenance flag, never the numeric limit: under the
+    # fallback the limit is the non-zero static spec value (0.15), so a
+    # `card.amount_limit == 0.0` test would never fire here.
+    if region == "US" and card.reference_kind == "embedded_fallback":
         caveats.append(
-            f"corpus amounts are {summary['amount_unit']} while the US reference is "
-            "USD-denominated; parity is assumed, not verified"
+            "the real-corpus reference did not load (missing file, spec section or "
+            "sha256 mismatch), so the continuous gates fell back to the embedded "
+            "hardcoded reference"
+        )
+    elif region == "US" and summary.get("amount_unit") not in (None, "USD"):
+        caveats.append(
+            f"corpus amounts are {summary['amount_unit']} while the active reference "
+            "corpus is USD-denominated; parity is assumed, not verified"
         )
 
     return {

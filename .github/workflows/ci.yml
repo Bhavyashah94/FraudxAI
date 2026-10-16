@@ -29,6 +29,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install ".[dev,benchmark,gui]"
 
+      - name: Lint (ruff correctness rules)
+        run: |
+          ruff check .
+
       - name: Run PyTest Test Suite
         run: |
           python -m pytest tests/ -v

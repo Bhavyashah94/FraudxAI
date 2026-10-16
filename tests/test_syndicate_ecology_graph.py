@@ -12,7 +12,6 @@ Verifies:
 
 from collections import Counter
 import math
-import pytest
 import numpy as np
 
 from fraudx_synthesizer import (
@@ -29,10 +28,10 @@ def test_syndicate_shannon_entropy_non_monopoly():
     Under Slice 12, Shannon entropy of syndicate attribution H(X) must be >= 1.8 bits.
     """
     engine = SimulationEngine(n_cards=300, n_merchants=80, seed=42)
-    records = engine.generate_batch(n_transactions=2000, fraud_prevalence=0.08)
+    records = engine.generate_batch(n_transactions=5000, fraud_prevalence=0.08)
 
     fraud_records = [r for r in records if r["is_fraud"] == 1]
-    assert len(fraud_records) >= 80
+    assert len(fraud_records) >= 300
 
     syndicate_counts = Counter(r["syndicate_id"] for r in fraud_records if r.get("syndicate_id"))
     assert len(syndicate_counts) >= 4, f"Observed only {len(syndicate_counts)} syndicates; expected at least 4"
@@ -47,6 +46,11 @@ def test_syndicate_shannon_entropy_non_monopoly():
     # batch delivered 5.4 percent fraud of the 8 percent requested; at the requested rate (spec/07
     # section 19) attacks revisit validated cards more often, and the follow-up playbooks belong to
     # the account-takeover and card-testing syndicates, so attribution concentrates in those two.
+    # Batch size from the measured estimator dispersion (2026-10-16): at n=2,000, ~160 attributed
+    # attacks put the statistic anywhere in 1.206-1.505 across seeds 42/43/44/99/101/7, with 2/6
+    # seeds below this bar -- the statistic was grading the batch draw. At n=5,000 the same six
+    # seeds measure 1.318-1.397 (387-417 attributed attacks) and clear the bar on every seed. The
+    # bar itself is unchanged.
     assert entropy >= 1.25, f"Syndicate Shannon entropy {entropy:.3f} bits is below the 1.25-bit diversity threshold"
 
 
