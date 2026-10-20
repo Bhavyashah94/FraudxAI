@@ -509,7 +509,6 @@ class HeuristicBankScorer(BankModel):
         avs_mismatch = state["avs_mismatch"]
         bill_mismatch = state["bill_mismatch"]
         cvv_mismatch = state["cvv_mismatch"]
-        channel = str(record.get("channel_type", ""))
         is_fraud = int(record.get("is_fraud", 0))
 
         # 1. Compute Logit-Space Feature Attributions via Owen Multilinear Formula

@@ -31,7 +31,7 @@ from docx.enum.table import WD_TABLE_ALIGNMENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_TAB_ALIGNMENT
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
-from docx.shared import Inches, Mm, Pt, RGBColor
+from docx.shared import Inches, Mm, Pt
 
 REPO = Path(__file__).resolve().parents[1]
 MASTER = REPO / "docs" / "SYNOPSIS_MASTER_CONTENT.md"
