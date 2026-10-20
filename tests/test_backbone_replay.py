@@ -21,15 +21,6 @@ from fraudx_synthesizer.contract import load_contract
 from fraudx_synthesizer.stream import request_payload
 
 
-ULB_CORPUS_PATH = Path("corpora/creditcard.arff")
-
-
-@pytest.fixture
-def check_ulb_corpus_available():
-    if not ULB_CORPUS_PATH.exists():
-        pytest.skip(f"ULB corpus ARFF not found at {ULB_CORPUS_PATH}")
-
-
 def test_convexity_injection_count_formula():
     """Validates the mathematical convexity formula: K = round((p * N) / (1 - p))."""
     # At p = 0.02 and N = 10,000: K = round(200 / 0.98) = 204
@@ -46,21 +37,21 @@ def test_convexity_injection_count_formula():
     assert compute_convexity_injection_count(10000, 0.0) == 0
 
 
-def test_clean_backbone_purges_corpus_fraud_rows(check_ulb_corpus_available):
+def test_clean_backbone_purges_corpus_fraud_rows(fixture_arff):
     """Invariant 4: Clean backbone mode purges corpus-native fraud rows."""
     # Read first 1000 records without clean_backbone vs with clean_backbone
-    clean_stream = list(read_ulb_arff_stream(ULB_CORPUS_PATH, clean_backbone=True, max_records=500))
+    clean_stream = list(read_ulb_arff_stream(fixture_arff, clean_backbone=True, max_records=500))
     assert len(clean_stream) == 500
     assert all(not r.is_original_fraud for r in clean_stream)
 
 
-def test_every_replayed_amount_is_the_corpus_amount_verbatim(check_ulb_corpus_available):
+def test_every_replayed_amount_is_the_corpus_amount_verbatim(fixture_arff):
     """Invariant 1: Every replayed legitimate amount equals the corpus amount verbatim."""
-    raw_stream = list(read_ulb_arff_stream(ULB_CORPUS_PATH, clean_backbone=True, max_records=200))
+    raw_stream = list(read_ulb_arff_stream(fixture_arff, clean_backbone=True, max_records=200))
     raw_amounts = [r.amount for r in raw_stream]
 
     engine = BackboneReplayEngine(
-        corpus_path=ULB_CORPUS_PATH,
+        corpus_path=fixture_arff,
         corpus_type="ulb",
         fraud_prevalence=0.0,  # Zero attacks
         clean_backbone=True,
@@ -75,14 +66,14 @@ def test_every_replayed_amount_is_the_corpus_amount_verbatim(check_ulb_corpus_av
     np.testing.assert_array_equal(replayed_amounts, raw_amounts)
 
 
-def test_every_replayed_time_equals_corpus_time_plus_anchor(check_ulb_corpus_available):
+def test_every_replayed_time_equals_corpus_time_plus_anchor(fixture_arff):
     """Invariant 2: Every replayed timestamp equals corpus time + anchor."""
     anchor = 1704067200.0  # 2024-01-01 00:00:00 UTC
-    raw_stream = list(read_ulb_arff_stream(ULB_CORPUS_PATH, clean_backbone=True, max_records=200))
+    raw_stream = list(read_ulb_arff_stream(fixture_arff, clean_backbone=True, max_records=200))
     expected_times = [anchor + r.tx_time_seconds for r in raw_stream]
 
     engine = BackboneReplayEngine(
-        corpus_path=ULB_CORPUS_PATH,
+        corpus_path=fixture_arff,
         corpus_type="ulb",
         time_anchor_seconds=anchor,
         fraud_prevalence=0.0,
@@ -96,10 +87,10 @@ def test_every_replayed_time_equals_corpus_time_plus_anchor(check_ulb_corpus_ava
     np.testing.assert_array_equal(actual_times, expected_times)
 
 
-def test_authorisation_request_has_zero_label_leakage(check_ulb_corpus_available):
+def test_authorisation_request_has_zero_label_leakage(fixture_arff):
     """Invariant 3: Authorisation request feeds carry zero target labels or counterfactuals."""
     engine = BackboneReplayEngine(
-        corpus_path=ULB_CORPUS_PATH,
+        corpus_path=fixture_arff,
         corpus_type="ulb",
         fraud_prevalence=0.05,
         clean_backbone=True,
@@ -123,11 +114,11 @@ def test_authorisation_request_has_zero_label_leakage(check_ulb_corpus_available
         assert not violations, f"Contract violations: {violations}"
 
 
-def test_fraud_prevalence_matches_requested_share_under_convexity_correction(check_ulb_corpus_available):
+def test_fraud_prevalence_matches_requested_share_under_convexity_correction(fixture_arff):
     """Invariant 6: Realized fraud prevalence matches requested share within statistical bound."""
     target_p = 0.04
     engine = BackboneReplayEngine(
-        corpus_path=ULB_CORPUS_PATH,
+        corpus_path=fixture_arff,
         corpus_type="ulb",
         fraud_prevalence=target_p,
         clean_backbone=True,
@@ -142,10 +133,10 @@ def test_fraud_prevalence_matches_requested_share_under_convexity_correction(che
     assert realized_p == pytest.approx(target_p, abs=0.005)
 
 
-def test_backbone_replay_ledger_balance_conserved(check_ulb_corpus_available):
+def test_backbone_replay_ledger_balance_conserved(fixture_arff):
     """Invariant 8: World ledger conservation discrepancy is strictly below 1e-6."""
     engine = BackboneReplayEngine(
-        corpus_path=ULB_CORPUS_PATH,
+        corpus_path=fixture_arff,
         corpus_type="ulb",
         fraud_prevalence=0.03,
         clean_backbone=True,
@@ -158,10 +149,10 @@ def test_backbone_replay_ledger_balance_conserved(check_ulb_corpus_available):
     assert discrepancy == pytest.approx(0.0, abs=1e-6)
 
 
-def test_pca_columns_completely_excluded_from_export(check_ulb_corpus_available):
+def test_pca_columns_completely_excluded_from_export(fixture_arff):
     """Invariant 9: Anonymized PCA columns (V1-V28) never appear in any record."""
     engine = BackboneReplayEngine(
-        corpus_path=ULB_CORPUS_PATH,
+        corpus_path=fixture_arff,
         corpus_type="ulb",
         fraud_prevalence=0.02,
         clean_backbone=True,
@@ -174,11 +165,11 @@ def test_pca_columns_completely_excluded_from_export(check_ulb_corpus_available)
             assert f"V{i}" not in r, f"PCA component V{i} leaked into record!"
 
 
-def test_export_dataset_writes_parquet_views(check_ulb_corpus_available):
+def test_export_dataset_writes_parquet_views(fixture_arff):
     """Integration: export_dataset creates auth_stream and gateway_telemetry parquet views."""
     with tempfile.TemporaryDirectory() as tmp_dir:
         engine = BackboneReplayEngine(
-            corpus_path=ULB_CORPUS_PATH,
+            corpus_path=fixture_arff,
             corpus_type="ulb",
             fraud_prevalence=0.03,
             clean_backbone=True,

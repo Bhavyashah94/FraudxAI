@@ -28,16 +28,29 @@ cd FraudxAI
 
 ### Install in Editable Mode
 ```bash
-pip install -e ".[dev]"
+pip install -e ".[dev,docs]"
 ```
+Add `benchmark` and `gui` when working on those areas (`.[dev,docs,benchmark,gui]`).
 
 ### Run the Test Suite
 ```bash
-python -m pytest tests/ -v
+python -m pytest tests/ -v -ra
 ```
-All tests must pass before submitting a pull request. The current suite is 410 tests
-across 60 files (`python -m pytest tests/ -q`); read the count this repository reports
-when it changes, rather than trusting a number written here.
+All tests must pass before submitting a pull request. For a faster inner loop that
+skips the long end-to-end simulations:
+```bash
+python -m pytest tests/ -q -m "not slow"
+```
+The full suite is the gate; the fast selection is only a convenience. Read the count
+and skip reasons pytest reports rather than trusting a number written here.
+
+### External Corpora
+`corpora/` is gitignored because the real datasets are hundreds of megabytes. Tests
+that need the full ULB or IEEE-CIS files skip with an explicit reason when those files
+are absent; the backbone replay invariants still run against the synthetic ARFF
+fixture committed in the test suite. CI reports every skip (`-ra`) rather than hiding
+them. To run the real-corpus tests locally, place the files where `spec/20` and the
+test modules name them and rerun the suite.
 
 ### Run Operational Invariant Verification
 ```bash

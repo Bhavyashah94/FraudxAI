@@ -27,7 +27,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install ".[dev,benchmark,gui]"
+          pip install ".[dev,benchmark,gui,docs]"
 
       - name: Lint (ruff correctness rules)
         run: |
@@ -35,7 +35,7 @@ jobs:
 
       - name: Run PyTest Test Suite
         run: |
-          python -m pytest tests/ -v
+          python -m pytest tests/ -v -ra --durations=20
 
       - name: Verify Banking Rail Invariants
         run: |
